@@ -83,37 +83,35 @@ class MinimalPublisher(Node):
     
         return physical_value
 
-def timer_callback(self):
-    msg = Mpu()
+    def timer_callback(self):
+        msg = Mpu()
+        try:
+        # Read accelerometer data
+            accel_x = self.read_sensor_data(MPU9250_ACCEL_XOUT_H, accel_calibration, ACCEL_SENSITIVITY)
+            accel_y = self.read_sensor_data(MPU9250_ACCEL_YOUT_H, accel_calibration, ACCEL_SENSITIVITY)
+            accel_z = self.read_sensor_data(MPU9250_ACCEL_ZOUT_H, accel_calibration, ACCEL_SENSITIVITY)
+            # Read, calibrate, and convert gyroscope data to dps
+            gyro_x = self.read_sensor_data(MPU9250_GYRO_XOUT_H, gyro_calibration, GYRO_SENSITIVITY)
+            gyro_y = self.read_sensor_data(MPU9250_GYRO_YOUT_H, gyro_calibration, GYRO_SENSITIVITY)
+            gyro_z = self.read_sensor_data(MPU9250_GYRO_ZOUT_H, gyro_calibration, GYRO_SENSITIVITY)
 
-        
-    try:
-       # Read accelerometer data
-        accel_x = self.read_sensor_data(MPU9250_ACCEL_XOUT_H, accel_calibration, ACCEL_SENSITIVITY)
-        accel_y = self.read_sensor_data(MPU9250_ACCEL_YOUT_H, accel_calibration, ACCEL_SENSITIVITY)
-        accel_z = self.read_sensor_data(MPU9250_ACCEL_ZOUT_H, accel_calibration, ACCEL_SENSITIVITY)
-        # Read, calibrate, and convert gyroscope data to dps
-        gyro_x = self.read_sensor_data(MPU9250_GYRO_XOUT_H, gyro_calibration, GYRO_SENSITIVITY)
-        gyro_y = self.read_sensor_data(MPU9250_GYRO_YOUT_H, gyro_calibration, GYRO_SENSITIVITY)
-        gyro_z = self.read_sensor_data(MPU9250_GYRO_ZOUT_H, gyro_calibration, GYRO_SENSITIVITY)
+            # Pause for a short duration
+            time.sleep(0.1)
+            msg.message = "EL mensaje es"
+            msg.acx = accel_x
+            msg.acy = accel_y
+            msg.acz = accel_z
+            msg.gx = gyro_x
+            msg.gy = gyro_y
+            msg.gz = gyro_z
+            
+            self.publisher_.publish(msg)
 
-        # Pause for a short duration
-        time.sleep(0.1)
-        msg.message = "EL mensaje es"
-        msg.acx = accel_x
-        msg.acy = accel_y
-        msg.acz = accel_z
-        msg.gx = gyro_x
-        msg.gy = gyro_y
-        msg.gz = gyro_z
-        
-        self.publisher_.publish(msg)
-
-    except KeyboardInterrupt:
-        self.get_logger().info('Exiting the system')
-    finally:
-        # Close the I2C bus
-        bus.close()
+        except KeyboardInterrupt:
+            self.get_logger().info('Exiting the system')
+        finally:
+            # Close the I2C bus
+            bus.close()
 
 
 
