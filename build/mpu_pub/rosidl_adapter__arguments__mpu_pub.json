@@ -1,0 +1,6 @@
+{
+  "package_name": "mpu_pub",
+  "non_idl_tuples": [
+    "/home/edipo/ros2_orange/src/mpu_pub:msg/Mpu.msg"
+  ]
+}

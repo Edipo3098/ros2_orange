@@ -1,0 +1,35 @@
+[0.031s] Invoking command in '/home/edipo/ros2_orange/build/mpu_pub': /usr/bin/cmake /home/edipo/ros2_orange/src/mpu_pub -DCMAKE_INSTALL_PREFIX=/home/edipo/ros2_orange/install/mpu_pub
+[0.040s] -- Found ament_cmake: 1.3.7 (/opt/ros/humble/share/ament_cmake/cmake)
+[0.125s] -- Found rosidl_default_generators: 1.2.0 (/opt/ros/humble/share/rosidl_default_generators/cmake)
+[0.125s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[0.127s] -- Found rosidl_adapter: 3.1.5 (/opt/ros/humble/share/rosidl_adapter/cmake)
+[0.144s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[0.258s] Error parsing '/home/edipo/ros2_orange/src/mpu_pub/package.xml':
+[0.284s] Traceback (most recent call last):
+[0.284s]   File "/opt/ros/humble/share/ament_cmake_core/cmake/core/package_xml_2_cmake.py", line 150, in <module>
+[0.284s]     main()
+[0.284s]   File "/opt/ros/humble/share/ament_cmake_core/cmake/core/package_xml_2_cmake.py", line 53, in main
+[0.284s]     raise e
+[0.284s]   File "/opt/ros/humble/share/ament_cmake_core/cmake/core/package_xml_2_cmake.py", line 49, in main
+[0.284s]     package = parse_package_string(
+[0.284s]   File "/usr/lib/python3/dist-packages/catkin_pkg/package.py", line 788, in parse_package_string
+[0.284s]     pkg.validate(warnings=warnings)
+[0.284s]   File "/usr/lib/python3/dist-packages/catkin_pkg/package.py", line 330, in validate
+[0.284s]     raise InvalidPackage('\n'.join(errors), self.filename)
+[0.284s] catkin_pkg.package.InvalidPackage: Error(s) in package '/home/edipo/ros2_orange/src/mpu_pub/package.xml':
+[0.284s] The package "mpu_pub" must not "exec_depend" on a package with the same name as this package
+[0.294s] [31mCMake Error at /opt/ros/humble/share/ament_cmake_core/cmake/core/ament_package_xml.cmake:95 (message):
+[0.294s]   execute_process(/usr/bin/python3.10
+[0.294s]   /opt/ros/humble/share/ament_cmake_core/cmake/core/package_xml_2_cmake.py
+[0.294s]   /home/edipo/ros2_orange/src/mpu_pub/package.xml
+[0.294s]   /home/edipo/ros2_orange/build/mpu_pub/ament_cmake_core/package.cmake)
+[0.294s]   returned error code 1
+[0.294s] Call Stack (most recent call first):
+[0.294s]   /opt/ros/humble/share/ament_cmake_core/cmake/core/ament_package_xml.cmake:49 (_ament_package_xml)
+[0.294s]   /opt/ros/humble/share/rosidl_cmake/cmake/rosidl_generate_interfaces.cmake:226 (ament_package_xml)
+[0.294s]   CMakeLists.txt:8 (rosidl_generate_interfaces)
+[0.294s] 
+[0.294s] [0m
+[0.294s] -- Configuring incomplete, errors occurred!
+[0.294s] See also "/home/edipo/ros2_orange/build/mpu_pub/CMakeFiles/CMakeOutput.log".
+[0.298s] Invoked command in '/home/edipo/ros2_orange/build/mpu_pub' returned '1': /usr/bin/cmake /home/edipo/ros2_orange/src/mpu_pub -DCMAKE_INSTALL_PREFIX=/home/edipo/ros2_orange/install/mpu_pub

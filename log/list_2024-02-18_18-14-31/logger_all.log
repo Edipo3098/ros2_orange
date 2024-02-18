@@ -1,0 +1,66 @@
+[0.929s] DEBUG:colcon:Command line arguments: ['/usr/bin/colcon', 'list', '-p', '--base-paths', '/home/edipo/ros2_orange']
+[0.930s] DEBUG:colcon:Parsed command line arguments: Namespace(log_base=None, log_level=None, verb_name='list', build_base='build', ignore_user_meta=False, metas=['./colcon.meta'], base_paths=['/home/edipo/ros2_orange'], packages_ignore=None, packages_ignore_regex=None, paths=None, packages_up_to=None, packages_up_to_regex=None, packages_above=None, packages_above_and_dependencies=None, packages_above_depth=None, packages_select_by_dep=None, packages_skip_by_dep=None, packages_skip_up_to=None, packages_select_build_failed=False, packages_skip_build_finished=False, packages_select_test_failures=False, packages_skip_test_passed=False, packages_select=None, packages_skip=None, packages_select_regex=None, packages_skip_regex=None, packages_start=None, packages_end=None, allow_overriding=[], topological_order=False, names_only=False, paths_only=True, topological_graph=False, topological_graph_dot=False, topological_graph_density=False, topological_graph_legend=False, topological_graph_dot_cluster=False, topological_graph_dot_include_skipped=False, verb_parser=<colcon_defaults.argument_parser.defaults.DefaultArgumentsDecorator object at 0x7f862c30d0c0>, verb_extension=<colcon_package_information.verb.list.ListVerb object at 0x7f862c30fdc0>, main=<bound method ListVerb.main of <colcon_package_information.verb.list.ListVerb object at 0x7f862c30fdc0>>)
+[0.981s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) check parameters
+[0.982s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) check parameters
+[0.982s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) check parameters
+[0.982s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) check parameters
+[0.982s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) discover
+[0.982s] INFO:colcon.colcon_core.package_discovery:Crawling recursively for packages in '/home/edipo/ros2_orange'
+[0.982s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange) by extensions ['ignore', 'ignore_ament_install']
+[0.982s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange) by extension 'ignore'
+[0.982s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange) by extension 'ignore_ament_install'
+[0.982s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange) by extensions ['colcon_pkg']
+[0.982s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange) by extension 'colcon_pkg'
+[0.982s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange) by extensions ['colcon_meta']
+[0.982s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange) by extension 'colcon_meta'
+[0.982s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange) by extensions ['ros']
+[0.982s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange) by extension 'ros'
+[0.994s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange) by extensions ['cmake', 'python']
+[0.994s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange) by extension 'cmake'
+[0.994s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange) by extension 'python'
+[0.994s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange) by extensions ['python_setup_py']
+[0.994s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange) by extension 'python_setup_py'
+[0.994s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/build) by extensions ['ignore', 'ignore_ament_install']
+[0.995s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/build) by extension 'ignore'
+[0.995s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/build) ignored
+[0.995s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/install) by extensions ['ignore', 'ignore_ament_install']
+[0.995s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/install) by extension 'ignore'
+[0.995s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/install) ignored
+[0.995s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/log) by extensions ['ignore', 'ignore_ament_install']
+[0.995s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/log) by extension 'ignore'
+[0.995s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/log) ignored
+[0.995s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src) by extensions ['ignore', 'ignore_ament_install']
+[0.995s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src) by extension 'ignore'
+[0.995s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src) by extension 'ignore_ament_install'
+[0.996s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src) by extensions ['colcon_pkg']
+[0.996s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src) by extension 'colcon_pkg'
+[0.996s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src) by extensions ['colcon_meta']
+[0.996s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src) by extension 'colcon_meta'
+[0.996s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src) by extensions ['ros']
+[0.996s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src) by extension 'ros'
+[0.996s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src) by extensions ['cmake', 'python']
+[0.996s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src) by extension 'cmake'
+[0.996s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src) by extension 'python'
+[0.996s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src) by extensions ['python_setup_py']
+[0.996s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src) by extension 'python_setup_py'
+[0.996s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src/mpu_pub) by extensions ['ignore', 'ignore_ament_install']
+[0.996s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src/mpu_pub) by extension 'ignore'
+[0.996s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src/mpu_pub) by extension 'ignore_ament_install'
+[0.996s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src/mpu_pub) by extensions ['colcon_pkg']
+[0.996s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src/mpu_pub) by extension 'colcon_pkg'
+[0.996s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src/mpu_pub) by extensions ['colcon_meta']
+[0.996s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src/mpu_pub) by extension 'colcon_meta'
+[0.996s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src/mpu_pub) by extensions ['ros']
+[0.997s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src/mpu_pub) by extension 'ros'
+[1.001s] DEBUG:colcon.colcon_core.package_identification:Package '/home/edipo/ros2_orange/src/mpu_pub' with type 'ros.ament_python' and name 'mpu_pub'
+[1.001s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src/teleop) by extensions ['ignore', 'ignore_ament_install']
+[1.001s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src/teleop) by extension 'ignore'
+[1.001s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src/teleop) by extension 'ignore_ament_install'
+[1.001s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src/teleop) by extensions ['colcon_pkg']
+[1.001s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src/teleop) by extension 'colcon_pkg'
+[1.001s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src/teleop) by extensions ['colcon_meta']
+[1.001s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src/teleop) by extension 'colcon_meta'
+[1.001s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src/teleop) by extensions ['ros']
+[1.001s] Level 1:colcon.colcon_core.package_identification:_identify(/home/edipo/ros2_orange/src/teleop) by extension 'ros'
+[1.002s] DEBUG:colcon.colcon_core.package_identification:Package '/home/edipo/ros2_orange/src/teleop' with type 'ros.ament_python' and name 'teleop'
+[1.002s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) using defaults

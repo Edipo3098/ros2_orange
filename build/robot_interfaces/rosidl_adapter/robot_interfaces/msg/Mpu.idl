@@ -1,0 +1,24 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from robot_interfaces/msg/Mpu.msg
+// generated code does not contain a copyright notice
+
+
+module robot_interfaces {
+  module msg {
+    struct Mpu {
+      string message;
+
+      int64 acx;
+
+      int64 acy;
+
+      int64 acz;
+
+      int64 gx;
+
+      int64 gy;
+
+      int64 gz;
+    };
+  };
+};

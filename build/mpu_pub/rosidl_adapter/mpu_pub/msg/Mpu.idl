@@ -1,0 +1,24 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from mpu_pub/msg/Mpu.msg
+// generated code does not contain a copyright notice
+
+
+module mpu_pub {
+  module msg {
+    struct Mpu {
+      string message;
+
+      int64 acx;
+
+      int64 acy;
+
+      int64 acz;
+
+      int64 gx;
+
+      int64 gy;
+
+      int64 gz;
+    };
+  };
+};
