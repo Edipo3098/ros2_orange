@@ -25,7 +25,7 @@ mpu9250_address = 0x68  # MPU9250 default I2C address
 
 # Create an smbus object
 i2c_bus = 1  # Assuming you want to use /dev/i2c-1
-bus = smbus.SMBus(i2c_bus)
+
 
 # MPU9250 register addresses
 MPU9250_WHO_AM_I = 0x75
@@ -64,24 +64,36 @@ class MinimalPublisher(Node):
         self.i = 0
 
     def Check_communication(self):
-        who_am_i = bus.read_byte_data(mpu9250_address, MPU9250_WHO_AM_I)
-        self.get_logger().info('I heard: "%s"' % hex(who_am_i))
+        try:
+            bus = smbus.SMBus(i2c_bus)
+            who_am_i = bus.read_byte_data(mpu9250_address, MPU9250_WHO_AM_I)
+            self.get_logger().info('I heard: "%s"' % hex(who_am_i))
+            bus.close()
+        finally:
+            self.get_logger().info('Error in communicaton')
+            bus.close()
 
     def read_sensor_data(self,register, calibration_params, sensitivity):
-        high = bus.read_byte_data(mpu9250_address, register)
-        low = bus.read_byte_data(mpu9250_address, register + 1)
-        value = (high << 8) | low
+        try:
+            bus = smbus.SMBus(i2c_bus)
+            high = bus.read_byte_data(mpu9250_address, register)
+            low = bus.read_byte_data(mpu9250_address, register + 1)
+            value = (high << 8) | low
 
-        if value > 32767:
-            value -= 65536
+            if value > 32767:
+                value -= 65536
 
-        # Apply calibration
-        calibrated_value = calibration_params['a_x'] * value * calibration_params['m'] + calibration_params['b']
-    
-    # Convert to physical units
-        physical_value = calibrated_value / sensitivity
-    
-        return physical_value
+            # Apply calibration
+            calibrated_value = calibration_params['a_x'] * value * calibration_params['m'] + calibration_params['b']
+        
+        # Convert to physical units
+            physical_value = calibrated_value / sensitivity
+            bus.close()
+        
+            return physical_value
+        finally:
+            self.get_logger().info('Error in read')
+            bus.close()
 
     def timer_callback(self):
         msg = Mpu()
@@ -106,12 +118,13 @@ class MinimalPublisher(Node):
             msg.gz = gyro_z
             
             self.publisher_.publish(msg)
+            self.get_logger().info('is publishing')
 
         except KeyboardInterrupt:
-            self.get_logger().info('Exiting the system')
+            self.get_logger().info('Exiting the system key')
         finally:
             # Close the I2C bus
-            bus.close()
+            self.get_logger().info('Exiting the system')
 
 
 

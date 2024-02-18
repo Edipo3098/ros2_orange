@@ -64,33 +64,47 @@ class MinimalPublisher(Node):
         self.i = 0
 
     def Check_communication(self):
-        bus = smbus.SMBus(i2c_bus)
-        who_am_i = bus.read_byte_data(mpu9250_address, MPU9250_WHO_AM_I)
-        self.get_logger().info('I heard: "%s"' % hex(who_am_i))
-        bus.close()
+        try:
+            bus = smbus.SMBus(i2c_bus)
+            who_am_i = bus.read_byte_data(mpu9250_address, MPU9250_WHO_AM_I)
+            self.get_logger().info('I heard: "%s"' % hex(who_am_i))
+        except Exception as e:
+            self.get_logger().info(f'Error in communication: {e}')
+        finally:
+            try:
+                bus.close()
+            except:
+                pass
 
-    def read_sensor_data(self,register, calibration_params, sensitivity):
-        bus = smbus.SMBus(i2c_bus)
-        high = bus.read_byte_data(mpu9250_address, register)
-        low = bus.read_byte_data(mpu9250_address, register + 1)
-        value = (high << 8) | low
+    def read_sensor_data(self, register, calibration_params, sensitivity):
+        try:
+            bus = smbus.SMBus(i2c_bus)
+            high = bus.read_byte_data(mpu9250_address, register)
+            low = bus.read_byte_data(mpu9250_address, register + 1)
+            value = (high << 8) | low
 
-        if value > 32767:
-            value -= 65536
+            if value > 32767:
+                value -= 65536
 
-        # Apply calibration
-        calibrated_value = calibration_params['a_x'] * value * calibration_params['m'] + calibration_params['b']
-    
-    # Convert to physical units
-        physical_value = calibrated_value / sensitivity
-        bus.close()
-    
-        return physical_value
+            # Apply calibration
+            calibrated_value = calibration_params['a_x'] * value * calibration_params['m'] + calibration_params['b']
+
+            # Convert to physical units
+            physical_value = calibrated_value / sensitivity
+
+            return physical_value
+        except Exception as e:
+            self.get_logger().info(f'Error in read_sensor_data: {e}')
+        finally:
+            try:
+                bus.close()
+            except:
+                pass
 
     def timer_callback(self):
         msg = Mpu()
         try:
-        # Read accelerometer data
+            # Read accelerometer data
             accel_x = self.read_sensor_data(MPU9250_ACCEL_XOUT_H, accel_calibration, ACCEL_SENSITIVITY)
             accel_y = self.read_sensor_data(MPU9250_ACCEL_YOUT_H, accel_calibration, ACCEL_SENSITIVITY)
             accel_z = self.read_sensor_data(MPU9250_ACCEL_ZOUT_H, accel_calibration, ACCEL_SENSITIVITY)
@@ -108,13 +122,13 @@ class MinimalPublisher(Node):
             msg.gx = gyro_x
             msg.gy = gyro_y
             msg.gz = gyro_z
-            
+
             self.publisher_.publish(msg)
+            self.get_logger().info('is publishing')
 
         except KeyboardInterrupt:
-            self.get_logger().info('Exiting the system')
+            self.get_logger().info('Exiting the system key')
         finally:
-            # Close the I2C bus
             self.get_logger().info('Exiting the system')
 
 

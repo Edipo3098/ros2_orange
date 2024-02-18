@@ -73,8 +73,8 @@ bool robot_interfaces__msg__mpu__convert_from_py(PyObject * _pymsg, void * _ros_
     if (!field) {
       return false;
     }
-    assert(PyLong_Check(field));
-    ros_message->acx = PyLong_AsLongLong(field);
+    assert(PyFloat_Check(field));
+    ros_message->acx = PyFloat_AS_DOUBLE(field);
     Py_DECREF(field);
   }
   {  // acy
@@ -82,8 +82,8 @@ bool robot_interfaces__msg__mpu__convert_from_py(PyObject * _pymsg, void * _ros_
     if (!field) {
       return false;
     }
-    assert(PyLong_Check(field));
-    ros_message->acy = PyLong_AsLongLong(field);
+    assert(PyFloat_Check(field));
+    ros_message->acy = PyFloat_AS_DOUBLE(field);
     Py_DECREF(field);
   }
   {  // acz
@@ -91,8 +91,8 @@ bool robot_interfaces__msg__mpu__convert_from_py(PyObject * _pymsg, void * _ros_
     if (!field) {
       return false;
     }
-    assert(PyLong_Check(field));
-    ros_message->acz = PyLong_AsLongLong(field);
+    assert(PyFloat_Check(field));
+    ros_message->acz = PyFloat_AS_DOUBLE(field);
     Py_DECREF(field);
   }
   {  // gx
@@ -100,8 +100,8 @@ bool robot_interfaces__msg__mpu__convert_from_py(PyObject * _pymsg, void * _ros_
     if (!field) {
       return false;
     }
-    assert(PyLong_Check(field));
-    ros_message->gx = PyLong_AsLongLong(field);
+    assert(PyFloat_Check(field));
+    ros_message->gx = PyFloat_AS_DOUBLE(field);
     Py_DECREF(field);
   }
   {  // gy
@@ -109,8 +109,8 @@ bool robot_interfaces__msg__mpu__convert_from_py(PyObject * _pymsg, void * _ros_
     if (!field) {
       return false;
     }
-    assert(PyLong_Check(field));
-    ros_message->gy = PyLong_AsLongLong(field);
+    assert(PyFloat_Check(field));
+    ros_message->gy = PyFloat_AS_DOUBLE(field);
     Py_DECREF(field);
   }
   {  // gz
@@ -118,8 +118,8 @@ bool robot_interfaces__msg__mpu__convert_from_py(PyObject * _pymsg, void * _ros_
     if (!field) {
       return false;
     }
-    assert(PyLong_Check(field));
-    ros_message->gz = PyLong_AsLongLong(field);
+    assert(PyFloat_Check(field));
+    ros_message->gz = PyFloat_AS_DOUBLE(field);
     Py_DECREF(field);
   }
 
@@ -163,7 +163,7 @@ PyObject * robot_interfaces__msg__mpu__convert_to_py(void * raw_ros_message)
   }
   {  // acx
     PyObject * field = NULL;
-    field = PyLong_FromLongLong(ros_message->acx);
+    field = PyFloat_FromDouble(ros_message->acx);
     {
       int rc = PyObject_SetAttrString(_pymessage, "acx", field);
       Py_DECREF(field);
@@ -174,7 +174,7 @@ PyObject * robot_interfaces__msg__mpu__convert_to_py(void * raw_ros_message)
   }
   {  // acy
     PyObject * field = NULL;
-    field = PyLong_FromLongLong(ros_message->acy);
+    field = PyFloat_FromDouble(ros_message->acy);
     {
       int rc = PyObject_SetAttrString(_pymessage, "acy", field);
       Py_DECREF(field);
@@ -185,7 +185,7 @@ PyObject * robot_interfaces__msg__mpu__convert_to_py(void * raw_ros_message)
   }
   {  // acz
     PyObject * field = NULL;
-    field = PyLong_FromLongLong(ros_message->acz);
+    field = PyFloat_FromDouble(ros_message->acz);
     {
       int rc = PyObject_SetAttrString(_pymessage, "acz", field);
       Py_DECREF(field);
@@ -196,7 +196,7 @@ PyObject * robot_interfaces__msg__mpu__convert_to_py(void * raw_ros_message)
   }
   {  // gx
     PyObject * field = NULL;
-    field = PyLong_FromLongLong(ros_message->gx);
+    field = PyFloat_FromDouble(ros_message->gx);
     {
       int rc = PyObject_SetAttrString(_pymessage, "gx", field);
       Py_DECREF(field);
@@ -207,7 +207,7 @@ PyObject * robot_interfaces__msg__mpu__convert_to_py(void * raw_ros_message)
   }
   {  // gy
     PyObject * field = NULL;
-    field = PyLong_FromLongLong(ros_message->gy);
+    field = PyFloat_FromDouble(ros_message->gy);
     {
       int rc = PyObject_SetAttrString(_pymessage, "gy", field);
       Py_DECREF(field);
@@ -218,7 +218,7 @@ PyObject * robot_interfaces__msg__mpu__convert_to_py(void * raw_ros_message)
   }
   {  // gz
     PyObject * field = NULL;
-    field = PyLong_FromLongLong(ros_message->gz);
+    field = PyFloat_FromDouble(ros_message->gz);
     {
       int rc = PyObject_SetAttrString(_pymessage, "gz", field);
       Py_DECREF(field);
