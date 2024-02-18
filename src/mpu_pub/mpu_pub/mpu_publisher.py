@@ -19,6 +19,12 @@ import time
 from std_msgs.msg import String
 from robot_interfaces.msg import Mpu
 
+# Define the I2C bus and MPU9250 address
+i2c_bus = 0  # On Orange Pi, I2C-0 is commonly used
+mpu9250_address = 0x68  # MPU9250 default I2C address
+
+# Create an smbus object
+i2c_bus = 1  # Assuming you want to use /dev/i2c-1
 
 
 # MPU9250 register addresses
@@ -51,13 +57,6 @@ class MinimalPublisher(Node):
 
     def __init__(self):
         super().__init__('mpu_publisher')
-        # Define the I2C bus and MPU9250 address
-        self.i2c_bus = 0  # On Orange Pi, I2C-0 is commonly used
-        self.mpu9250_address = 0x68  # MPU9250 default I2C address
-
-        # Create an smbus object
-        self.i2c_bus = 1  # Assuming you want to use /dev/i2c-1
-        self.bus = smbus.SMBus(self.i2c_bus)
         self.publisher_ = self.create_publisher(Mpu, 'topic', 10)
         self.Check_communication()
         timer_period = 0.5  # seconds
@@ -65,12 +64,15 @@ class MinimalPublisher(Node):
         self.i = 0
 
     def Check_communication(self):
-        who_am_i = self.bus.read_byte_data(self.mpu9250_address, MPU9250_WHO_AM_I)
+        bus = smbus.SMBus(i2c_bus)
+        who_am_i = bus.read_byte_data(mpu9250_address, MPU9250_WHO_AM_I)
         self.get_logger().info('I heard: "%s"' % hex(who_am_i))
+        bus.close()
 
     def read_sensor_data(self,register, calibration_params, sensitivity):
-        high = self.bus.read_byte_data(self.mpu9250_address, register)
-        low = self.bus.read_byte_data(self.mpu9250_address, register + 1)
+        bus = smbus.SMBus(i2c_bus)
+        high = bus.read_byte_data(mpu9250_address, register)
+        low = bus.read_byte_data(mpu9250_address, register + 1)
         value = (high << 8) | low
 
         if value > 32767:
@@ -81,6 +83,7 @@ class MinimalPublisher(Node):
     
     # Convert to physical units
         physical_value = calibrated_value / sensitivity
+        bus.close()
     
         return physical_value
 
@@ -112,7 +115,7 @@ class MinimalPublisher(Node):
             self.get_logger().info('Exiting the system')
         finally:
             # Close the I2C bus
-            self.bus.close()
+            self.get_logger().info('Exiting the system')
 
 
 
