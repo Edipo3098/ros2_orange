@@ -67,7 +67,7 @@ class MinimalPublisher(Node):
         who_am_i = bus.read_byte_data(mpu9250_address, MPU9250_WHO_AM_I)
         self.get_logger().info('I heard: "%s"' % hex(who_am_i))
 
-    def read_sensor_data(register, calibration_params, sensitivity):
+    def read_sensor_data(self,register, calibration_params, sensitivity):
         high = bus.read_byte_data(mpu9250_address, register)
         low = bus.read_byte_data(mpu9250_address, register + 1)
         value = (high << 8) | low
