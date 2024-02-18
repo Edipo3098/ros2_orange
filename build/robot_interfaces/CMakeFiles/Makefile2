@@ -468,8 +468,8 @@ CMakeFiles/ament_cmake_python_build_robot_interfaces_egg.dir/clean:
 # Target rules for target CMakeFiles/robot_interfaces__rosidl_generator_py.dir
 
 # All Build rule for target.
-CMakeFiles/robot_interfaces__rosidl_generator_py.dir/all: robot_interfaces__py/CMakeFiles/robot_interfaces__py.dir/all
 CMakeFiles/robot_interfaces__rosidl_generator_py.dir/all: CMakeFiles/robot_interfaces__rosidl_generator_c.dir/all
+CMakeFiles/robot_interfaces__rosidl_generator_py.dir/all: robot_interfaces__py/CMakeFiles/robot_interfaces__py.dir/all
 CMakeFiles/robot_interfaces__rosidl_generator_py.dir/all: CMakeFiles/robot_interfaces__rosidl_typesupport_c.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/robot_interfaces__rosidl_generator_py.dir/build.make CMakeFiles/robot_interfaces__rosidl_generator_py.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/robot_interfaces__rosidl_generator_py.dir/build.make CMakeFiles/robot_interfaces__rosidl_generator_py.dir/build
@@ -496,8 +496,8 @@ CMakeFiles/robot_interfaces__rosidl_generator_py.dir/clean:
 # Target rules for target CMakeFiles/robot_interfaces__rosidl_typesupport_fastrtps_c__pyext.dir
 
 # All Build rule for target.
-CMakeFiles/robot_interfaces__rosidl_typesupport_fastrtps_c__pyext.dir/all: robot_interfaces__py/CMakeFiles/robot_interfaces__py.dir/all
 CMakeFiles/robot_interfaces__rosidl_typesupport_fastrtps_c__pyext.dir/all: CMakeFiles/robot_interfaces__rosidl_generator_c.dir/all
+CMakeFiles/robot_interfaces__rosidl_typesupport_fastrtps_c__pyext.dir/all: robot_interfaces__py/CMakeFiles/robot_interfaces__py.dir/all
 CMakeFiles/robot_interfaces__rosidl_typesupport_fastrtps_c__pyext.dir/all: CMakeFiles/robot_interfaces__rosidl_typesupport_fastrtps_c.dir/all
 CMakeFiles/robot_interfaces__rosidl_typesupport_fastrtps_c__pyext.dir/all: CMakeFiles/robot_interfaces__rosidl_typesupport_c.dir/all
 CMakeFiles/robot_interfaces__rosidl_typesupport_fastrtps_c__pyext.dir/all: CMakeFiles/robot_interfaces__rosidl_generator_py.dir/all
@@ -526,8 +526,8 @@ CMakeFiles/robot_interfaces__rosidl_typesupport_fastrtps_c__pyext.dir/clean:
 # Target rules for target CMakeFiles/robot_interfaces__rosidl_typesupport_introspection_c__pyext.dir
 
 # All Build rule for target.
-CMakeFiles/robot_interfaces__rosidl_typesupport_introspection_c__pyext.dir/all: robot_interfaces__py/CMakeFiles/robot_interfaces__py.dir/all
 CMakeFiles/robot_interfaces__rosidl_typesupport_introspection_c__pyext.dir/all: CMakeFiles/robot_interfaces__rosidl_generator_c.dir/all
+CMakeFiles/robot_interfaces__rosidl_typesupport_introspection_c__pyext.dir/all: robot_interfaces__py/CMakeFiles/robot_interfaces__py.dir/all
 CMakeFiles/robot_interfaces__rosidl_typesupport_introspection_c__pyext.dir/all: CMakeFiles/robot_interfaces__rosidl_typesupport_introspection_c.dir/all
 CMakeFiles/robot_interfaces__rosidl_typesupport_introspection_c__pyext.dir/all: CMakeFiles/robot_interfaces__rosidl_typesupport_c.dir/all
 CMakeFiles/robot_interfaces__rosidl_typesupport_introspection_c__pyext.dir/all: CMakeFiles/robot_interfaces__rosidl_generator_py.dir/all
@@ -556,8 +556,8 @@ CMakeFiles/robot_interfaces__rosidl_typesupport_introspection_c__pyext.dir/clean
 # Target rules for target CMakeFiles/robot_interfaces__rosidl_typesupport_c__pyext.dir
 
 # All Build rule for target.
-CMakeFiles/robot_interfaces__rosidl_typesupport_c__pyext.dir/all: robot_interfaces__py/CMakeFiles/robot_interfaces__py.dir/all
 CMakeFiles/robot_interfaces__rosidl_typesupport_c__pyext.dir/all: CMakeFiles/robot_interfaces__rosidl_generator_c.dir/all
+CMakeFiles/robot_interfaces__rosidl_typesupport_c__pyext.dir/all: robot_interfaces__py/CMakeFiles/robot_interfaces__py.dir/all
 CMakeFiles/robot_interfaces__rosidl_typesupport_c__pyext.dir/all: CMakeFiles/robot_interfaces__rosidl_typesupport_c.dir/all
 CMakeFiles/robot_interfaces__rosidl_typesupport_c__pyext.dir/all: CMakeFiles/robot_interfaces__rosidl_generator_py.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/robot_interfaces__rosidl_typesupport_c__pyext.dir/build.make CMakeFiles/robot_interfaces__rosidl_typesupport_c__pyext.dir/depend

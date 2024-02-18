@@ -1,0 +1,47 @@
+[0.071s] Invoking command in '/home/edipo/ros2_orange/build/robot_interfaces': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/edipo/ros2_orange/src/install/teleop:/home/edipo/ros2_orange/src/install/mpu_pub:/home/edipo/ros2_orange/install/teleop:/home/edipo/ros2_orange/install/mpu_pub:/opt/ros/humble /usr/bin/cmake --build /home/edipo/ros2_orange/build/robot_interfaces -- -j12 -l12
+[0.100s] [  6%] Built target robot_interfaces__cpp
+[0.100s] [  6%] [32mBuilding C object CMakeFiles/robot_interfaces__rosidl_generator_c.dir/rosidl_generator_c/robot_interfaces/msg/detail/mpu__functions.c.o[0m
+[0.106s] [  6%] Built target ament_cmake_python_copy_robot_interfaces
+[0.108s] In file included from [01m[K/home/edipo/ros2_orange/build/robot_interfaces/rosidl_generator_c/robot_interfaces/msg/detail/mpu__functions.h:19[m[K,
+[0.109s]                  from [01m[K/home/edipo/ros2_orange/build/robot_interfaces/rosidl_generator_c/robot_interfaces/msg/detail/mpu__functions.c:4[m[K:
+[0.109s] [01m[K/home/edipo/ros2_orange/build/robot_interfaces/rosidl_generator_c/robot_interfaces/msg/detail/mpu__struct.h:29:10:[m[K [01;31m[Kfatal error: [m[Krobot_interfaces/msg/detail/float64__struct.h: No such file or directory
+[0.109s]    29 | #include [01;31m[K"robot_interfaces/msg/detail/float64__struct.h"[m[K
+[0.109s]       |          [01;31m[K^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[m[K
+[0.109s] compilation terminated.
+[0.109s] gmake[2]: *** [CMakeFiles/robot_interfaces__rosidl_generator_c.dir/build.make:105: CMakeFiles/robot_interfaces__rosidl_generator_c.dir/rosidl_generator_c/robot_interfaces/msg/detail/mpu__functions.c.o] Error 1
+[0.109s] gmake[1]: *** [CMakeFiles/Makefile2:213: CMakeFiles/robot_interfaces__rosidl_generator_c.dir/all] Error 2
+[0.109s] gmake[1]: *** Waiting for unfinished jobs....
+[0.113s] [  9%] [32mBuilding CXX object CMakeFiles/robot_interfaces__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/robot_interfaces/msg/detail/dds_fastrtps/mpu__type_support.cpp.o[0m
+[0.117s] [ 12%] [32mBuilding CXX object CMakeFiles/robot_interfaces__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/robot_interfaces/msg/detail/mpu__type_support.cpp.o[0m
+[0.120s] [ 16%] [32mBuilding CXX object CMakeFiles/robot_interfaces__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/robot_interfaces/msg/mpu__type_support.cpp.o[0m
+[0.146s] In file included from [01m[K/home/edipo/ros2_orange/build/robot_interfaces/rosidl_typesupport_fastrtps_cpp/robot_interfaces/msg/detail/mpu__rosidl_typesupport_fastrtps_cpp.hpp:11[m[K,
+[0.146s]                  from [01m[K/home/edipo/ros2_orange/build/robot_interfaces/rosidl_typesupport_fastrtps_cpp/robot_interfaces/msg/detail/dds_fastrtps/mpu__type_support.cpp:4[m[K:
+[0.146s] [01m[K/home/edipo/ros2_orange/build/robot_interfaces/rosidl_generator_cpp/robot_interfaces/msg/detail/mpu__struct.hpp:25:10:[m[K [01;31m[Kfatal error: [m[Krobot_interfaces/msg/detail/float64__struct.hpp: No such file or directory
+[0.147s]    25 | #include [01;31m[K"robot_interfaces/msg/detail/float64__struct.hpp"[m[K
+[0.147s]       |          [01;31m[K^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[m[K
+[0.147s] compilation terminated.
+[0.147s] gmake[2]: *** [CMakeFiles/robot_interfaces__rosidl_typesupport_fastrtps_cpp.dir/build.make:91: CMakeFiles/robot_interfaces__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/robot_interfaces/msg/detail/dds_fastrtps/mpu__type_support.cpp.o] Error 1
+[0.147s] gmake[1]: *** [CMakeFiles/Makefile2:343: CMakeFiles/robot_interfaces__rosidl_typesupport_fastrtps_cpp.dir/all] Error 2
+[0.156s] In file included from [01m[K/home/edipo/ros2_orange/build/robot_interfaces/rosidl_typesupport_introspection_cpp/robot_interfaces/msg/detail/mpu__type_support.cpp:12[m[K:
+[0.156s] [01m[K/home/edipo/ros2_orange/build/robot_interfaces/rosidl_generator_cpp/robot_interfaces/msg/detail/mpu__struct.hpp:25:10:[m[K [01;31m[Kfatal error: [m[Krobot_interfaces/msg/detail/float64__struct.hpp: No such file or directory
+[0.156s]    25 | #include [01;31m[K"robot_interfaces/msg/detail/float64__struct.hpp"[m[K
+[0.156s]       |          [01;31m[K^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[m[K
+[0.156s] compilation terminated.
+[0.157s] gmake[2]: *** [CMakeFiles/robot_interfaces__rosidl_typesupport_introspection_cpp.dir/build.make:91: CMakeFiles/robot_interfaces__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/robot_interfaces/msg/detail/mpu__type_support.cpp.o] Error 1
+[0.157s] gmake[1]: *** [CMakeFiles/Makefile2:369: CMakeFiles/robot_interfaces__rosidl_typesupport_introspection_cpp.dir/all] Error 2
+[0.166s] In file included from [01m[K/home/edipo/ros2_orange/build/robot_interfaces/rosidl_typesupport_cpp/robot_interfaces/msg/mpu__type_support.cpp:7[m[K:
+[0.166s] [01m[K/home/edipo/ros2_orange/build/robot_interfaces/rosidl_generator_cpp/robot_interfaces/msg/detail/mpu__struct.hpp:25:10:[m[K [01;31m[Kfatal error: [m[Krobot_interfaces/msg/detail/float64__struct.hpp: No such file or directory
+[0.166s]    25 | #include [01;31m[K"robot_interfaces/msg/detail/float64__struct.hpp"[m[K
+[0.166s]       |          [01;31m[K^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[m[K
+[0.166s] compilation terminated.
+[0.167s] gmake[2]: *** [CMakeFiles/robot_interfaces__rosidl_typesupport_cpp.dir/build.make:86: CMakeFiles/robot_interfaces__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/robot_interfaces/msg/mpu__type_support.cpp.o] Error 1
+[0.167s] gmake[1]: *** [CMakeFiles/Makefile2:395: CMakeFiles/robot_interfaces__rosidl_typesupport_cpp.dir/all] Error 2
+[0.273s] running egg_info
+[0.273s] writing robot_interfaces.egg-info/PKG-INFO
+[0.274s] writing dependency_links to robot_interfaces.egg-info/dependency_links.txt
+[0.274s] writing top-level names to robot_interfaces.egg-info/top_level.txt
+[0.274s] reading manifest file 'robot_interfaces.egg-info/SOURCES.txt'
+[0.275s] writing manifest file 'robot_interfaces.egg-info/SOURCES.txt'
+[0.294s] [ 16%] Built target ament_cmake_python_build_robot_interfaces_egg
+[0.295s] gmake: *** [Makefile:146: all] Error 2
+[0.297s] Invoked command in '/home/edipo/ros2_orange/build/robot_interfaces' returned '2': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/edipo/ros2_orange/src/install/teleop:/home/edipo/ros2_orange/src/install/mpu_pub:/home/edipo/ros2_orange/install/teleop:/home/edipo/ros2_orange/install/mpu_pub:/opt/ros/humble /usr/bin/cmake --build /home/edipo/ros2_orange/build/robot_interfaces -- -j12 -l12

@@ -55,7 +55,7 @@ static rosidl_typesupport_introspection_c__MessageMember robot_interfaces__msg__
   },
   {
     "acx",  // name
-    rosidl_typesupport_introspection_c__ROS_TYPE_INT64,  // type
+    rosidl_typesupport_introspection_c__ROS_TYPE_DOUBLE,  // type
     0,  // upper bound of string
     NULL,  // members of sub message
     false,  // is array
@@ -72,7 +72,7 @@ static rosidl_typesupport_introspection_c__MessageMember robot_interfaces__msg__
   },
   {
     "acy",  // name
-    rosidl_typesupport_introspection_c__ROS_TYPE_INT64,  // type
+    rosidl_typesupport_introspection_c__ROS_TYPE_DOUBLE,  // type
     0,  // upper bound of string
     NULL,  // members of sub message
     false,  // is array
@@ -89,7 +89,7 @@ static rosidl_typesupport_introspection_c__MessageMember robot_interfaces__msg__
   },
   {
     "acz",  // name
-    rosidl_typesupport_introspection_c__ROS_TYPE_INT64,  // type
+    rosidl_typesupport_introspection_c__ROS_TYPE_DOUBLE,  // type
     0,  // upper bound of string
     NULL,  // members of sub message
     false,  // is array
@@ -106,7 +106,7 @@ static rosidl_typesupport_introspection_c__MessageMember robot_interfaces__msg__
   },
   {
     "gx",  // name
-    rosidl_typesupport_introspection_c__ROS_TYPE_INT64,  // type
+    rosidl_typesupport_introspection_c__ROS_TYPE_DOUBLE,  // type
     0,  // upper bound of string
     NULL,  // members of sub message
     false,  // is array
@@ -123,7 +123,7 @@ static rosidl_typesupport_introspection_c__MessageMember robot_interfaces__msg__
   },
   {
     "gy",  // name
-    rosidl_typesupport_introspection_c__ROS_TYPE_INT64,  // type
+    rosidl_typesupport_introspection_c__ROS_TYPE_DOUBLE,  // type
     0,  // upper bound of string
     NULL,  // members of sub message
     false,  // is array
@@ -140,7 +140,7 @@ static rosidl_typesupport_introspection_c__MessageMember robot_interfaces__msg__
   },
   {
     "gz",  // name
-    rosidl_typesupport_introspection_c__ROS_TYPE_INT64,  // type
+    rosidl_typesupport_introspection_c__ROS_TYPE_DOUBLE,  // type
     0,  // upper bound of string
     NULL,  // members of sub message
     false,  // is array

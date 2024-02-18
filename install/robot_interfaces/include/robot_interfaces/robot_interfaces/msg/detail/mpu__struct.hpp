@@ -39,12 +39,12 @@ struct Mpu_
       rosidl_runtime_cpp::MessageInitialization::ZERO == _init)
     {
       this->message = "";
-      this->acx = 0ll;
-      this->acy = 0ll;
-      this->acz = 0ll;
-      this->gx = 0ll;
-      this->gy = 0ll;
-      this->gz = 0ll;
+      this->acx = 0.0;
+      this->acy = 0.0;
+      this->acz = 0.0;
+      this->gx = 0.0;
+      this->gy = 0.0;
+      this->gz = 0.0;
     }
   }
 
@@ -55,12 +55,12 @@ struct Mpu_
       rosidl_runtime_cpp::MessageInitialization::ZERO == _init)
     {
       this->message = "";
-      this->acx = 0ll;
-      this->acy = 0ll;
-      this->acz = 0ll;
-      this->gx = 0ll;
-      this->gy = 0ll;
-      this->gz = 0ll;
+      this->acx = 0.0;
+      this->acy = 0.0;
+      this->acz = 0.0;
+      this->gx = 0.0;
+      this->gy = 0.0;
+      this->gz = 0.0;
     }
   }
 
@@ -69,22 +69,22 @@ struct Mpu_
     std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>;
   _message_type message;
   using _acx_type =
-    int64_t;
+    double;
   _acx_type acx;
   using _acy_type =
-    int64_t;
+    double;
   _acy_type acy;
   using _acz_type =
-    int64_t;
+    double;
   _acz_type acz;
   using _gx_type =
-    int64_t;
+    double;
   _gx_type gx;
   using _gy_type =
-    int64_t;
+    double;
   _gy_type gy;
   using _gz_type =
-    int64_t;
+    double;
   _gz_type gz;
 
   // setters for named parameter idiom
@@ -95,37 +95,37 @@ struct Mpu_
     return *this;
   }
   Type & set__acx(
-    const int64_t & _arg)
+    const double & _arg)
   {
     this->acx = _arg;
     return *this;
   }
   Type & set__acy(
-    const int64_t & _arg)
+    const double & _arg)
   {
     this->acy = _arg;
     return *this;
   }
   Type & set__acz(
-    const int64_t & _arg)
+    const double & _arg)
   {
     this->acz = _arg;
     return *this;
   }
   Type & set__gx(
-    const int64_t & _arg)
+    const double & _arg)
   {
     this->gx = _arg;
     return *this;
   }
   Type & set__gy(
-    const int64_t & _arg)
+    const double & _arg)
   {
     this->gy = _arg;
     return *this;
   }
   Type & set__gz(
-    const int64_t & _arg)
+    const double & _arg)
   {
     this->gz = _arg;
     return *this;

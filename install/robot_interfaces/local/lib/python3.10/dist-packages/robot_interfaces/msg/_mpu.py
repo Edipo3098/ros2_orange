@@ -7,6 +7,8 @@
 
 import builtins  # noqa: E402, I100
 
+import math  # noqa: E402, I100
+
 import rosidl_parser.definition  # noqa: E402, I100
 
 
@@ -66,22 +68,22 @@ class Mpu(metaclass=Metaclass_Mpu):
 
     _fields_and_field_types = {
         'message': 'string',
-        'acx': 'int64',
-        'acy': 'int64',
-        'acz': 'int64',
-        'gx': 'int64',
-        'gy': 'int64',
-        'gz': 'int64',
+        'acx': 'double',
+        'acy': 'double',
+        'acz': 'double',
+        'gx': 'double',
+        'gy': 'double',
+        'gz': 'double',
     }
 
     SLOT_TYPES = (
         rosidl_parser.definition.UnboundedString(),  # noqa: E501
-        rosidl_parser.definition.BasicType('int64'),  # noqa: E501
-        rosidl_parser.definition.BasicType('int64'),  # noqa: E501
-        rosidl_parser.definition.BasicType('int64'),  # noqa: E501
-        rosidl_parser.definition.BasicType('int64'),  # noqa: E501
-        rosidl_parser.definition.BasicType('int64'),  # noqa: E501
-        rosidl_parser.definition.BasicType('int64'),  # noqa: E501
+        rosidl_parser.definition.BasicType('double'),  # noqa: E501
+        rosidl_parser.definition.BasicType('double'),  # noqa: E501
+        rosidl_parser.definition.BasicType('double'),  # noqa: E501
+        rosidl_parser.definition.BasicType('double'),  # noqa: E501
+        rosidl_parser.definition.BasicType('double'),  # noqa: E501
+        rosidl_parser.definition.BasicType('double'),  # noqa: E501
     )
 
     def __init__(self, **kwargs):
@@ -89,12 +91,12 @@ class Mpu(metaclass=Metaclass_Mpu):
             'Invalid arguments passed to constructor: %s' % \
             ', '.join(sorted(k for k in kwargs.keys() if '_' + k not in self.__slots__))
         self.message = kwargs.get('message', str())
-        self.acx = kwargs.get('acx', int())
-        self.acy = kwargs.get('acy', int())
-        self.acz = kwargs.get('acz', int())
-        self.gx = kwargs.get('gx', int())
-        self.gy = kwargs.get('gy', int())
-        self.gz = kwargs.get('gz', int())
+        self.acx = kwargs.get('acx', float())
+        self.acy = kwargs.get('acy', float())
+        self.acz = kwargs.get('acz', float())
+        self.gx = kwargs.get('gx', float())
+        self.gy = kwargs.get('gy', float())
+        self.gz = kwargs.get('gz', float())
 
     def __repr__(self):
         typename = self.__class__.__module__.split('.')
@@ -168,10 +170,10 @@ class Mpu(metaclass=Metaclass_Mpu):
     def acx(self, value):
         if __debug__:
             assert \
-                isinstance(value, int), \
-                "The 'acx' field must be of type 'int'"
-            assert value >= -9223372036854775808 and value < 9223372036854775808, \
-                "The 'acx' field must be an integer in [-9223372036854775808, 9223372036854775807]"
+                isinstance(value, float), \
+                "The 'acx' field must be of type 'float'"
+            assert not (value < -1.7976931348623157e+308 or value > 1.7976931348623157e+308) or math.isinf(value), \
+                "The 'acx' field must be a double in [-1.7976931348623157e+308, 1.7976931348623157e+308]"
         self._acx = value
 
     @builtins.property
@@ -183,10 +185,10 @@ class Mpu(metaclass=Metaclass_Mpu):
     def acy(self, value):
         if __debug__:
             assert \
-                isinstance(value, int), \
-                "The 'acy' field must be of type 'int'"
-            assert value >= -9223372036854775808 and value < 9223372036854775808, \
-                "The 'acy' field must be an integer in [-9223372036854775808, 9223372036854775807]"
+                isinstance(value, float), \
+                "The 'acy' field must be of type 'float'"
+            assert not (value < -1.7976931348623157e+308 or value > 1.7976931348623157e+308) or math.isinf(value), \
+                "The 'acy' field must be a double in [-1.7976931348623157e+308, 1.7976931348623157e+308]"
         self._acy = value
 
     @builtins.property
@@ -198,10 +200,10 @@ class Mpu(metaclass=Metaclass_Mpu):
     def acz(self, value):
         if __debug__:
             assert \
-                isinstance(value, int), \
-                "The 'acz' field must be of type 'int'"
-            assert value >= -9223372036854775808 and value < 9223372036854775808, \
-                "The 'acz' field must be an integer in [-9223372036854775808, 9223372036854775807]"
+                isinstance(value, float), \
+                "The 'acz' field must be of type 'float'"
+            assert not (value < -1.7976931348623157e+308 or value > 1.7976931348623157e+308) or math.isinf(value), \
+                "The 'acz' field must be a double in [-1.7976931348623157e+308, 1.7976931348623157e+308]"
         self._acz = value
 
     @builtins.property
@@ -213,10 +215,10 @@ class Mpu(metaclass=Metaclass_Mpu):
     def gx(self, value):
         if __debug__:
             assert \
-                isinstance(value, int), \
-                "The 'gx' field must be of type 'int'"
-            assert value >= -9223372036854775808 and value < 9223372036854775808, \
-                "The 'gx' field must be an integer in [-9223372036854775808, 9223372036854775807]"
+                isinstance(value, float), \
+                "The 'gx' field must be of type 'float'"
+            assert not (value < -1.7976931348623157e+308 or value > 1.7976931348623157e+308) or math.isinf(value), \
+                "The 'gx' field must be a double in [-1.7976931348623157e+308, 1.7976931348623157e+308]"
         self._gx = value
 
     @builtins.property
@@ -228,10 +230,10 @@ class Mpu(metaclass=Metaclass_Mpu):
     def gy(self, value):
         if __debug__:
             assert \
-                isinstance(value, int), \
-                "The 'gy' field must be of type 'int'"
-            assert value >= -9223372036854775808 and value < 9223372036854775808, \
-                "The 'gy' field must be an integer in [-9223372036854775808, 9223372036854775807]"
+                isinstance(value, float), \
+                "The 'gy' field must be of type 'float'"
+            assert not (value < -1.7976931348623157e+308 or value > 1.7976931348623157e+308) or math.isinf(value), \
+                "The 'gy' field must be a double in [-1.7976931348623157e+308, 1.7976931348623157e+308]"
         self._gy = value
 
     @builtins.property
@@ -243,8 +245,8 @@ class Mpu(metaclass=Metaclass_Mpu):
     def gz(self, value):
         if __debug__:
             assert \
-                isinstance(value, int), \
-                "The 'gz' field must be of type 'int'"
-            assert value >= -9223372036854775808 and value < 9223372036854775808, \
-                "The 'gz' field must be an integer in [-9223372036854775808, 9223372036854775807]"
+                isinstance(value, float), \
+                "The 'gz' field must be of type 'float'"
+            assert not (value < -1.7976931348623157e+308 or value > 1.7976931348623157e+308) or math.isinf(value), \
+                "The 'gz' field must be a double in [-1.7976931348623157e+308, 1.7976931348623157e+308]"
         self._gz = value

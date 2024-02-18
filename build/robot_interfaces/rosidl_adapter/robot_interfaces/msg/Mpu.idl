@@ -8,17 +8,17 @@ module robot_interfaces {
     struct Mpu {
       string message;
 
-      int64 acx;
+      double acx;
 
-      int64 acy;
+      double acy;
 
-      int64 acz;
+      double acz;
 
-      int64 gx;
+      double gx;
 
-      int64 gy;
+      double gy;
 
-      int64 gz;
+      double gz;
     };
   };
 };

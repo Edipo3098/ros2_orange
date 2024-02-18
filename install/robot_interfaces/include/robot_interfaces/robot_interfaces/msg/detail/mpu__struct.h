@@ -25,12 +25,12 @@ extern "C"
 typedef struct robot_interfaces__msg__Mpu
 {
   rosidl_runtime_c__String message;
-  int64_t acx;
-  int64_t acy;
-  int64_t acz;
-  int64_t gx;
-  int64_t gy;
-  int64_t gz;
+  double acx;
+  double acy;
+  double acz;
+  double gx;
+  double gy;
+  double gz;
 } robot_interfaces__msg__Mpu;
 
 // Struct for a sequence of robot_interfaces__msg__Mpu.

@@ -1,0 +1,30 @@
+[0.434s] Invoking command in '/home/edipo/ros2_orange/src/mpu_pub': PYTHONPATH=/home/edipo/ros2_orange/build/mpu_pub/prefix_override:/home/edipo/ros2_orange/install/mpu_pub/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 setup.py egg_info --egg-base ../../build/mpu_pub build --build-base /home/edipo/ros2_orange/build/mpu_pub/build install --record /home/edipo/ros2_orange/build/mpu_pub/install.log --single-version-externally-managed
+[0.567s] running egg_info
+[0.568s] writing ../../build/mpu_pub/mpu_pub.egg-info/PKG-INFO
+[0.568s] writing dependency_links to ../../build/mpu_pub/mpu_pub.egg-info/dependency_links.txt
+[0.568s] writing entry points to ../../build/mpu_pub/mpu_pub.egg-info/entry_points.txt
+[0.568s] writing requirements to ../../build/mpu_pub/mpu_pub.egg-info/requires.txt
+[0.568s] writing top-level names to ../../build/mpu_pub/mpu_pub.egg-info/top_level.txt
+[0.569s] reading manifest file '../../build/mpu_pub/mpu_pub.egg-info/SOURCES.txt'
+[0.569s] adding license file 'LICENSE'
+[0.569s] writing manifest file '../../build/mpu_pub/mpu_pub.egg-info/SOURCES.txt'
+[0.570s] running build
+[0.570s] running build_py
+[0.570s] copying mpu_pub/mpu_publisher.py -> /home/edipo/ros2_orange/build/mpu_pub/build/lib/mpu_pub
+[0.570s] copying mpu_pub/mpu_subscriber.py -> /home/edipo/ros2_orange/build/mpu_pub/build/lib/mpu_pub
+[0.570s] running install
+[0.570s] running install_lib
+[0.571s] copying /home/edipo/ros2_orange/build/mpu_pub/build/lib/mpu_pub/mpu_publisher.py -> /home/edipo/ros2_orange/install/mpu_pub/lib/python3.10/site-packages/mpu_pub
+[0.571s] copying /home/edipo/ros2_orange/build/mpu_pub/build/lib/mpu_pub/mpu_subscriber.py -> /home/edipo/ros2_orange/install/mpu_pub/lib/python3.10/site-packages/mpu_pub
+[0.571s] byte-compiling /home/edipo/ros2_orange/install/mpu_pub/lib/python3.10/site-packages/mpu_pub/mpu_publisher.py to mpu_publisher.cpython-310.pyc
+[0.571s] byte-compiling /home/edipo/ros2_orange/install/mpu_pub/lib/python3.10/site-packages/mpu_pub/mpu_subscriber.py to mpu_subscriber.cpython-310.pyc
+[0.572s] running install_data
+[0.572s] copying package.xml -> /home/edipo/ros2_orange/install/mpu_pub/share/mpu_pub
+[0.572s] running install_egg_info
+[0.573s] removing '/home/edipo/ros2_orange/install/mpu_pub/lib/python3.10/site-packages/mpu_pub-0.0.0-py3.10.egg-info' (and everything under it)
+[0.573s] Copying ../../build/mpu_pub/mpu_pub.egg-info to /home/edipo/ros2_orange/install/mpu_pub/lib/python3.10/site-packages/mpu_pub-0.0.0-py3.10.egg-info
+[0.573s] running install_scripts
+[0.586s] Installing mpu_publisher script to /home/edipo/ros2_orange/install/mpu_pub/lib/mpu_pub
+[0.586s] Installing mpu_subscriber script to /home/edipo/ros2_orange/install/mpu_pub/lib/mpu_pub
+[0.586s] writing list of installed files to '/home/edipo/ros2_orange/build/mpu_pub/install.log'
+[0.603s] Invoked command in '/home/edipo/ros2_orange/src/mpu_pub' returned '0': PYTHONPATH=/home/edipo/ros2_orange/build/mpu_pub/prefix_override:/home/edipo/ros2_orange/install/mpu_pub/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 setup.py egg_info --egg-base ../../build/mpu_pub build --build-base /home/edipo/ros2_orange/build/mpu_pub/build install --record /home/edipo/ros2_orange/build/mpu_pub/install.log --single-version-externally-managed
