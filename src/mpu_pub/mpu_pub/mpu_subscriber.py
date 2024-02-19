@@ -29,12 +29,12 @@ class MinimalSubscriber(Node):
         self.subscription  # prevent unused variable warning
 
     def listener_callback(self, msg):
-        self.get_logger().info('I heard: "%s"' % msg.acx)
-        self.get_logger().info('I heard: "%s"' % msg.acy)
-        self.get_logger().info('I heard: "%s"' % msg.acz)
-        self.get_logger().info('I heard: "%s"' % msg.gx)
-        self.get_logger().info('I heard: "%s"' % msg.gy)
-        self.get_logger().info('I heard: "%s"' % msg.gz)
+        self.get_logger().info('ACCE in X "%s"' % msg.acx)
+        self.get_logger().info('ACCE in y "%s"' % msg.acy)
+        self.get_logger().info('ACCE in z "%s"' % msg.acz)
+        self.get_logger().info('giro in x  "%s"' % msg.gx)
+        self.get_logger().info('giro in y "%s"' % msg.gy)
+        self.get_logger().info('giro in z "%s"' % msg.gz)
         
 
 
