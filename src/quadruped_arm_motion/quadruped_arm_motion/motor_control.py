@@ -14,7 +14,7 @@
 
 import rclpy
 from rclpy.node import Node
-import serial
+
 import time
 from std_msgs.msg import String
 from robot_interfaces.msg import Anglemotor
@@ -26,7 +26,7 @@ class MinimalPublisher(Node):
     def __init__(self):
         super().__init__('quadruped_publisher')
         self.publisher_ = self.create_publisher(Anglemotor, 'topic', 10)
-        self.Check_communication()
+        #self.Check_communication()
         timer_period = 5 # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0
@@ -34,24 +34,24 @@ class MinimalPublisher(Node):
     def timer_callback(self):
         msg = Anglemotor()
         msg.message = "Hello, Arduino!"
-        msg.p0z0 = 0
-        msg.p0z1 = 0
-        msg.p0z2 = 0
-        msg.p1z0 = 1
-        msg.p1z1 = 0
-        msg.p1z2 = 0
-        msg.p2z0 = 2
-        msg.p2z1 = 0
-        msg.p2z2 = 0
-        msg.p3z0 = 3
-        msg.p3z1 = 0
-        msg.p3z2 = 0
-        msg.armz0 = 4
-        msg.armz1 = 0
-        msg.armz2 = 0
-        msg.armz3 = 0
-        msg.armz4 = 0
-        msg.gripper = 5
+        msg.p0z0 = 1.0
+        msg.p0z1 = 1.0
+        msg.p0z2 = 1.0
+        msg.p1z0 = 100.0
+        msg.p1z1 = 1.0
+        msg.p1z2 = 1.0
+        msg.p2z0 = 2.00
+        msg.p2z1 = 1.0
+        msg.p2z2 = 1.0
+        msg.p3z0 = 3.0
+        msg.p3z1 = 1.0
+        msg.p3z2 = 1.0
+        msg.armz0 = 4.0
+        msg.armz1 = 1.0
+        msg.armz2 = 1.0
+        msg.armz3 = 1.0
+        msg.armz4 = 1.0
+        msg.gripper = 5.0
 
         self.publisher_.publish(msg)
         self.get_logger().info('is publishing')

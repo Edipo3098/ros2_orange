@@ -31,11 +31,11 @@ class MinimalSubscriber(Node):
         self.subscription  # prevent unused variable warning
 
     def listener_callback(self, msg):
-        self.get_logger().info('ACCE in X "%s"' % msg.p0_z0)
-        self.get_logger().info('ACCE in y "%s"' % msg.p1_z0)
-        self.get_logger().info('ACCE in z "%s"' % msg.p2_z0)
-        self.get_logger().info('giro in x  "%s"' % msg.p3_z0)
-        self.get_logger().info('giro in y "%s"' % msg.garm_z0)
+        self.get_logger().info('ACCE in X "%s"' % msg.p0z0)
+        self.get_logger().info('ACCE in y "%s"' % msg.p1z0)
+        self.get_logger().info('ACCE in z "%s"' % msg.p2z0)
+        self.get_logger().info('giro in x  "%s"' % msg.p3z0)
+        self.get_logger().info('giro in y "%s"' % msg.armz0)
         self.get_logger().info('giro in z "%s"' % msg.gripper)
         serial_port = '/dev/ttyS5'
         baud_rate = 115200
