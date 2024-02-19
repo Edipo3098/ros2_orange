@@ -1,2 +1,0 @@
-Invoking command in '/home/edipo/ros2_orange/build/mpu_pub': /usr/bin/cmake /home/edipo/ros2_orange/src/mpu_pub -DCMAKE_INSTALL_PREFIX=/home/edipo/ros2_orange/install/mpu_pub
-Invoked command in '/home/edipo/ros2_orange/build/mpu_pub' returned '1': /usr/bin/cmake /home/edipo/ros2_orange/src/mpu_pub -DCMAKE_INSTALL_PREFIX=/home/edipo/ros2_orange/install/mpu_pub

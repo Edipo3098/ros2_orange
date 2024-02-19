@@ -1,6 +1,0 @@
-{
-  "package_name": "robot_interfaces",
-  "non_idl_tuples": [
-    "/home/edipo/ros2_orange/src/robot_interfaces:msg/Mpu.msg"
-  ]
-}
