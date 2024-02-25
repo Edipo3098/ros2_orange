@@ -15,6 +15,7 @@
 import rclpy
 from rclpy.node import Node
 from robot_interfaces.msg import Anglemotor
+from robot_interfaces.msg import Command
 import time
 import serial
 
@@ -29,6 +30,11 @@ class MinimalSubscriber(Node):
             self.listener_callback,
             10)
         self.subscription  # prevent unused variable warning
+        self.publishers_ = self.create_publisher(Command, 'command_robot', 10)
+        msg_command = Command()
+        msg_command.ready = True
+        self.publishers_.publish(msg_command)
+        
 
     def listener_callback(self, msg):
         self.get_logger().info('ACCE in X "%s"' % msg.p0z0)
@@ -52,6 +58,16 @@ class MinimalSubscriber(Node):
             
             # Read response from the serial connection
             received_data = ser.readline().decode().strip()
+            if received_data == "True":
+                self.get_logger().info('Received: "%s"' % received_data)
+                msg_command = Command()
+                msg_command.ready = True
+                self.publishers_.publish(msg_command)
+            else:
+                msg_command = Command()
+                msg_command.ready = False
+                self.publishers_.publish(msg_command)
+
             self.get_logger().info('Received: "%s"' % received_data)
 
         except KeyboardInterrupt:

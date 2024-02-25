@@ -18,6 +18,7 @@ from rclpy.node import Node
 import time
 from std_msgs.msg import String
 from robot_interfaces.msg import Anglemotor
+from robot_interfaces.msg import Command
 
 
 
@@ -26,9 +27,10 @@ class MinimalPublisher(Node):
     def __init__(self):
         super().__init__('quadruped_publisher')
         self.publisher_ = self.create_publisher(Anglemotor, 'motor_angles', 10)
+        self.subscription = self.create_subscription(Command, 'command_robot', self.command_callback, 10)
         #self.Check_communication()
-        timer_period = 5 # seconds
-        self.timer = self.create_timer(timer_period, self.timer_callback)
+        #timer_period = 5 # seconds
+        #self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0
 
     def timer_callback(self):
@@ -55,6 +57,17 @@ class MinimalPublisher(Node):
 
         self.publisher_.publish(msg)
         self.get_logger().info('is publishing')
+    
+    def command_callback(self, msg):
+        self.get_logger().info('I heard: "%s"' % msg.ready)
+        if msg.ready == True:
+            self.get_logger().info('Starting the robot')
+            self.Check_communication()
+            self.timer_callback()
+        elif msg.ready == False:
+            self.get_logger().info('Stopping the robot')
+        else:
+            self.get_logger().info('Command not recognized')
 
       
 
