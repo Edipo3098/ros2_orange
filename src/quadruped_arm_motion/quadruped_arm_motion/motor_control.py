@@ -25,7 +25,7 @@ class MinimalPublisher(Node):
 
     def __init__(self):
         super().__init__('quadruped_publisher')
-        self.publisher_ = self.create_publisher(Anglemotor, 'topic', 10)
+        self.publisher_ = self.create_publisher(Anglemotor, 'motor_angles', 10)
         #self.Check_communication()
         timer_period = 5 # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
@@ -33,7 +33,7 @@ class MinimalPublisher(Node):
 
     def timer_callback(self):
         msg = Anglemotor()
-        msg.message = "Hello, Arduino!"
+        msg.message = "m1000"
         msg.p0z0 = 1.0
         msg.p0z1 = 1.0
         msg.p0z2 = 1.0

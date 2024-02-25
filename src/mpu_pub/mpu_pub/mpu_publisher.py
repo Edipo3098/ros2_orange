@@ -57,7 +57,7 @@ class MinimalPublisher(Node):
 
     def __init__(self):
         super().__init__('mpu_publisher')
-        self.publisher_ = self.create_publisher(Mpu, 'topic', 10)
+        self.publisher_ = self.create_publisher(Mpu, 'mpu_data', 10)
         self.Check_communication()
         timer_period = 0.5  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)

@@ -25,7 +25,7 @@ class MinimalSubscriber(Node):
         super().__init__('motor_subscriber')
         self.subscription = self.create_subscription(
             Anglemotor,
-            'topic',
+            'motor_angles',
             self.listener_callback,
             10)
         self.subscription  # prevent unused variable warning
