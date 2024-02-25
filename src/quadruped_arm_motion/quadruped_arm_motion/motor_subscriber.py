@@ -58,8 +58,9 @@ class MinimalSubscriber(Node):
             
             # Read response from the serial connection
             received_data = ser.readline().decode().strip()
-            while received_data == "True":
+            while received_data != "True":
                 received_data = ser.readline().decode().strip()
+                self.get_logger().info('Received: "%s"' % received_data)
             if received_data == "True":
                 self.get_logger().info('Received: "%s"' % received_data)
                 msg_command = Command()
