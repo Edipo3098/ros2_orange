@@ -62,7 +62,6 @@ class MinimalPublisher(Node):
         self.get_logger().info('I heard: "%s"' % msg.ready)
         if msg.ready == True:
             self.get_logger().info('Starting the robot')
-            self.Check_communication()
             self.timer_callback()
         elif msg.ready == False:
             self.get_logger().info('Stopping the robot')
