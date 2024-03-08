@@ -79,12 +79,19 @@ class MinimalSubscriber(Node):
             if ( msg.message == "m1"):
                 data_to_send = "m1"
                 ser.write(data_to_send.encode())  # Encode string as bytes before sending
+                time.sleep(0.5)
                 ser.write(str(msg.armz0).encode())
+                time.sleep(0.5)
                 ser.write(str(msg.armz1).encode())
+                time.sleep(0.5)
                 ser.write(str(msg.armz2).encode())
+                time.sleep(0.5)
                 ser.write(str(msg.armz3).encode())
+                time.sleep(0.5)
                 ser.write(str(msg.armz4).encode())
+                time.sleep(0.5)
                 ser.write(str(2).encode())
+                time.sleep(0.5)
             else:
                 data_to_send = "m2"
                 ser.write(data_to_send.encode())  # Encode string as bytes before sending
