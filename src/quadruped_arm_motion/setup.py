@@ -24,7 +24,8 @@ setup(
     entry_points={
         'console_scripts': [
             'motor_control = quadruped_arm_motion.motor_control:main',
-            'motor_subscriber = quadruped_arm_motion.motor_subscriber:main'
+            'motor_subscriber = quadruped_arm_motion.motor_subscriber:main',
+            'trayectory_planning = quadruped_arm_motion.trayectory_planning:main'
         ],
     },
 )

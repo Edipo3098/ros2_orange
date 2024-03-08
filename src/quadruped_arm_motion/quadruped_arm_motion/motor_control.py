@@ -26,47 +26,48 @@ class MinimalPublisher(Node):
 
     def __init__(self):
         super().__init__('quadruped_publisher')
+        self.Subscription_trayectory = self.create_subscription(Anglemotor, 'trayectory',self.command_callback, 10)
         self.publisher_ = self.create_publisher(Anglemotor, 'motor_angles', 10)
-        self.subscription = self.create_subscription(Command, 'command_robot', self.command_callback, 10)
+        #self.subscription = self.create_subscription(Command, 'command_robot', self.command_callback, 10)
         #self.Check_communication()
         #timer_period = 5 # seconds
         #self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0
+        self.movement = True
 
-    def timer_callback(self):
-        msg = Anglemotor()
-        msg.message = "m1000"
-        msg.p0z0 = 1.0
-        msg.p0z1 = 1.0
-        msg.p0z2 = 1.0
-        msg.p1z0 = 100.0
-        msg.p1z1 = 1.0
-        msg.p1z2 = 1.0
-        msg.p2z0 = 2.00
-        msg.p2z1 = 1.0
-        msg.p2z2 = 1.0
-        msg.p3z0 = 3.0
-        msg.p3z1 = 1.0
-        msg.p3z2 = 1.0
-        msg.armz0 = 4.0
-        msg.armz1 = 1.0
-        msg.armz2 = 1.0
-        msg.armz3 = 1.0
-        msg.armz4 = 1.0
-        msg.gripper = 5.0
+    def send_orange(self,msg):
+        
+        if msg.message == "M1":
+            self.get_logger().info('is publishing ARM')
+            self.get_logger().info('Z0 "%s"' % msg.armz0)
+            self.get_logger().info('Z1 "%s"' % msg.armz1)
+            self.get_logger().info('Z2 "%s"' % msg.armz2)
+            self.get_logger().info('Z3 "%s"' % msg.armz3)
+            self.get_logger().info('Z4 "%s"' % msg.armz4)
+            self.get_logger().info('Gripper "%s"' % msg.gripper)
+        else:
+            self.get_logger().info('is publishing QUAD')
+            self.get_logger().info('P0 Z0 "%s"' % msg.p0z0)
+            self.get_logger().info('P0 Z1 "%s"' % msg.p0z1)
+            self.get_logger().info('P0 Z2 "%s"' % msg.p0z2)
+            self.get_logger().info('P1 Z0 "%s"' % msg.p1z0)
+            self.get_logger().info('P1 Z1 "%s"' % msg.p1z1)
+            self.get_logger().info('P1 Z2 "%s"' % msg.p1z2)
+            self.get_logger().info('P2 Z0 "%s"' % msg.p2z0)
+            self.get_logger().info('P2 Z1 "%s"' % msg.p2z1)
+            self.get_logger().info('P2 Z2 "%s"' % msg.p2z2)
+            self.get_logger().info('P3 Z0 "%s"' % msg.p3z0)
+            self.get_logger().info('P3 Z1 "%s"' % msg.p3z1)
+            self.get_logger().info('P3 Z2 "%s"' % msg.p3z2)            
 
-        self.publisher_.publish(msg)
-        self.get_logger().info('is publishing')
+       
+        message = Anglemotor()
+        message = msg
+        self.publisher_.publish(message)
     
     def command_callback(self, msg):
-        self.get_logger().info('I heard: "%s"' % msg.ready)
-        if msg.ready == True:
-            self.get_logger().info('Starting the robot')
-            self.timer_callback()
-        elif msg.ready == False:
-            self.get_logger().info('Stopping the robot')
-        else:
-            self.get_logger().info('Command not recognized')
+        self.send_orange(msg)
+
 
       
 

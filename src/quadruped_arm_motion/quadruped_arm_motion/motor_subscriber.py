@@ -24,11 +24,7 @@ class MinimalSubscriber(Node):
 
     def __init__(self):
         super().__init__('motor_subscriber')
-        self.subscription = self.create_subscription(
-            Anglemotor,
-            'motor_angles',
-            self.listener_callback,
-            10)
+        self.subscription = self.create_subscription(Anglemotor,'motor_angles', self.listener_callback,10)
         self.subscription  # prevent unused variable warning
         self.publishers_ = self.create_publisher(Command, 'command_robot', 10)
         msg_command = Command()
@@ -37,12 +33,39 @@ class MinimalSubscriber(Node):
         
 
     def listener_callback(self, msg):
-        self.get_logger().info('ACCE in X "%s"' % msg.p0z0)
-        self.get_logger().info('ACCE in y "%s"' % msg.p1z0)
-        self.get_logger().info('ACCE in z "%s"' % msg.p2z0)
-        self.get_logger().info('giro in x  "%s"' % msg.p3z0)
-        self.get_logger().info('giro in y "%s"' % msg.armz0)
-        self.get_logger().info('giro in z "%s"' % msg.gripper)
+        if msg.message == "m1":
+            self.get_logger().info('is publishing ARM')
+            self.get_logger().info('Z0 "%s"' % msg.armz0)
+            self.get_logger().info('Z1 "%s"' % msg.armz1)
+            self.get_logger().info('Z2 "%s"' % msg.armz2)
+            self.get_logger().info('Z3 "%s"' % msg.armz3)
+            self.get_logger().info('Z4 "%s"' % msg.armz4)
+            self.get_logger().info('Gripper "%s"' % msg.gripper)
+        else:
+            self.get_logger().info('is publishing QUAD')
+            self.get_logger().info('P0 Z0 "%s"' % msg.p0z0)
+            self.get_logger().info('P0 Z1 "%s"' % msg.p0z1)
+            self.get_logger().info('P0 Z2 "%s"' % msg.p0z2)
+            self.get_logger().info('P1 Z0 "%s"' % msg.p1z0)
+            self.get_logger().info('P1 Z1 "%s"' % msg.p1z1)
+            self.get_logger().info('P1 Z2 "%s"' % msg.p1z2)
+            self.get_logger().info('P2 Z0 "%s"' % msg.p2z0)
+            self.get_logger().info('P2 Z1 "%s"' % msg.p2z1)
+            self.get_logger().info('P2 Z2 "%s"' % msg.p2z2)
+            self.get_logger().info('P3 Z0 "%s"' % msg.p3z0)
+            self.get_logger().info('P3 Z1 "%s"' % msg.p3z1)
+            self.get_logger().info('P3 Z2 "%s"' % msg.p3z2)            
+
+        time.sleep(5)
+        msg_command = Command()
+        msg_command.ready = False
+        self.publishers_.publish(msg_command)
+
+        time.sleep(5)
+        msg_command.ready = True
+        self.publishers_.publish(msg_command)
+
+
         serial_port = '/dev/ttyS5'
         baud_rate = 115200
 
@@ -51,9 +74,33 @@ class MinimalSubscriber(Node):
 
         try:
             # Send data over the serial connection
-            data_to_send = msg.message
-            ser.write(data_to_send.encode())  # Encode string as bytes before sending
-
+            
+            
+            if ( msg.message == "m1"):
+                data_to_send = "m1"
+                ser.write(data_to_send.encode())  # Encode string as bytes before sending
+                ser.write(str(msg.armz0).encode())
+                ser.write(str(msg.armz1).encode())
+                ser.write(str(msg.armz2).encode())
+                ser.write(str(msg.armz3).encode())
+                ser.write(str(msg.armz4).encode())
+                ser.write(str(2).encode())
+            else:
+                data_to_send = "m2"
+                ser.write(data_to_send.encode())  # Encode string as bytes before sending
+                ser.write(str(msg.p0z0).encode())
+                ser.write(str(msg.p0z1).encode())
+                ser.write(str(msg.p0z2).encode())
+                ser.write(str(msg.p1z0).encode())
+                ser.write(str(msg.p1z1).encode())
+                ser.write(str(msg.p1z2).encode())
+                ser.write(str(msg.p2z0).encode())
+                ser.write(str(msg.p2z1).encode())
+                ser.write(str(msg.p2z2).encode())
+                ser.write(str(msg.p3z0).encode())
+                ser.write(str(msg.p3z1).encode())
+                ser.write(str(msg.p3z2).encode())
+                ser.write(str(2).encode())
             # Wait for a moment
             
             # Read response from the serial connection
@@ -79,6 +126,7 @@ class MinimalSubscriber(Node):
         finally:
             # Close the serial port, even if an exception occurs
             ser.close()
+        
         
 
 

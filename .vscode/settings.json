@@ -10,5 +10,6 @@
         "/home/edipo/ros2_orange/install/mpu_pub/lib/python3.10/site-packages",
         "/opt/ros/humble/lib/python3.10/site-packages",
         "/opt/ros/humble/local/lib/python3.10/dist-packages"
-    ]
+    ],
+    "cmake.sourceDirectory": "/home/edipo/ros2_orange/build/robot_interfaces/robot_interfaces__py"
 }
