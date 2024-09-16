@@ -28,7 +28,7 @@ class MinimalSubscriber(Node):
         self.subscription = self.create_subscription(Anglemotor, 'matlab', self.listener_callback, 10)
         self.subscription  # prevent unused variable warning
         self.publishers_ = self.create_publisher(Command, 'command_robot', 10)
-        self.checkCommunication_Arduino()
+        #self.checkCommunication_Arduino()
 
         msg_command = Command()
         msg_command.ready = True
