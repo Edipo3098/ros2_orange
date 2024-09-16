@@ -33,6 +33,7 @@ class MinimalSubscriber(Node):
         msg_command = Command()
         msg_command.ready = True
         self.publishers_.publish(msg_command)
+        self.get_logger().info('Publish true')
         
     def checkCommunication_Arduino(self):
         serial_port = '/dev/ttyS5'
