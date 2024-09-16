@@ -72,6 +72,8 @@ class MinimalSubscriber(Node):
             # Close the serial port, even if an exception occurs
             ser.close()
     def listener_callback(self, msg):
+        
+        self.get_logger().info('SOMETHING HERE')
         if msg.message == "m1":
             self.get_logger().info('is publishing ARM')
             self.get_logger().info('Z0 "%s"' % msg.armz0)
