@@ -154,6 +154,9 @@ class MinimalSubscriber(Node):
             while received_data != "True":
                 received_data = ser.readline().decode().strip()
                 self.get_logger().info('Received different than true: "%s"' % received_data)
+                msg_command = Command()
+                msg_command.ready = False
+                self.publishers_.publish(msg_command)
             if received_data == "True":
                 self.get_logger().info('Received: "%s"' % received_data)
                 msg_command = Command()
