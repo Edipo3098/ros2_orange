@@ -35,42 +35,7 @@ class MinimalSubscriber(Node):
         self.publishers_.publish(msg_command)
         self.get_logger().info('Publish true')
         
-    def checkCommunication_Arduino(self):
-        serial_port = '/dev/ttyS5'
-        baud_rate = 115200
-
-        ser = serial.Serial(serial_port, baud_rate, timeout=1)
-
-        try:
-            # Send data over the serial connection
-            data_to_send = "START"
-            ser.write(data_to_send.encode())  # Encode string as bytes before sending
-            ser.write(B"\n")
-            time.sleep(0.5)
-            
-            # Read response from the serial connection
-            received_data = ser.readline().decode().strip()
-            while received_data != "True":
-                received_data = ser.readline().decode().strip()
-                self.get_logger().info('Received: "%s"' % received_data)
-            if received_data == "True":
-                self.get_logger().info('Received: "%s"' % received_data)
-                msg_command = Command()
-                msg_command.ready = True # Ready to receive data
-                self.publishers_.publish(msg_command)
-            else:
-                msg_command = Command()
-                msg_command.ready = False # Not ready to receive data
-                self.publishers_.publish(msg_command)
-
-            self.get_logger().info('Received: "%s"' % received_data)
-
-        except KeyboardInterrupt:
-            # If Ctrl+C is pressed, break out of the loop
-            print("Keyboard interrupt detected. Exiting...")
-        finally:
-            # Close the serial port, even if an exception occurs
-            ser.close()
+  
     def listener_callback(self, msg):
         
         self.get_logger().info('SOMETHING HERE')
@@ -143,18 +108,44 @@ class MinimalSubscriber(Node):
             else:
                 data_to_send = "m2"
                 ser.write(data_to_send.encode())  # Encode string as bytes before sending
+                ser.write(B"\n")
+                time.sleep(0.5)
                 ser.write(str(msg.p0z0).encode())
+                ser.write(B"\n")
+                time.sleep(0.5)
                 ser.write(str(msg.p0z1).encode())
+                ser.write(B"\n")
+                time.sleep(0.5)
                 ser.write(str(msg.p0z2).encode())
+                ser.write(B"\n")
+                time.sleep(0.5)
                 ser.write(str(msg.p1z0).encode())
+                ser.write(B"\n")
+                time.sleep(0.5)
                 ser.write(str(msg.p1z1).encode())
+                ser.write(B"\n")
+                time.sleep(0.5)
                 ser.write(str(msg.p1z2).encode())
+                ser.write(B"\n")
+                time.sleep(0.5)
                 ser.write(str(msg.p2z0).encode())
+                ser.write(B"\n")
+                time.sleep(0.5)
                 ser.write(str(msg.p2z1).encode())
+                ser.write(B"\n")
+                time.sleep(0.5)
                 ser.write(str(msg.p2z2).encode())
+                ser.write(B"\n")
+                time.sleep(0.5)
                 ser.write(str(msg.p3z0).encode())
+                ser.write(B"\n")
+                time.sleep(0.5)
                 ser.write(str(msg.p3z1).encode())
+                ser.write(B"\n")
+                time.sleep(0.5)
                 ser.write(str(msg.p3z2).encode())
+                ser.write(B"\n")
+                time.sleep(0.5)
                 ser.write(str(2).encode())
             # Wait for a moment
             
@@ -162,7 +153,7 @@ class MinimalSubscriber(Node):
             received_data = ser.readline().decode().strip()
             while received_data != "True":
                 received_data = ser.readline().decode().strip()
-                self.get_logger().info('Received: "%s"' % received_data)
+                self.get_logger().info('Received different than true: "%s"' % received_data)
             if received_data == "True":
                 self.get_logger().info('Received: "%s"' % received_data)
                 msg_command = Command()
@@ -173,7 +164,7 @@ class MinimalSubscriber(Node):
                 msg_command.ready = False
                 self.publishers_.publish(msg_command)
 
-            self.get_logger().info('Received: "%s"' % received_data)
+            self.get_logger().info('Received wrong:  "%s"' % received_data)
 
         except KeyboardInterrupt:
             # If Ctrl+C is pressed, break out of the loop
