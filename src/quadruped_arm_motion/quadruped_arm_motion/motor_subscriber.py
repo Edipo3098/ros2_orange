@@ -30,9 +30,9 @@ class MinimalSubscriber(Node):
         self.publishers_ = self.create_publisher(Command, 'command_robot', 10)
         self.checkCommunication_Arduino()
 
-        #msg_command = Command()
-        #msg_command.ready = True
-        #self.publishers_.publish(msg_command)
+        msg_command = Command()
+        msg_command.ready = True
+        self.publishers_.publish(msg_command)
         
     def checkCommunication_Arduino(self):
         serial_port = '/dev/ttyS5'
