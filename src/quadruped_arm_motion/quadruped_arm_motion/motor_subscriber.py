@@ -148,24 +148,23 @@ class MinimalSubscriber(Node):
             # Wait for a moment
             
             # Read response from the serial connection
-            received_data = ser.readline().decode().strip()
+            received_data = "False"
             while received_data != "True":
                 received_data = ser.readline().decode().strip()
                 self.get_logger().info('Received different than true: "%s"' % received_data)
                 msg_command = Command()
                 msg_command.ready = False
                 self.publishers_.publish(msg_command)
-            if received_data == "True":
-                self.get_logger().info('Received: "%s"' % received_data)
-                msg_command = Command()
-                msg_command.ready = True
-                self.publishers_.publish(msg_command)
-            else:
-                msg_command = Command()
-                msg_command.ready = False
-                self.publishers_.publish(msg_command)
-
-            self.get_logger().info('Received wrong:  "%s"' % received_data)
+                if received_data == "True":
+                    self.get_logger().info('Received: "%s"' % received_data)
+                    msg_command = Command()
+                    msg_command.ready = True
+                    self.publishers_.publish(msg_command)
+                else:
+                    msg_command = Command()
+                    msg_command.ready = False
+                    self.publishers_.publish(msg_command)
+                    self.get_logger().info('Received wrong:  "%s"' % received_data)
 
         except KeyboardInterrupt:
             # If Ctrl+C is pressed, break out of the loop
