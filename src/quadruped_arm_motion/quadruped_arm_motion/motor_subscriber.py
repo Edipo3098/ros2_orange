@@ -62,14 +62,12 @@ class MinimalSubscriber(Node):
             self.get_logger().info('P3 Z1 "%s"' % msg.p3z1)
             self.get_logger().info('P3 Z2 "%s"' % msg.p3z2)            
 
-        time.sleep(5)
+        #time.sleep(5)
         msg_command = Command()
         msg_command.ready = False
         self.publishers_.publish(msg_command)
 
-        time.sleep(5)
-        msg_command.ready = True
-        self.publishers_.publish(msg_command)
+        
 
 
         serial_port = '/dev/ttyS5'
