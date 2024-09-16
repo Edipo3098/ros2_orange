@@ -25,8 +25,8 @@ class MinimalSubscriber(Node):
     def __init__(self):
         super().__init__('motor_subscriber')
         #self.subscription = self.create_subscription(Anglemotor,'motor_angles', self.listener_callback,10) # connect to motor control
-        self.subscriptions = self.create_subscription(Anglemotor, 'matlab', self.listener_callback, 10)
-        self.subscriptions  # prevent unused variable warning
+        self.subscription = self.create_subscription(Anglemotor, 'matlab', self.listener_callback, 10)
+        self.subscription  # prevent unused variable warning
         self.publishers_ = self.create_publisher(Command, 'command_robot', 10)
         self.checkCommunication_Arduino()
 
