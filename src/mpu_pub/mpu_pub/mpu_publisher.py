@@ -121,13 +121,13 @@ class MinimalPublisher(Node):
         msg = Mpu()
         try:
             # Read accelerometer data
-            accel_x = self.read_sensor_data(MPU9250_ACCEL_XOUT_H, accel_calibration, ACCEL_SENSITIVITY)
-            accel_y = self.read_sensor_data(MPU9250_ACCEL_YOUT_H, accel_calibration, ACCEL_SENSITIVITY)
-            accel_z = self.read_sensor_data(MPU9250_ACCEL_ZOUT_H, accel_calibration, ACCEL_SENSITIVITY)
+            accel_x = self.read_sensor_data(mpu9250_address,MPU9250_ACCEL_XOUT_H, accel_calibration, ACCEL_SENSITIVITY)
+            accel_y = self.read_sensor_data(mpu9250_address,MPU9250_ACCEL_YOUT_H, accel_calibration, ACCEL_SENSITIVITY)
+            accel_z = self.read_sensor_data(mpu9250_address,MPU9250_ACCEL_ZOUT_H, accel_calibration, ACCEL_SENSITIVITY)
             # Read, calibrate, and convert gyroscope data to dps
-            gyro_x = self.read_sensor_data(MPU9250_GYRO_XOUT_H, gyro_calibration, GYRO_SENSITIVITY)
-            gyro_y = self.read_sensor_data(MPU9250_GYRO_YOUT_H, gyro_calibration, GYRO_SENSITIVITY)
-            gyro_z = self.read_sensor_data(MPU9250_GYRO_ZOUT_H, gyro_calibration, GYRO_SENSITIVITY)
+            gyro_x = self.read_sensor_data(mpu9250_address,MPU9250_GYRO_XOUT_H, gyro_calibration, GYRO_SENSITIVITY)
+            gyro_y = self.read_sensor_data(mpu9250_address,MPU9250_GYRO_YOUT_H, gyro_calibration, GYRO_SENSITIVITY)
+            gyro_z = self.read_sensor_data(mpu9250_address,MPU9250_GYRO_ZOUT_H, gyro_calibration, GYRO_SENSITIVITY)
 
             # Read data from the second sensor on the second bus
             accel_x_2 = self.read_sensor_data( hmc5883l_address, MPU9250_ACCEL_XOUT_H, accel_calibration, ACCEL_SENSITIVITY)
