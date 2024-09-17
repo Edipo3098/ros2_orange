@@ -22,7 +22,7 @@ setup(
     entry_points={
         'console_scripts': [
                 'mpu_publisher = mpu_pub.mpu_publisher:main',
-                'mpu_subscriber = mpu_pub.mpu_subscriber:main',
+                'cog_calc = mpu_pub.cog_calc:main',
         ],
     },
 )

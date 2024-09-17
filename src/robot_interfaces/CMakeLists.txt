@@ -12,7 +12,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Mpu.msg"
   "msg/Anglemotor.msg"
   "msg/Command.msg"
-  "msg/COG_pos"
+  "msg/COGframe.msg"
 )
 ament_export_dependencies(rosidl_default_runtime)
 ament_package()
