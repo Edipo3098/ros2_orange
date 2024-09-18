@@ -19,7 +19,7 @@ import time
 from std_msgs.msg import String
 from robot_interfaces.msg import Mpu
 import numpy as np
-
+from sensor_msgs.msg import Imu
 
 mpu9250_address = 0x68  # MPU9250 default I2C address
 mpu9250_address_2 = 0x69  # MPU9250 I2C address AD0 high
@@ -109,6 +109,11 @@ class MinimalPublisher(Node):
         super().__init__('mpu_publisher')
         self.publisher_ = self.create_publisher(Mpu, 'mpu_data', 10)
         self.publisher_secondMPU = self.create_publisher(Mpu, 'mpu_data_2', 10)
+
+        # Publisher for Imu (standard message)
+        self.imu_publisher_ = self.create_publisher(Imu, 'imu_data', 10)
+        self.imu_publisher_second = self.create_publisher(Imu, 'imu_data_2', 10)
+
         accel_slope  = []
         accel_offset  = []
         gyro_offset  = []
@@ -147,9 +152,38 @@ class MinimalPublisher(Node):
 
         self.Check_communication(mpu9250_address)
         self.Check_communication(mpu9250_address_2)
-        timer_period = 0.5  # seconds
+        timer_period = 0.1  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0
+    def convert_mpu_to_imu(mpu_msg):
+        imu_msg = Imu()
+
+        # Fill in the header (if you have a timestamp and frame_id)
+        imu_msg.header.stamp = mpu_msg.header.stamp  # Assuming your Mpu message has a header
+        imu_msg.header.frame_id = "imu_frame"  # Set your appropriate frame_id
+
+        # Accelerometer data
+        imu_msg.linear_acceleration.x = mpu_msg.acx
+        imu_msg.linear_acceleration.y = mpu_msg.acy
+        imu_msg.linear_acceleration.z = mpu_msg.acz
+
+        # Gyroscope data
+        imu_msg.angular_velocity.x = mpu_msg.gx
+        imu_msg.angular_velocity.y = mpu_msg.gy
+        imu_msg.angular_velocity.z = mpu_msg.gz
+
+        # You may also need to fill in the orientation if available, or set it to 0
+        imu_msg.orientation.x = 0.0
+        imu_msg.orientation.y = 0.0
+        imu_msg.orientation.z = 0.0
+        imu_msg.orientation.w = 1.0  # Default quaternion
+
+        # Covariance (You can set custom covariance values or leave them as defaults)
+        imu_msg.orientation_covariance[0] = -1  # Indicates no orientation data if not available
+        imu_msg.angular_velocity_covariance = [0.1, 0, 0, 0, 0.1, 0, 0, 0, 0.1]
+        imu_msg.linear_acceleration_covariance = [0.1, 0, 0, 0, 0.1, 0, 0, 0, 0.1]
+
+        return imu_msg
 
     def Check_communication(self,address):
         try:
@@ -218,6 +252,8 @@ class MinimalPublisher(Node):
         self.get_logger().info(f"Accelerometer slope (X, Y, Z): {accel_slope}")
         self.get_logger().info(f"Accelerometer offset (X, Y, Z): {accel_offset}")
         self.get_logger().info(f"Gyroscope offset (X, Y, Z): {gyro_offset}")
+
+
         return accel_slope, accel_offset, gyro_offset
 
 
@@ -295,6 +331,12 @@ class MinimalPublisher(Node):
             msg2.gx = gyro_x_2
             msg2.gy = gyro_y_2
             msg2.gz = gyro_z_2
+            # Convert to Imu message and publish
+            imu_msg_1 = self.convert_mpu_to_imu(msg)  # First sensor
+            imu_msg_2 = self.convert_mpu_to_imu(msg2)  # Second sensor
+
+            self.imu_publisher_.publish(imu_msg_1)
+            self.imu_publisher_second.publish(imu_msg_2)
             self.publisher_.publish(msg)
             self.publisher_secondMPU.publish(msg2)
             #self.get_logger().info('is publishing')

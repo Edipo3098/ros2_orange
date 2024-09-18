@@ -4,69 +4,51 @@ from robot_interfaces.msg import Mpu, COGframe
 from time import time
 import numpy as np
 
-class KalmanFilter:
-    def __init__(self, dt,process_noise, measurement_noise, estimate_error):
-        self.dt = 0.1  # Time step
+from filterpy.kalman import KalmanFilter
 
-        # State vector: [x, y, z, vx, vy, vz, roll, pitch, yaw]
-        self.state = np.zeros(9)
-
-        # Covariance matrix (uncertainty in the estimate)
-        self.P = np.eye(9) * 0.01  # Low uncertainty in initial position and velocity
-
-
-        # Kalman Filter noise tuning
-        self.Q = np.diag([1e-5, 1e-5, 1e-5, 1e-3, 1e-3, 1e-3, 1e-5, 1e-5, 1e-5])  # More flexibility in velocity updates
-
-        # Increase measurement noise for accelerometer components
-        self.R = np.diag([0.2, 0.2, 0.2, 0.05, 0.05, 0.05])  # Larger noise for acx, acy, acz
-
-
-        # Measurement matrix
-        self.H = np.zeros((6, 9))
-        self.H[0, 3] = 1  # acx to vx
-        self.H[1, 4] = 1  # acy to vy
-        self.H[2, 5] = 1  # acz to vz
-        self.H[3, 6] = 1  # gx to roll
-        self.H[4, 7] = 1  # gy to pitch
-        self.H[5, 8] = 1  # gz to yaw
-
-        # Identity matrix
-        self.I = np.eye(9)
-    def change_dt(self,dt):
+class IMUKalmanFilter:
+    def __init__(self, dt):
+        self.kf = KalmanFilter(dim_x=9, dim_z=6)  # State vector has 9 dimensions, measurements have 6
         self.dt = dt
-
+        
+        # State transition matrix (F)
+        self.kf.F = np.eye(9)
+        self.kf.F[0, 3] = self.dt  # x += vx * dt
+        self.kf.F[1, 4] = self.dt  # y += vy * dt
+        self.kf.F[2, 5] = self.dt  # z += vz * dt
+        
+        # Measurement matrix (H)
+        self.kf.H = np.zeros((6, 9))
+        self.kf.H[0, 3] = 1  # acx -> vx
+        self.kf.H[1, 4] = 1  # acy -> vy
+        self.kf.H[2, 5] = 1  # acz -> vz
+        self.kf.H[3, 6] = 1  # gx -> roll
+        self.kf.H[4, 7] = 1  # gy -> pitch
+        self.kf.H[5, 8] = 1  # gz -> yaw
+        
+        # Process noise covariance matrix (Q)
+        self.kf.Q = np.diag([1e-5, 1e-5, 1e-5, 1e-3, 1e-3, 1e-3, 1e-5, 1e-5, 1e-5])
+        
+        # Measurement noise covariance matrix (R)
+        self.kf.R = np.diag([0.5, 0.5, 0.5, 0.1, 0.1, 0.1])
+        
+        # Covariance matrix (P)
+        self.kf.P = np.eye(9) * 0.01  # Low uncertainty in initial position and velocity
+    
     def predict(self):
-        # State transition matrix for constant velocity and angular velocity
-        F = np.eye(9)
-        F[0, 3] = self.dt  # x = x + vx * dt
-        F[1, 4] = self.dt  # y = y + vy * dt
-        F[2, 5] = self.dt  # z = z + vz * dt
-        F[6, 6] = self.dt  # roll = roll + roll_rate * dt
-        F[7, 7] = self.dt  # pitch = pitch + pitch_rate * dt
-        F[8, 8] = self.dt  # yaw = yaw + yaw_rate * dt
-
-        # Predict the next state (assuming constant velocity and angular velocity)
-        self.state = F @ self.state
-        self.P = F @ self.P @ F.T + self.Q  # Update uncertainty
+        self.kf.predict()
     
     def update(self, measurements):
-        # Calculate the Kalman gain
-        S = self.H @ self.P @ self.H.T + self.R  # Residual covariance
-        K = self.P @ self.H.T @ np.linalg.inv(S)  # Kalman gain
-
-        # Measurement residual (difference between actual and predicted)
-        y = measurements - (self.H @ self.state)
-
-        # Update the state estimate
-        self.state = self.state + K @ y
-
-        # Update the uncertainty
-        self.P = (self.I - K @ self.H) @ self.P
-
+        self.kf.update(measurements)
+    
+    def change_dt(self, dt):
+        self.dt = dt
+        self.kf.F[0, 3] = dt
+        self.kf.F[1, 4] = dt
+        self.kf.F[2, 5] = dt
     def get_state(self):
-        # Return the current state (position, velocity, orientation)
-        return self.state[:3], self.state[3:6], self.state[6:9]  # Position, velocity, orientation
+        return self.kf.x[:3], self.kf.x[3:6], self.kf.x[6:9]  # Position, velocity, orientation
+
 
 class CalCOGFrame(Node):
 
@@ -87,7 +69,7 @@ class CalCOGFrame(Node):
         self.publishTrapezFrame = self.create_publisher(COGframe, 'trapez_cog_frame', 10)
 
         # Kalman filter for fusing data from both MPUs
-        self.kf = KalmanFilter(dt=0.01, process_noise=1e-5, measurement_noise=0.1, estimate_error=1.0)
+        self.kf = IMUKalmanFilter(dt=0.01)
         # Buffers to hold the last measurements from each MPU
         self.mpu1_data = None
         self.mpu2_data = None
@@ -206,7 +188,7 @@ class CalCOGFrame(Node):
         accel_corrected = self.remove_gravity(avg_acx,avg_acy, roll, avg_acz,pitch, yaw)
 
         # Prepare the corrected measurement vector
-        measurements = np.array([accel_corrected[0], accel_corrected[1], accel_corrected[2], avg_gx, avg_gy, avg_gz])
+        #measurements = np.array([avg_acx,avg_acy, roll, avg_acz,pitch, yaw])
 
         # Update the Kalman filter with gravity-corrected data
         self.kf.change_dt(dt)
@@ -215,27 +197,32 @@ class CalCOGFrame(Node):
         # Retrieve filtered state (position, velocity, orientation)
         
         pos, vel, orient = self.kf.get_state()
+        alpha = 0.98  # Weight for the trapezoidal integration result
+        beta = 1 - alpha  # Weight for the Kalman filter result
+
+        
         msg = COGframe()
-        msg.pos_x = pos[0]
-        msg.pos_y = pos[1]
-        msg.pos_z = pos[2]
-        msg.roll = orient[0]
-        msg.pitch = orient[1]
-        msg.yaw = orient[2]
-        self.prev_time = current_time
+        msg.pos_x = float(pos[0])
+        msg.pos_y = float(pos[1])
+        msg.pos_z = float(pos[2])
+        msg.roll = float(orient[0])
+        msg.pitch = float(orient[1])
+        msg.yaw = float(orient[2])
+        
         self.publishKalmanFrame.publish(msg)
-        self.get_logger().info(f"Kalman pose (X, Y, Z): {pos[0]:.2f}, {pos[1]:.2f}, {pos[2]:.2f}")
-        self.get_logger().info(f"Kalman orientation (roll pitch yaw): {orient[0]:.2f}, {orient[1]:.2f}, {orient[2]:.2f}")
+        self.get_logger().info(f"Kalman pose (X, Y, Z): {msg.pos_x}, {msg.pos_y}, {msg.pos_z}")
+        self.get_logger().info(f"Kalman orientation (roll pitch yaw): {msg.roll }, {msg.pitch}, {msg.yaw}")
         self.calculatePose(vel[0], vel[1], vel[2], orient[0], orient[1], orient[2],dt)
-        msg.pos_x= self.x
-        msg.pos_y = self.y
-        msg.pos_z = self.z
-        msg.roll = self.roll
-        msg.pitch = self.pitch
-        msg.yaw = self.yaw
-        self.prev_time = current_time
-        self.get_logger().info(f"Trapezoidal pose (X, Y, Z): {self.x}, {self.y}, {self.z}")
-        self.get_logger().info(f"Trapezoidal orientation (roll pitch yaw): {self.roll}, {self.pitch}, {self.yaw}")
+        msg.pos_x= float(self.x)
+        msg.pos_y = float(self.y)
+        msg.pos_z = float(self.z)
+        msg.roll = float(self.roll)
+        msg.pitch = float(self.pitch)
+        msg.yaw = float(self.yaw)
+        
+        
+        self.get_logger().info(f"trapzo pose (X, Y, Z): {msg.pos_x}, {msg.pos_y}, {msg.pos_z}")
+        self.get_logger().info(f"trapzo orientation (roll pitch yaw): {msg.roll }, {msg.pitch}, {msg.yaw}")
         self.publishTrapezFrame.publish(msg)
         
 
