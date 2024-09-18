@@ -5,17 +5,21 @@ from time import time
 import numpy as np
 
 class KalmanFilter:
-    def __init__(self, dt, process_noise, measurement_noise, estimate_error):
-        self.dt = dt  # Time step
+    def __init__(self, dt,process_noise, measurement_noise, estimate_error):
+        self.dt = 0.1  # Time step
 
         # State vector: [x, y, z, vx, vy, vz, roll, pitch, yaw]
         self.state = np.zeros(9)
 
         # Covariance matrix (uncertainty in the estimate)
-        self.P = np.eye(9) * estimate_error
+        self.P = np.eye(9) * 0.01  # Low uncertainty in initial position and velocity
 
-        self.Q = np.eye(9) * 1e-3  # Small process noise for stationary state
-        self.R = np.diag([0.1, 0.1, 0.1, 0.05, 0.05, 0.05])  # Measurement noise tuned for accelerometer/gyroscope
+
+        # Kalman Filter noise tuning
+        self.Q = np.diag([1e-5, 1e-5, 1e-5, 1e-3, 1e-3, 1e-3, 1e-5, 1e-5, 1e-5])  # More flexibility in velocity updates
+
+        # Increase measurement noise for accelerometer components
+        self.R = np.diag([0.2, 0.2, 0.2, 0.05, 0.05, 0.05])  # Larger noise for acx, acy, acz
 
 
         # Measurement matrix
@@ -29,6 +33,8 @@ class KalmanFilter:
 
         # Identity matrix
         self.I = np.eye(9)
+    def change_dt(self,dt):
+        self.dt = dt
 
     def predict(self):
         # State transition matrix for constant velocity and angular velocity
@@ -91,6 +97,8 @@ class CalCOGFrame(Node):
         self.prev_time = time()
         self.prev_time2 = time()
 
+        
+
         # For linear position integration (acceleration to velocity to position)
         self.prev_acx = 0.0
         self.prev_acy = 0.0
@@ -130,7 +138,7 @@ class CalCOGFrame(Node):
         self.mpu2_data = msg
         self.process_fusion()
         
-    def apply_deadzone(self,value, threshold=1e-4):
+    def apply_deadzone(self,value, threshold=1e-3):
         """Apply deadzone to filter out small noise values."""
         return value if abs(value) > threshold else 0.0
     def process_fusion(self):
@@ -141,14 +149,17 @@ class CalCOGFrame(Node):
         dt = current_time - self.prev_time
         if dt < 1e-6:
             return  # Prevent instability from very small time steps
-        
+
+        self.kf.change_dt(dt)  # Ensure Kalman filter uses the same dt
+        self.prev_time = current_time  # Update prev_time after dt calculation
+
         # Compute the average measurements from both MPUs (sensor fusion)
         avg_acx = self.apply_deadzone( (self.mpu1_data.acx + self.mpu2_data.acx) / 2)
-        avg_acy = self.apply_deadzone(self.mpu1_data.acy + self.mpu2_data.acy) / 2)
-        avg_acz = self.apply_deadzone(self.mpu1_data.acz + self.mpu2_data.acz) / 2)
-        avg_gx = self.apply_deadzone(self.mpu1_data.gx + self.mpu2_data.gx) / 2)
-        avg_gy = self.apply_deadzone(self.mpu1_data.gy + self.mpu2_data.gy) / 2)
-        avg_gz = self.apply_deadzone(self.mpu1_data.gz + self.mpu2_data.gz) / 2)
+        avg_acy = self.apply_deadzone((self.mpu1_data.acy + self.mpu2_data.acy) / 2)
+        avg_acz = self.apply_deadzone((self.mpu1_data.acz + self.mpu2_data.acz) / 2)
+        avg_gx = self.apply_deadzone((self.mpu1_data.gx + self.mpu2_data.gx) / 2)
+        avg_gy = self.apply_deadzone((self.mpu1_data.gy + self.mpu2_data.gy) / 2)
+        avg_gz = self.apply_deadzone((self.mpu1_data.gz + self.mpu2_data.gz) / 2)
 
         # Prepare the measurement vector
         measurements = np.array([avg_acx, avg_acy, avg_acz, avg_gx, avg_gy, avg_gz])
@@ -172,7 +183,7 @@ class CalCOGFrame(Node):
         self.publishKalmanFrame.publish(msg)
         self.get_logger().info(f"Kalman pose (X, Y, Z): {pos[0]:.2f}, {pos[1]:.2f}, {pos[2]:.2f}")
         self.get_logger().info(f"Kalman orientation (roll pitch yaw): {orient[0]:.2f}, {orient[1]:.2f}, {orient[2]:.2f}")
-        self.calculatePose(vel[0], vel[1], vel[2], pos[0], pos[1], pos[2])
+        self.calculatePose(vel[0], vel[1], vel[2], orient[0], orient[1], orient[2],dt)
         msg.pos_x= self.x
         msg.pos_y = self.y
         msg.pos_z = self.z
@@ -188,10 +199,8 @@ class CalCOGFrame(Node):
         
    
 
-    def calculatePose(self,vx,vy,vz,gx,gy,gz):
-        current_time = time()
-        dt = current_time - self.prev_time  # Time difference since the last message
-
+    def calculatePose(self,vx,vy,vz,gx,gy,gz,dt):
+        
         if dt < 1e-6:  # Check for very small dt to avoid instability
             return
 
@@ -203,14 +212,15 @@ class CalCOGFrame(Node):
         self.x += self.vx * dt  # Integrate velocity to get position
         self.y += self.vy * dt
         self.z += self.vz * dt
-
+        # Update previous values for the next integration step
+        
         # Angular position calculation (angular velocity -> angle)
         self.roll += self.trapezoidal_integral(self.prev_gx, gx, dt)  # Integrate angular velocity to get roll
         self.pitch += self.trapezoidal_integral(self.prev_gy, gy, dt)  # Integrate angular velocity to get pitch
         self.yaw += self.trapezoidal_integral(self.prev_gz, gz, dt)  # Integrate angular velocity to get yaw
 
         # Update previous values for next integration step
-        self.prev_time = current_time
+        
         self.prev_gx = gx
         self.prev_gy = gy
         self.prev_gz = gz

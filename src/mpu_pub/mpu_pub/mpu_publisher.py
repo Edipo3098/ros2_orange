@@ -290,12 +290,12 @@ class MinimalPublisher(Node):
             msg2.gz = gyro_z_2
             self.publisher_.publish(msg)
             self.publisher_secondMPU.publish(msg2)
-            self.get_logger().info('is publishing')
+            #self.get_logger().info('is publishing')
 
         except KeyboardInterrupt:
             self.get_logger().info('Exiting the system key')
-        finally:
-            self.get_logger().info('Exiting the system')
+        #finally:
+            #self.get_logger().info('Exiting the system')
 
 
 
