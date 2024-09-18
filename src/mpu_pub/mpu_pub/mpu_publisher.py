@@ -159,8 +159,8 @@ class MinimalPublisher(Node):
         imu_msg = Imu()
 
         # Fill in the header (if you have a timestamp and frame_id)
-        imu_msg.header.stamp = mpu_msg.header.stamp  # Assuming your Mpu message has a header
-        imu_msg.header.frame_id = "imu_frame"  # Set your appropriate frame_id
+        #imu_msg.header.stamp =   # Assuming your Mpu message has a header
+        #imu_msg.header.frame_id = "imu_frame"  # Set your appropriate frame_id
 
         # Accelerometer data
         imu_msg.linear_acceleration.x = mpu_msg.acx
@@ -168,14 +168,14 @@ class MinimalPublisher(Node):
         imu_msg.linear_acceleration.z = mpu_msg.acz
 
         # Gyroscope data
-        imu_msg.angular_velocity.x = mpu_msg.gx
-        imu_msg.angular_velocity.y = mpu_msg.gy
-        imu_msg.angular_velocity.z = mpu_msg.gz
+        imu_msg.angular_velocity.x = 0
+        imu_msg.angular_velocity.y = 0
+        imu_msg.angular_velocity.z = 0
 
         # You may also need to fill in the orientation if available, or set it to 0
-        imu_msg.orientation.x = 0.0
-        imu_msg.orientation.y = 0.0
-        imu_msg.orientation.z = 0.0
+        imu_msg.orientation.x = mpu_msg.gx
+        imu_msg.orientation.y = mpu_msg.gy
+        imu_msg.orientation.z = mpu_msg.gz
         imu_msg.orientation.w = 1.0  # Default quaternion
 
         # Covariance (You can set custom covariance values or leave them as defaults)
