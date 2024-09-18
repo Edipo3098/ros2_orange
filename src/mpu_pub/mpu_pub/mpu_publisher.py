@@ -164,7 +164,7 @@ class MinimalPublisher(Node):
         except Exception as e:
             self.get_logger().info(f'Error in mpu_wake: {e}')
         
-    def read_raw_data(self,address, reg):
+    def read_raw_data(self,address, reg,sensitivity):
         # Accelero and Gyro values are 16-bit
         bus = smbus.SMBus(i2c_bus)
         high = bus.read_byte_data(address, reg)
@@ -172,7 +172,7 @@ class MinimalPublisher(Node):
         value = ((high << 8) | low)
         if value > 32768:
             value = value - 65536
-        return value
+        return value/sensitivity
     
     def calibrate_mpu(self,address, num_samples=500):
         accel_data = []
@@ -182,13 +182,13 @@ class MinimalPublisher(Node):
 
         for _ in range(num_samples):
             # Read raw accelerometer and gyroscope data
-            accel_x = self.read_raw_data(address, ACCEL_XOUT_H)
-            accel_y = self.read_raw_data(address, ACCEL_XOUT_H + 2)
-            accel_z = self.read_raw_data(address, ACCEL_XOUT_H + 4)
+            accel_x = self.read_raw_data(address, ACCEL_XOUT_H,ACCEL_SENSITIVITY)
+            accel_y = self.read_raw_data(address, ACCEL_XOUT_H + 2,ACCEL_SENSITIVITY)
+            accel_z = self.read_raw_data(address, ACCEL_XOUT_H + 4,ACCEL_SENSITIVITY)
 
-            gyro_x = self.read_raw_data(address, GYRO_XOUT_H)
-            gyro_y = self.read_raw_data(address, GYRO_XOUT_H + 2)
-            gyro_z = self.read_raw_data(address, GYRO_XOUT_H + 4)
+            gyro_x = self.read_raw_data(address, GYRO_XOUT_H,GYRO_SENSITIVITY)
+            gyro_y = self.read_raw_data(address, GYRO_XOUT_H + 2,GYRO_SENSITIVITY)
+            gyro_z = self.read_raw_data(address, GYRO_XOUT_H + 4,GYRO_SENSITIVITY)
 
             accel_data.append([accel_x, accel_y, accel_z])
             gyro_data.append([gyro_x, gyro_y, gyro_z])
@@ -203,8 +203,11 @@ class MinimalPublisher(Node):
         accel_min = np.min(accel_data, axis=0)
         accel_max = np.max(accel_data, axis=0)
 
-        accel_slope = (accel_max - accel_min) / 2.0  # Approximation for slope
-        accel_offset = accel_mean  # Offset
+        accel_slope = np.ones(3)  # Slope should generally be near 1 for accelerometer
+        accel_offset = accel_mean  # Use the mean as the offset
+
+        # Gyroscope calibration (offset calculation)
+        gyro_offset = np.mean(gyro_data, axis=0)
 
         # Gyroscope calibration (calculate offsets/bias)
         gyro_offset = np.mean(gyro_data, axis=0)
@@ -224,6 +227,8 @@ class MinimalPublisher(Node):
 
             if value > 32767:
                 value -= 65536
+
+            value = value / sensitivity
             if IsGyro:
                 # Apply calibration
                 calibrated_value = value- calibration_params['b']
@@ -232,7 +237,7 @@ class MinimalPublisher(Node):
                 calibrated_value = calibration_params['a_x'] * (value + calibration_params['m']) + calibration_params['b']
 
             # Convert to physical units
-            physical_value = calibrated_value / sensitivity
+            physical_value = calibrated_value 
 
             return physical_value
         except Exception as e:

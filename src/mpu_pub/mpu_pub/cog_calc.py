@@ -14,11 +14,9 @@ class KalmanFilter:
         # Covariance matrix (uncertainty in the estimate)
         self.P = np.eye(9) * estimate_error
 
-        # Process noise covariance matrix
-        self.Q = np.eye(9) * process_noise
+        self.Q = np.eye(9) * 1e-3  # Small process noise for stationary state
+        self.R = np.diag([0.1, 0.1, 0.1, 0.05, 0.05, 0.05])  # Measurement noise tuned for accelerometer/gyroscope
 
-        # Measurement noise covariance matrix
-        self.R = np.eye(6) * measurement_noise  # Linear accel (3) + Angular vel (3)
 
         # Measurement matrix
         self.H = np.zeros((6, 9))
@@ -45,7 +43,7 @@ class KalmanFilter:
         # Predict the next state (assuming constant velocity and angular velocity)
         self.state = F @ self.state
         self.P = F @ self.P @ F.T + self.Q  # Update uncertainty
-
+    
     def update(self, measurements):
         # Calculate the Kalman gain
         S = self.H @ self.P @ self.H.T + self.R  # Residual covariance
@@ -132,7 +130,9 @@ class CalCOGFrame(Node):
         self.mpu2_data = msg
         self.process_fusion()
         
-        
+    def apply_deadzone(self,value, threshold=1e-4):
+        """Apply deadzone to filter out small noise values."""
+        return value if abs(value) > threshold else 0.0
     def process_fusion(self):
         if self.mpu1_data is None or self.mpu2_data is None:
             return  # Wait until we have data from both MPUs
@@ -143,12 +143,12 @@ class CalCOGFrame(Node):
             return  # Prevent instability from very small time steps
         
         # Compute the average measurements from both MPUs (sensor fusion)
-        avg_acx = (self.mpu1_data.acx + self.mpu2_data.acx) / 2
-        avg_acy = (self.mpu1_data.acy + self.mpu2_data.acy) / 2
-        avg_acz = (self.mpu1_data.acz + self.mpu2_data.acz) / 2
-        avg_gx = (self.mpu1_data.gx + self.mpu2_data.gx) / 2
-        avg_gy = (self.mpu1_data.gy + self.mpu2_data.gy) / 2
-        avg_gz = (self.mpu1_data.gz + self.mpu2_data.gz) / 2
+        avg_acx = self.apply_deadzone( (self.mpu1_data.acx + self.mpu2_data.acx) / 2)
+        avg_acy = self.apply_deadzone(self.mpu1_data.acy + self.mpu2_data.acy) / 2)
+        avg_acz = self.apply_deadzone(self.mpu1_data.acz + self.mpu2_data.acz) / 2)
+        avg_gx = self.apply_deadzone(self.mpu1_data.gx + self.mpu2_data.gx) / 2)
+        avg_gy = self.apply_deadzone(self.mpu1_data.gy + self.mpu2_data.gy) / 2)
+        avg_gz = self.apply_deadzone(self.mpu1_data.gz + self.mpu2_data.gz) / 2)
 
         # Prepare the measurement vector
         measurements = np.array([avg_acx, avg_acy, avg_acz, avg_gx, avg_gy, avg_gz])
