@@ -1,56 +1,32 @@
 ekf_localization_node:
-  frequency: 50  # The rate at which the filter runs (50Hz)
+  frequency: 50  # The rate at which the filter will run (50 Hz)
 
-  sensor_timeout: 0.1  # Time in seconds before the filter stops trusting a sensor's data
-
-  # Specify the topics where the sensor data will be received from.
-  two_d_mode: false  # Set to true if working in 2D space (i.e., no Z or roll/pitch integration)
-  
   # Frame IDs
-  map_frame: map            # Map frame (global frame)
-  odom_frame: odom          # Odometry frame (relative frame)
-  base_link_frame: base_link # Frame of the robot/sensor
-  
-  world_frame: odom         # The world frame used for state estimation
-  
-  # IMU settings for first IMU
-  imu0: /imu_data            # Topic for IMU0 (first sensor)
-  imu0_config: [false, false, false,  # X, Y, Z Position (ignore because IMU doesn't measure position)
-                true, true, true,    # X, Y, Z Velocity (ignore; IMU doesn't measure this)
-                true, true, true,    # X, Y, Z Acceleration
-                true, true, true,    # Roll, Pitch, Yaw orientation (or angular velocity)
-                true, true, true]    # Angular velocity X, Y, Z
+  map_frame: map
+  odom_frame: odom
+  base_link_frame: base_link
+  world_frame: odom  # Can be map if you want a global reference
 
-  imu0_differential: false    # If you expect velocity or position to be calculated from differential IMU readings
-  imu0_remove_gravitational_acceleration: true  # Remove gravity from accelerometer data
+  # IMU settings for the first IMU
+  imu0: /imu_data
+  imu0_config: [false, false, false,  # X, Y, Z Position
+                false, false, false,  # X, Y, Z Velocity
+                true, true, true,     # X, Y, Z Acceleration
+                false, false, false,  # Roll, Pitch, Yaw (optional, if not calculated from IMU)
+                true, true, true]     # Angular velocity X, Y, Z
 
-  # IMU settings for second IMU
-  imu1: /imu_data_2           # Topic for IMU1 (second sensor)
+  imu0_differential: false
+  imu0_remove_gravitational_acceleration: true
+
+  # IMU settings for the second IMU
+  imu1: /imu_data_2
   imu1_config: [false, false, false,  # X, Y, Z Position
-                true, true, true,    # X, Y, Z Velocity
-                true, true, true,    # X, Y, Z Acceleration
-                true, true, true,    # Roll, Pitch, Yaw orientation (or angular velocity)
-                true, true, true]    # Angular velocity X, Y, Z
+                false, false, false,  # X, Y, Z Velocity
+                true, true, true,     # X, Y, Z Acceleration
+                false, false, false,  # Roll, Pitch, Yaw (optional)
+                true, true, true]     # Angular velocity X, Y, Z
 
   imu1_differential: false
   imu1_remove_gravitational_acceleration: true
 
-  # Covariance matrices (you can adjust these)
-  imu0_queue_size: 10
-  imu0_nodelay: true
-  imu1_queue_size: 10
-  imu1_nodelay: true
-
-  # Adjust these based on sensor trustworthiness
-  imu0_pose_covariance: [0.1, 0, 0, 0, 0, 0,
-                         0, 0.1, 0, 0, 0, 0,
-                         0, 0, 0.1, 0, 0, 0,
-                         0, 0, 0, 0.1, 0, 0,
-                         0, 0, 0, 0, 0.1, 0,
-                         0, 0, 0, 0, 0, 0.1]
-  imu0_twist_covariance: [0.1, 0, 0, 0, 0, 0,
-                          0, 0.1, 0, 0, 0, 0,
-                          0, 0, 0.1, 0, 0, 0,
-                          0, 0, 0, 0.1, 0, 0,
-                          0, 0, 0, 0, 0.1, 0,
-                          0, 0, 0, 0, 0, 0.1]
+  publish_tf: true  # Make

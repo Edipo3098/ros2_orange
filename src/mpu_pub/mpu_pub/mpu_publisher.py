@@ -159,8 +159,8 @@ class MinimalPublisher(Node):
         imu_msg = Imu()
 
         # Fill in the header (if you have a timestamp and frame_id)
-        #imu_msg.header.stamp =   # Assuming your Mpu message has a header
-        #imu_msg.header.frame_id = "imu_frame"  # Set your appropriate frame_id
+        imu_msg.header.stamp = self.get_clock().now().to_msg()   # Assuming your Mpu message has a header
+        imu_msg.header.frame_id = "base_link"  # Set your appropriate frame_id
 
         # Accelerometer data
         imu_msg.linear_acceleration.x = mpu_msg.acx
