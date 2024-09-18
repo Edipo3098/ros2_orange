@@ -229,7 +229,8 @@ class MinimalPublisher(Node):
                 calibrated_value = value- calibration_params['b']
             else:
                 # Apply calibration
-                calibrated_value = calibration_params['a_x'] * value * calibration_params['m'] + calibration_params['b']
+                calibrated_value = calibration_params['a_x'] * (value + calibration_params['m']) + calibration_params['b']
+
             # Convert to physical units
             physical_value = calibrated_value / sensitivity
 
@@ -265,8 +266,7 @@ class MinimalPublisher(Node):
             gyro_z_2 = self.read_sensor_data( mpu9250_address_2, GYRO_XOUT_H + 4, gyro_calibration_z_2, GYRO_SENSITIVITY,True)
 
 
-            # Pause for a short duration
-            time.sleep(0.1)
+            
             msg.message = "EL mensaje es"
             msg.acx = accel_x
             msg.acy = accel_y
