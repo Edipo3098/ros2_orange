@@ -112,6 +112,8 @@ class MinimalPublisher(Node):
         accel_slope  = []
         accel_offset  = []
         gyro_offset  = []
+        self.calibrationTime = time.time()
+        self.current_time = time.time()
         self.mpu_wake(mpu9250_address)
         self.mpu_wake(mpu9250_address_2)
         accel_slope, accel_offset, gyro_offset =  self.calibrate_mpu(mpu9250_address)
@@ -177,7 +179,8 @@ class MinimalPublisher(Node):
     def calibrate_mpu(self,address, num_samples=500):
         accel_data = []
         gyro_data = []
-
+        self.calibrationTime = time.time()
+        
         self.get_logger().info(f"Calibrating MPU at address {hex(address)}...")
 
         for _ in range(num_samples):
@@ -252,6 +255,10 @@ class MinimalPublisher(Node):
     def timer_callback(self):
         msg = Mpu()
         try:
+            self.current_time = time.time()
+            if self.current_time - self.calibrationTime > 60:
+                self.calibrate_mpu(mpu9250_address)
+                self.calibrate_mpu(mpu9250_address_2)
             # Read accelerometer data
             accel_x = self.read_sensor_data(mpu9250_address,ACCEL_XOUT_H, accel_calibration_x, ACCEL_SENSITIVITY,False)
             accel_y = self.read_sensor_data(mpu9250_address,ACCEL_XOUT_H + 2, accel_calibration_y, ACCEL_SENSITIVITY,False)

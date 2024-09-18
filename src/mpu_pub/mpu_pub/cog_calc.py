@@ -141,6 +141,38 @@ class CalCOGFrame(Node):
     def apply_deadzone(self,value, threshold=1e-3):
         """Apply deadzone to filter out small noise values."""
         return value if abs(value) > threshold else 0.0
+    
+    def remove_gravity(self,acx, acy, acz, roll, pitch, yaw):
+        # Compute gravity vector in sensor's frame based on orientation
+        gravity_vector = np.array([
+            -9.81 * np.sin(pitch),  # Gravity in X direction based on pitch
+            9.81 * np.sin(roll),    # Gravity in Y direction based on roll
+            -9.81 * np.cos(pitch) * np.cos(roll)  # Gravity in Z direction based on both pitch and roll
+        ])
+
+        # Subtract or add gravity depending on sensor reading
+        acx_corrected = acx - gravity_vector[0]
+        acy_corrected = acy - gravity_vector[1]
+        acz_corrected = acz - gravity_vector[2]
+
+        return acx_corrected, acy_corrected, acz_corrected
+
+    def compute_rotation_matrix(self, roll, pitch, yaw):
+        # Compute the rotation matrix from roll, pitch, yaw
+        cr = np.cos(roll)
+        sr = np.sin(roll)
+        cp = np.cos(pitch)
+        sp = np.sin(pitch)
+        cy = np.cos(yaw)
+        sy = np.sin(yaw)
+
+        # Rotation matrix
+        R = np.array([
+            [cy * cp, cy * sp * sr - sy * cr, cy * sp * cr + sy * sr],
+            [sy * cp, sy * sp * sr + cy * cr, sy * sp * cr - cy * sr],
+            [-sp,     cp * sr,               cp * cr]
+        ])
+        return R
     def process_fusion(self):
         if self.mpu1_data is None or self.mpu2_data is None:
             return  # Wait until we have data from both MPUs
@@ -167,8 +199,19 @@ class CalCOGFrame(Node):
         # Update the Kalman filter with fused data
         self.kf.dt = dt
         self.kf.predict()
-        self.kf.update(measurements)
+        # Use the Kalman filter to estimate the orientation (roll, pitch, yaw)
+        _, _, (roll, pitch, yaw) = self.kf.get_state()
+        # Remove gravity from accelerometer readings
+        accel_raw = np.array([avg_acx, avg_acy, avg_acz])
+        accel_corrected = self.remove_gravity(avg_acx,avg_acy, roll, avg_acz,pitch, yaw)
 
+        # Prepare the corrected measurement vector
+        measurements = np.array([accel_corrected[0], accel_corrected[1], accel_corrected[2], avg_gx, avg_gy, avg_gz])
+
+        # Update the Kalman filter with gravity-corrected data
+        self.kf.change_dt(dt)
+        self.kf.predict()
+        self.kf.update(measurements)
         # Retrieve filtered state (position, velocity, orientation)
         
         pos, vel, orient = self.kf.get_state()
