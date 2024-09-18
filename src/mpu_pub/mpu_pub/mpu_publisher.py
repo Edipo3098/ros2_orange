@@ -180,8 +180,14 @@ class MinimalPublisher(Node):
 
         # Covariance (You can set custom covariance values or leave them as defaults)
         imu_msg.orientation_covariance[0] = -1  # Indicates no orientation data if not available
-        imu_msg.angular_velocity_covariance = [0.1, 0, 0, 0, 0.1, 0, 0, 0, 0.1]
-        imu_msg.linear_acceleration_covariance = [0.1, 0, 0, 0, 0.1, 0, 0, 0, 0.1]
+        imu_msg.angular_velocity_covariance = [float(0.1), float(0), float(0), 
+                                       float(0), float(0.1), float(0), 
+                                       float(0), float(0), float(0.1)]
+
+        imu_msg.linear_acceleration_covariance = [float(0.1), float(0), float(0), 
+                                          float(0), float(0.1), float(0), 
+                                          float(0), float(0), float(0.1)]
+
 
         return imu_msg
 
