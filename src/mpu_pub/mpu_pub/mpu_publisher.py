@@ -168,14 +168,14 @@ class MinimalPublisher(Node):
         imu_msg.linear_acceleration.z = mpu_msg.acz
 
         # Gyroscope data
-        imu_msg.angular_velocity.x = 0
-        imu_msg.angular_velocity.y = 0
-        imu_msg.angular_velocity.z = 0
+        imu_msg.angular_velocity.x = mpu_msg.gx
+        imu_msg.angular_velocity.y = mpu_msg.gy
+        imu_msg.angular_velocity.z = mpu_msg.gz
 
         # You may also need to fill in the orientation if available, or set it to 0
-        imu_msg.orientation.x = mpu_msg.gx
-        imu_msg.orientation.y = mpu_msg.gy
-        imu_msg.orientation.z = mpu_msg.gz
+        imu_msg.orientation.x = 0.0
+        imu_msg.orientation.y = 0.0
+        imu_msg.orientation.z = 0.0
         imu_msg.orientation.w = 1.0  # Default quaternion
 
         # Covariance (You can set custom covariance values or leave them as defaults)
