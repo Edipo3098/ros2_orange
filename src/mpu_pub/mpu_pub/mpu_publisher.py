@@ -38,18 +38,67 @@ MPU9250_GYRO_YOUT_H = 0x45
 MPU9250_GYRO_ZOUT_H = 0x47
 
 
-accel_calibration = {
+accel_calibration_x = {
     'a_x': 0.99910324,
     'm': 0.05304036,
     'b': 0.0  # You can add the bias term if needed
 }
-
-gyro_calibration = {
+accel_calibration_y = {
+    'a_x': 0.99910324,
+    'm_y': 0.05304036,
+    'b': 0.0  # You can add the bias term if needed
+}
+accel_calibration_z = {
+    'a_x': 0.99910324,
+    'm_z': 0.05304036,
+    'b': 0.0  # You can add the bias term if needed
+}
+gyro_calibration_x = {
+    'a_x': 1.00009231,
+    'm': 0.01032118,
+    'b': 0.0  # You can add the bias term if needed
+}
+gyro_calibration_y = {
+    'a_x': 1.00009231,
+    'm': 0.01032118,
+    'b': 0.0  # You can add the bias term if needed
+}
+gyro_calibration_z = {
     'a_x': 1.00009231,
     'm': 0.01032118,
     'b': 0.0  # You can add the bias term if needed
 }
 
+accel_calibration_x_2 = {
+    'a_x': 0.99910324,
+    'm_x': 0.05304036,
+    'b': 0.0  # You can add the bias term if needed
+}
+accel_calibration_y_2 = {
+    'a_x': 0.99910324,
+    'm_y': 0.05304036,
+    'b': 0.0  # You can add the bias term if needed
+}
+accel_calibration_z_2 = {
+    'a_x': 0.99910324,
+    'm_z': 0.05304036,
+    'b': 0.0  # You can add the bias term if needed
+}
+gyro_calibration_x_2 = {
+    'a_x': 1.00009231,
+    'm': 0.01032118,
+    'b': 0.0  # You can add the bias term if needed
+}
+gyro_calibration_y_2 = {
+    'a_x': 1.00009231,
+    'm': 0.01032118,
+    'b': 0.0  # You can add the bias term if needed
+}
+gyro_calibration_z_2 = {
+    'a_x': 1.00009231,
+    'm': 0.01032118,
+    'b': 0.0  # You can add the bias term if needed
+}
 # Constants for sensitivity values
 ACCEL_SENSITIVITY = 16384.0  # LSB/g for +/- 2g range
 GYRO_SENSITIVITY = 131.0  # LSB/dps for +/- 250 dps range
@@ -79,8 +128,9 @@ class MinimalPublisher(Node):
             except:
                 pass
     
+    
 
-    def read_sensor_data(self, addres,register, calibration_params, sensitivity):
+    def read_sensor_data(self, addres,register, calibration_params, sensitivity,IsGyro):
         try:
             bus = smbus.SMBus(i2c_bus)
             high = bus.read_byte_data(addres, register)
@@ -89,10 +139,12 @@ class MinimalPublisher(Node):
 
             if value > 32767:
                 value -= 65536
-
-            # Apply calibration
-            calibrated_value = calibration_params['a_x'] * value * calibration_params['m'] + calibration_params['b']
-
+            if IsGyro:
+                # Apply calibration
+                calibrated_value = value- calibration_params['b']
+            else:
+                # Apply calibration
+                calibrated_value = calibration_params['a_x'] * value * calibration_params['m_x'] + calibration_params['b']
             # Convert to physical units
             physical_value = calibrated_value / sensitivity
 
@@ -110,22 +162,22 @@ class MinimalPublisher(Node):
         msg = Mpu()
         try:
             # Read accelerometer data
-            accel_x = self.read_sensor_data(mpu9250_address,MPU9250_ACCEL_XOUT_H, accel_calibration, ACCEL_SENSITIVITY)
-            accel_y = self.read_sensor_data(mpu9250_address,MPU9250_ACCEL_YOUT_H, accel_calibration, ACCEL_SENSITIVITY)
-            accel_z = self.read_sensor_data(mpu9250_address,MPU9250_ACCEL_ZOUT_H, accel_calibration, ACCEL_SENSITIVITY)
+            accel_x = self.read_sensor_data(mpu9250_address,MPU9250_ACCEL_XOUT_H, accel_calibration_x, ACCEL_SENSITIVITY,False)
+            accel_y = self.read_sensor_data(mpu9250_address,MPU9250_ACCEL_YOUT_H, accel_calibration_y, ACCEL_SENSITIVITY,False)
+            accel_z = self.read_sensor_data(mpu9250_address,MPU9250_ACCEL_ZOUT_H, accel_calibration_z, ACCEL_SENSITIVITY,False)
             # Read, calibrate, and convert gyroscope data to dps
-            gyro_x = self.read_sensor_data(mpu9250_address,MPU9250_GYRO_XOUT_H, gyro_calibration, GYRO_SENSITIVITY)
-            gyro_y = self.read_sensor_data(mpu9250_address,MPU9250_GYRO_YOUT_H, gyro_calibration, GYRO_SENSITIVITY)
-            gyro_z = self.read_sensor_data(mpu9250_address,MPU9250_GYRO_ZOUT_H, gyro_calibration, GYRO_SENSITIVITY)
+            gyro_x = self.read_sensor_data(mpu9250_address,MPU9250_GYRO_XOUT_H, gyro_calibration_x, GYRO_SENSITIVITY,True)
+            gyro_y = self.read_sensor_data(mpu9250_address,MPU9250_GYRO_YOUT_H, gyro_calibration_y, GYRO_SENSITIVITY,True)
+            gyro_z = self.read_sensor_data(mpu9250_address,MPU9250_GYRO_ZOUT_H, gyro_calibration_z, GYRO_SENSITIVITY,True)
 
             # Read data from the second sensor on the second bus
-            accel_x_2 = self.read_sensor_data( mpu9250_address_2, MPU9250_ACCEL_XOUT_H, accel_calibration, ACCEL_SENSITIVITY)
-            accel_y_2 = self.read_sensor_data( mpu9250_address_2, MPU9250_ACCEL_YOUT_H, accel_calibration, ACCEL_SENSITIVITY)
-            accel_z_2 = self.read_sensor_data( mpu9250_address_2, MPU9250_ACCEL_ZOUT_H, accel_calibration, ACCEL_SENSITIVITY)
+            accel_x_2 = self.read_sensor_data( mpu9250_address_2, MPU9250_ACCEL_XOUT_H, accel_calibration_x_2, ACCEL_SENSITIVITY,False)
+            accel_y_2 = self.read_sensor_data( mpu9250_address_2, MPU9250_ACCEL_YOUT_H, accel_calibration_y_2, ACCEL_SENSITIVITY,False)
+            accel_z_2 = self.read_sensor_data( mpu9250_address_2, MPU9250_ACCEL_ZOUT_H, accel_calibration_z_2, ACCEL_SENSITIVITY,False)
 
-            gyro_x_2 = self.read_sensor_data( mpu9250_address_2, MPU9250_GYRO_XOUT_H, gyro_calibration, GYRO_SENSITIVITY)
-            gyro_y_2 = self.read_sensor_data( mpu9250_address_2, MPU9250_GYRO_YOUT_H, gyro_calibration, GYRO_SENSITIVITY)
-            gyro_z_2 = self.read_sensor_data( mpu9250_address_2, MPU9250_GYRO_ZOUT_H, gyro_calibration, GYRO_SENSITIVITY)
+            gyro_x_2 = self.read_sensor_data( mpu9250_address_2, MPU9250_GYRO_XOUT_H, gyro_calibration_x_2, GYRO_SENSITIVITY,True)
+            gyro_y_2 = self.read_sensor_data( mpu9250_address_2, MPU9250_GYRO_YOUT_H, gyro_calibration_y_2, GYRO_SENSITIVITY,True)
+            gyro_z_2 = self.read_sensor_data( mpu9250_address_2, MPU9250_GYRO_ZOUT_H, gyro_calibration_z_2, GYRO_SENSITIVITY,True)
 
 
             # Pause for a short duration
