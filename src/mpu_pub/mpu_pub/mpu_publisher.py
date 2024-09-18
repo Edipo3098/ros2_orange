@@ -22,6 +22,7 @@ from robot_interfaces.msg import Mpu
 # Define the I2C bus and MPU9250 address
 i2c_bus = 0  # On Orange Pi, I2C-0 is commonly used
 mpu9250_address = 0x68  # MPU9250 default I2C address
+hmc5883l_address = 0x1E  # HMC5883L I2C address
 
 # Create an smbus object
 i2c_bus = 1  # Assuming you want to use /dev/i2c-1
@@ -36,6 +37,11 @@ MPU9250_GYRO_XOUT_H = 0x43
 MPU9250_GYRO_YOUT_H = 0x45
 MPU9250_GYRO_ZOUT_H = 0x47
 
+# HMC5883L register addresses
+HMC5883L_CONFIG_REG_A = 0x00
+HMC5883L_CONFIG_REG_B = 0x01
+HMC5883L_MODE_REG = 0x02
+HMC5883L_DATA_XOUT_H = 0x03  
 
 accel_calibration = {
     'a_x': 0.99910324,
@@ -58,6 +64,7 @@ class MinimalPublisher(Node):
     def __init__(self):
         super().__init__('mpu_publisher')
         self.publisher_ = self.create_publisher(Mpu, 'mpu_data', 10)
+        self.publisher_secondMPU = self.create_publisher(Mpu, 'mpu_data_2', 10)
         self.Check_communication()
         timer_period = 0.5  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
@@ -75,12 +82,20 @@ class MinimalPublisher(Node):
                 bus.close()
             except:
                 pass
+    def initialize_hmc5883l(self):
+        bus = smbus.SMBus(i2c_bus)
+        # Write to configuration register A
+        bus.write_byte_data(hmc5883l_address, HMC5883L_CONFIG_REG_A, 0x70)  # 8-average, 15 Hz default, normal measurement
+        # Write to configuration register B (Gain)
+        bus.write_byte_data(hmc5883l_address, HMC5883L_CONFIG_REG_B, 0x20)  # Gain = 1.3 Ga
+        #   Write to mode register (Continuous measurement mode)
+        bus.write_byte_data(hmc5883l_address, HMC5883L_MODE_REG, 0x00)  # Continuous measurement mode
 
-    def read_sensor_data(self, register, calibration_params, sensitivity):
+    def read_sensor_data(self, addres,register, calibration_params, sensitivity):
         try:
             bus = smbus.SMBus(i2c_bus)
-            high = bus.read_byte_data(mpu9250_address, register)
-            low = bus.read_byte_data(mpu9250_address, register + 1)
+            high = bus.read_byte_data(addres, register)
+            low = bus.read_byte_data(addres, register + 1)
             value = (high << 8) | low
 
             if value > 32767:
@@ -100,18 +115,29 @@ class MinimalPublisher(Node):
                 bus.close()
             except:
                 pass
+    
 
     def timer_callback(self):
         msg = Mpu()
         try:
             # Read accelerometer data
-            accel_x = self.read_sensor_data(MPU9250_ACCEL_XOUT_H, accel_calibration, ACCEL_SENSITIVITY)
-            accel_y = self.read_sensor_data(MPU9250_ACCEL_YOUT_H, accel_calibration, ACCEL_SENSITIVITY)
-            accel_z = self.read_sensor_data(MPU9250_ACCEL_ZOUT_H, accel_calibration, ACCEL_SENSITIVITY)
+            accel_x = self.read_sensor_data(mpu9250_address,MPU9250_ACCEL_XOUT_H, accel_calibration, ACCEL_SENSITIVITY)
+            accel_y = self.read_sensor_data(mpu9250_address,MPU9250_ACCEL_YOUT_H, accel_calibration, ACCEL_SENSITIVITY)
+            accel_z = self.read_sensor_data(mpu9250_address,MPU9250_ACCEL_ZOUT_H, accel_calibration, ACCEL_SENSITIVITY)
             # Read, calibrate, and convert gyroscope data to dps
-            gyro_x = self.read_sensor_data(MPU9250_GYRO_XOUT_H, gyro_calibration, GYRO_SENSITIVITY)
-            gyro_y = self.read_sensor_data(MPU9250_GYRO_YOUT_H, gyro_calibration, GYRO_SENSITIVITY)
-            gyro_z = self.read_sensor_data(MPU9250_GYRO_ZOUT_H, gyro_calibration, GYRO_SENSITIVITY)
+            gyro_x = self.read_sensor_data(mpu9250_address,MPU9250_GYRO_XOUT_H, gyro_calibration, GYRO_SENSITIVITY)
+            gyro_y = self.read_sensor_data(mpu9250_address,MPU9250_GYRO_YOUT_H, gyro_calibration, GYRO_SENSITIVITY)
+            gyro_z = self.read_sensor_data(mpu9250_address,MPU9250_GYRO_ZOUT_H, gyro_calibration, GYRO_SENSITIVITY)
+
+            # Read data from the second sensor on the second bus
+            accel_x_2 = self.read_sensor_data( hmc5883l_address, MPU9250_ACCEL_XOUT_H, accel_calibration, ACCEL_SENSITIVITY)
+            accel_y_2 = self.read_sensor_data( hmc5883l_address, MPU9250_ACCEL_YOUT_H, accel_calibration, ACCEL_SENSITIVITY)
+            accel_z_2 = self.read_sensor_data( hmc5883l_address, MPU9250_ACCEL_ZOUT_H, accel_calibration, ACCEL_SENSITIVITY)
+
+            gyro_x_2 = self.read_sensor_data( hmc5883l_address, MPU9250_GYRO_XOUT_H, gyro_calibration, GYRO_SENSITIVITY)
+            gyro_y_2 = self.read_sensor_data( hmc5883l_address, MPU9250_GYRO_YOUT_H, gyro_calibration, GYRO_SENSITIVITY)
+            gyro_z_2 = self.read_sensor_data( hmc5883l_address, MPU9250_GYRO_ZOUT_H, gyro_calibration, GYRO_SENSITIVITY)
+
 
             # Pause for a short duration
             time.sleep(0.1)
@@ -123,7 +149,16 @@ class MinimalPublisher(Node):
             msg.gy = gyro_y
             msg.gz = gyro_z
 
+            msg2 = Mpu()
+            msg2.message = "EL mensaje es"
+            msg2.acx = accel_x_2
+            msg2.acy = accel_y_2
+            msg2.acz = accel_z_2
+            msg2.gx = gyro_x_2
+            msg2.gy = gyro_y_2
+            msg2.gz = gyro_z_2
             self.publisher_.publish(msg)
+            self.publisher_secondMPU.publish(msg2)
             self.get_logger().info('is publishing')
 
         except KeyboardInterrupt:

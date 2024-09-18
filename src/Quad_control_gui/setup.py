@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'mpu_pub'
+package_name = 'Quad_control_gui'
 
 setup(
     name=package_name,
@@ -11,18 +11,16 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
     ],
-
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='edipo',
     maintainer_email='felipe.porras.014@gmail.com',
     description='TODO: Package description',
-    license='Apache-2.0',
+    license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-                'mpu_publisher = mpu_pub.mpu_publisher:main',
-                'cog_calc = mpu_pub.cog_calc:main',
+            'control_gui = Quad_control_gui.control_gui:main',  # ROS 2 executable exceutable = package_name + file_name + function_name
         ],
     },
 )
