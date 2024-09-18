@@ -22,7 +22,7 @@ from robot_interfaces.msg import Mpu
 # Define the I2C bus and MPU9250 address
 i2c_bus = 0  # On Orange Pi, I2C-0 is commonly used
 mpu9250_address = 0x68  # MPU9250 default I2C address
-hmc5883l_address = 0x1E  # HMC5883L I2C address
+mpu9250_address_2 = 0x69  # MPU9250 I2C address AD0 high
 
 # Create an smbus object
 i2c_bus = 1  # Assuming you want to use /dev/i2c-1
@@ -37,11 +37,6 @@ MPU9250_GYRO_XOUT_H = 0x43
 MPU9250_GYRO_YOUT_H = 0x45
 MPU9250_GYRO_ZOUT_H = 0x47
 
-# HMC5883L register addresses
-HMC5883L_CONFIG_REG_A = 0x00
-HMC5883L_CONFIG_REG_B = 0x01
-HMC5883L_MODE_REG = 0x02
-HMC5883L_DATA_XOUT_H = 0x03  
 
 accel_calibration = {
     'a_x': 0.99910324,
@@ -65,15 +60,16 @@ class MinimalPublisher(Node):
         super().__init__('mpu_publisher')
         self.publisher_ = self.create_publisher(Mpu, 'mpu_data', 10)
         self.publisher_secondMPU = self.create_publisher(Mpu, 'mpu_data_2', 10)
-        self.Check_communication()
+        self.Check_communication(mpu9250_address)
+        self.Check_communication(mpu9250_address_2)
         timer_period = 0.5  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0
 
-    def Check_communication(self):
+    def Check_communication(self,address):
         try:
             bus = smbus.SMBus(i2c_bus)
-            who_am_i = bus.read_byte_data(mpu9250_address, MPU9250_WHO_AM_I)
+            who_am_i = bus.read_byte_data(address, MPU9250_WHO_AM_I)
             self.get_logger().info('I heard: "%s"' % hex(who_am_i))
         except Exception as e:
             self.get_logger().info(f'Error in communication: {e}')
@@ -82,14 +78,7 @@ class MinimalPublisher(Node):
                 bus.close()
             except:
                 pass
-    def initialize_hmc5883l(self):
-        bus = smbus.SMBus(i2c_bus)
-        # Write to configuration register A
-        bus.write_byte_data(hmc5883l_address, HMC5883L_CONFIG_REG_A, 0x70)  # 8-average, 15 Hz default, normal measurement
-        # Write to configuration register B (Gain)
-        bus.write_byte_data(hmc5883l_address, HMC5883L_CONFIG_REG_B, 0x20)  # Gain = 1.3 Ga
-        #   Write to mode register (Continuous measurement mode)
-        bus.write_byte_data(hmc5883l_address, HMC5883L_MODE_REG, 0x00)  # Continuous measurement mode
+    
 
     def read_sensor_data(self, addres,register, calibration_params, sensitivity):
         try:
@@ -130,13 +119,13 @@ class MinimalPublisher(Node):
             gyro_z = self.read_sensor_data(mpu9250_address,MPU9250_GYRO_ZOUT_H, gyro_calibration, GYRO_SENSITIVITY)
 
             # Read data from the second sensor on the second bus
-            accel_x_2 = self.read_sensor_data( hmc5883l_address, MPU9250_ACCEL_XOUT_H, accel_calibration, ACCEL_SENSITIVITY)
-            accel_y_2 = self.read_sensor_data( hmc5883l_address, MPU9250_ACCEL_YOUT_H, accel_calibration, ACCEL_SENSITIVITY)
-            accel_z_2 = self.read_sensor_data( hmc5883l_address, MPU9250_ACCEL_ZOUT_H, accel_calibration, ACCEL_SENSITIVITY)
+            accel_x_2 = self.read_sensor_data( mpu9250_address_2, MPU9250_ACCEL_XOUT_H, accel_calibration, ACCEL_SENSITIVITY)
+            accel_y_2 = self.read_sensor_data( mpu9250_address_2, MPU9250_ACCEL_YOUT_H, accel_calibration, ACCEL_SENSITIVITY)
+            accel_z_2 = self.read_sensor_data( mpu9250_address_2, MPU9250_ACCEL_ZOUT_H, accel_calibration, ACCEL_SENSITIVITY)
 
-            gyro_x_2 = self.read_sensor_data( hmc5883l_address, MPU9250_GYRO_XOUT_H, gyro_calibration, GYRO_SENSITIVITY)
-            gyro_y_2 = self.read_sensor_data( hmc5883l_address, MPU9250_GYRO_YOUT_H, gyro_calibration, GYRO_SENSITIVITY)
-            gyro_z_2 = self.read_sensor_data( hmc5883l_address, MPU9250_GYRO_ZOUT_H, gyro_calibration, GYRO_SENSITIVITY)
+            gyro_x_2 = self.read_sensor_data( mpu9250_address_2, MPU9250_GYRO_XOUT_H, gyro_calibration, GYRO_SENSITIVITY)
+            gyro_y_2 = self.read_sensor_data( mpu9250_address_2, MPU9250_GYRO_YOUT_H, gyro_calibration, GYRO_SENSITIVITY)
+            gyro_z_2 = self.read_sensor_data( mpu9250_address_2, MPU9250_GYRO_ZOUT_H, gyro_calibration, GYRO_SENSITIVITY)
 
 
             # Pause for a short duration
