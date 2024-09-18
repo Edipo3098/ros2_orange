@@ -155,7 +155,7 @@ class MinimalPublisher(Node):
         timer_period = 0.1  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0
-    def convert_mpu_to_imu(mpu_msg):
+    def convert_mpu_to_imu(self,mpu_msg):
         imu_msg = Imu()
 
         # Fill in the header (if you have a timestamp and frame_id)
