@@ -117,7 +117,7 @@ class MinimalPublisher(Node):
         calibration_data[calibration_key]["accel"]["offset"] = accel_offset
         calibration_data[calibration_key]["gyro"]["offset"] = gyro_offset
 
-        print(f"Calibration completed for {calibration_key}. Accel offsets: {accel_offset}, Gyro offsets: {gyro_offset}")
+        self.get_logger().info(f"Calibration completed for {calibration_key}. Accel offsets: {accel_offset}, Gyro offsets: {gyro_offset}")
 
     def check_full_scale(self, address):
         """Checks if the sensor is configured for full scale"""
@@ -128,7 +128,7 @@ class MinimalPublisher(Node):
         gyro_full_scale = (gyro_config >> 3) & 0x03
 
         if accel_full_scale != 0 or gyro_full_scale != 0:
-            print("Warning: Sensor is not configured for full scale (2g accel, 250 dps gyro).")
+            self.get_logger().info("Warning: Sensor is not configured for full scale (2g accel, 250 dps gyro).")
 
     def timer_callback(self):
         """Callback function to read sensor data and publish it"""
