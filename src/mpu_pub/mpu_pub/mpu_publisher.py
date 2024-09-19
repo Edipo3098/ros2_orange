@@ -335,11 +335,11 @@ class MinimalPublisher(Node):
             msg2.gy = float(gyro_y_2)
             msg2.gz = float(gyro_z_2)
             # Convert to Imu message and publish
-            imu_msg_1 = self.convert_mpu_to_imu(msg)  # First sensor
-            imu_msg_2 = self.convert_mpu_to_imu(msg2)  # Second sensor
+            #imu_msg_1 = self.convert_mpu_to_imu(msg)  # First sensor
+            #imu_msg_2 = self.convert_mpu_to_imu(msg2)  # Second sensor
 
-            self.imu_publisher_.publish(imu_msg_1)
-            self.imu_publisher_second.publish(imu_msg_2)
+            #self.imu_publisher_.publish(imu_msg_1)
+            #self.imu_publisher_second.publish(imu_msg_2)
             self.publisher_.publish(msg)
             self.publisher_secondMPU.publish(msg2)
             #self.get_logger().info('is publishing')
