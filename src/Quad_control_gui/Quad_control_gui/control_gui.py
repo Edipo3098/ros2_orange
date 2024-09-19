@@ -129,6 +129,7 @@ class MyWindow(QMainWindow):
         x_axis_roll = range(len(self.ros_node.data_roll))
         x_axis_pitch = range(len(self.ros_node.data_pitch))
         x_axis_yaw = range(len(self.ros_node.data_yaw))
+        """
          # Debugging: Print the lengths and types of the data before plotting
         self.ros_node.get_logger().info(f"Data X Length: {len(self.ros_node.data_x)}, Data Y Length: {len(self.ros_node.data_y)}")
         self.ros_node.get_logger().info(f"Data Z Length: {len(self.ros_node.data_z)}, Data Roll Length: {len(self.ros_node.data_roll)}")
@@ -137,6 +138,7 @@ class MyWindow(QMainWindow):
         self.ros_node.get_logger().info(f"First 5 Y Values: {self.ros_node.data_y[:5]}")
             # Ensure the data is non-empty and numeric before plotting
             # Ensure that x and y data arrays have the same length
+        """
         if len(x_axis_x) == len(self.ros_node.data_x):
             self.x_lines[0].set_data(x_axis_x, self.ros_node.data_x)
 
@@ -155,13 +157,13 @@ class MyWindow(QMainWindow):
         if len(x_axis_yaw) == len(self.ros_node.data_yaw):
             self.yaw_lines[0].set_data(x_axis_yaw, self.ros_node.data_yaw)
 
-
+        """
         self.ros_node.get_logger().info(f"Data X Length: {len(self.ros_node.data_x)}, Data Y Length: {len(self.ros_node.data_y)}")
 
         self.ros_node.get_logger().info(f"Data z Length: {len(self.ros_node.data_z)}, Data R Length: {len(self.ros_node.data_roll)}")
 
         self.ros_node.get_logger().info(f"Data P Length: {len(self.ros_node.data_pitch)}, Data W Length: {len(self.ros_node.data_yaw)}")
-
+        """
         try:
             # Adjust plot limits and redraw each plot
             self.canvas_x.axes.relim()
@@ -190,7 +192,7 @@ class MyWindow(QMainWindow):
         except Exception as e:
             self.ros_node.get_logger().error(f"Error updating plots: {e}")
 
-        self.ros_node.get_logger().info('PLOT UPDATED')
+        
 
 
     def on_button_1_click(self):

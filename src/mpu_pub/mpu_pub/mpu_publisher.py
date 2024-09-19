@@ -230,11 +230,11 @@ class MinimalPublisher(Node):
                 self.calibrate_mpu(mpu9250_address_2,1000,'mpu2')
             # Read accelerometer data
             key = 'mpu1'
-            accel_x,accel_y,accel_z,gyro_x,gyro_y,gyro_z = self.read_sensor_data(mpu9250_address,ACCEL_XOUT_H, key, ACCEL_SENSITIVITY,False)
+            accel_x,accel_y,accel_z,gyro_x,gyro_y,gyro_z = self.read_sensor_data(mpu9250_address,key, )
             
             # Read, calibrate, and convert gyroscope data to dps
             key = 'mpu2'
-            accel_x_2 ,accel_y_2,accel_z_2,gyro_x_2,gyro_y_2,gyro_z_2 = self.read_sensor_data(mpu9250_address,ACCEL_XOUT_H, key, ACCEL_SENSITIVITY,False)
+            accel_x_2 ,accel_y_2,accel_z_2,gyro_x_2,gyro_y_2,gyro_z_2 = self.read_sensor_data(mpu9250_address, key )
             
 
             
