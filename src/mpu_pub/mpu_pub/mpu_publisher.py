@@ -135,23 +135,23 @@ class MinimalPublisher(Node):
         # Read data from MPU1
         accel_x1, accel_y1, accel_z1, gyro_x1, gyro_y1, gyro_z1 = self.read_sensor_data(mpu9250_address, "mpu1")
         mpu_msg1 = Mpu()
-        mpu_msg1.accel_x = accel_x1
-        mpu_msg1.accel_y = accel_y1
-        mpu_msg1.accel_z = accel_z1
-        mpu_msg1.gyro_x = gyro_x1
-        mpu_msg1.gyro_y = gyro_y1
-        mpu_msg1.gyro_z = gyro_z1
+        mpu_msg1.acx = accel_x1
+        mpu_msg1.acy = accel_y1
+        mpu_msg1.acz = accel_z1
+        mpu_msg1.gx = gyro_x1
+        mpu_msg1.gy = gyro_y1
+        mpu_msg1.gz = gyro_z1
         self.publisher_mpu1.publish(mpu_msg1)
 
         # Read data from MPU2
         accel_x2, accel_y2, accel_z2, gyro_x2, gyro_y2, gyro_z2 = self.read_sensor_data(mpu9250_address_2, "mpu2")
         mpu_msg2 = Mpu()
-        mpu_msg2.accel_x = accel_x2
-        mpu_msg2.accel_y = accel_y2
-        mpu_msg2.accel_z = accel_z2
-        mpu_msg2.gyro_x = gyro_x2
-        mpu_msg2.gyro_y = gyro_y2
-        mpu_msg2.gyro_z = gyro_z2
+        mpu_msg2.acx = accel_x2
+        mpu_msg2.acy = accel_y2
+        mpu_msg2.acz = accel_z2
+        mpu_msg2.gx = gyro_x2
+        mpu_msg2.gy = gyro_y2
+        mpu_msg2.gz = gyro_z2
         self.publisher_mpu2.publish(mpu_msg2)
 
         # Optionally check full-scale settings
