@@ -1,367 +1,170 @@
-# Copyright 2016 Open Source Robotics Foundation, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import rclpy
 from rclpy.node import Node
 import smbus
 import time
-from std_msgs.msg import String
 from robot_interfaces.msg import Mpu
 import numpy as np
 from sensor_msgs.msg import Imu
 
+# MPU9250 constants
 mpu9250_address = 0x68  # MPU9250 default I2C address
-mpu9250_address_2 = 0x69  # MPU9250 I2C address AD0 high
+mpu9250_address_2 = 0x69  # Second MPU9250 I2C address AD0 high
 PWR_MGMT_1 = 0x6B
-# Create an smbus object
-i2c_bus = 1  # Assuming you want to use /dev/i2c-1
+ACCEL_SENSITIVITY = 16384.0  # +/- 2g sensitivity
+GYRO_SENSITIVITY = 131.0  # +/- 250 dps sensitivity
 
-
-# MPU9250 register addresses
-MPU9250_WHO_AM_I = 0x75
-ACCEL_XOUT_H = 0x3B
-ACCEL_YOUT_H = 0x3D
-ACCEL_ZOUT_H = 0x3F
-GYRO_XOUT_H = 0x43
-GYRO_YOUT_H = 0x45
-GYRO_ZOUT_H = 0x47
-
-
-accel_calibration_x = {
-    'a_x': 0.99910324,
-    'm': 0.05304036,
-    'b': 0.0  # You can add the bias term if needed
+# Calibration data for two MPU9250s
+calibration_data = {
+    "mpu1": {
+        "accel": {"slope": [1.0, 1.0, 1.0], "offset": [0.0, 0.0, 0.0]},
+        "gyro": {"offset": [0.0, 0.0, 0.0]}
+    },
+    "mpu2": {
+        "accel": {"slope": [1.0, 1.0, 1.0], "offset": [0.0, 0.0, 0.0]},
+        "gyro": {"offset": [0.0, 0.0, 0.0]}
+    }
 }
-accel_calibration_y = {
-    'a_x': 0.99910324,
-    'm_y': 0.05304036,
-    'b': 0.0  # You can add the bias term if needed
-}
-accel_calibration_z = {
-    'a_x': 0.99910324,
-    'm_z': 0.05304036,
-    'b': 0.0  # You can add the bias term if needed
-}
-gyro_calibration_x = {
-    'a_x': 1.00009231,
-    'm': 0.01032118,
-    'b': 0.0  # You can add the bias term if needed
-}
-gyro_calibration_y = {
-    'a_x': 1.00009231,
-    'm': 0.01032118,
-    'b': 0.0  # You can add the bias term if needed
-}
-gyro_calibration_z = {
-    'a_x': 1.00009231,
-    'm': 0.01032118,
-    'b': 0.0  # You can add the bias term if needed
-}
-
-accel_calibration_x_2 = {
-    'a_x': 0.99910324,
-    'm_x': 0.05304036,
-    'b': 0.0  # You can add the bias term if needed
-}
-accel_calibration_y_2 = {
-    'a_x': 0.99910324,
-    'm_y': 0.05304036,
-    'b': 0.0  # You can add the bias term if needed
-}
-accel_calibration_z_2 = {
-    'a_x': 0.99910324,
-    'm_z': 0.05304036,
-    'b': 0.0  # You can add the bias term if needed
-}
-gyro_calibration_x_2 = {
-    'a_x': 1.00009231,
-    'm': 0.01032118,
-    'b': 0.0  # You can add the bias term if needed
-}
-gyro_calibration_y_2 = {
-    'a_x': 1.00009231,
-    'm': 0.01032118,
-    'b': 0.0  # You can add the bias term if needed
-}
-gyro_calibration_z_2 = {
-    'a_x': 1.00009231,
-    'm': 0.01032118,
-    'b': 0.0  # You can add the bias term if needed
-}
-# Constants for sensitivity values
-ACCEL_SENSITIVITY = 16384.0  # LSB/g for +/- 2g range
-GYRO_SENSITIVITY = 131.0  # LSB/dps for +/- 250 dps range
 
 class MinimalPublisher(Node):
-
     def __init__(self):
         super().__init__('mpu_publisher')
-        self.publisher_ = self.create_publisher(Mpu, 'mpu_data', 10)
-        self.publisher_secondMPU = self.create_publisher(Mpu, 'mpu_data_2', 10)
 
-        # Publisher for Imu (standard message)
-        self.imu_publisher_ = self.create_publisher(Imu, 'imu_data', 10)
-        self.imu_publisher_second = self.create_publisher(Imu, 'imu_data_2', 10)
-        self.i2c_bus = 1
-        self.bus = smbus.SMBus(i2c_bus)
-        # Then use self.bus.read_byte_data, etc. in the respective functions
-        accel_slope  = []
-        accel_offset  = []
-        gyro_offset  = []
-        self.calibrationTime = time.time()
-        self.current_time = time.time()
-        self.mpu_wake(mpu9250_address)
-        self.mpu_wake(mpu9250_address_2)
-        accel_slope, accel_offset, gyro_offset =  self.calibrate_mpu(mpu9250_address)
+        # Publishers for MPU and Imu data
+        self.publisher_mpu1 = self.create_publisher(Mpu, 'mpu_data_1', 10)
+        self.publisher_mpu2 = self.create_publisher(Mpu, 'mpu_data_2', 10)
 
-        accel_calibration_x['a_x'] = accel_slope[0]
-        accel_calibration_x['m'] = accel_offset[0]
+        # I2C bus initialization
+        self.bus = smbus.SMBus(1)  # Using I2C bus 1
+        self.initialize_mpu(mpu9250_address)
+        self.initialize_mpu(mpu9250_address_2)
 
-        accel_calibration_y['a_x'] = accel_slope[1]
-        accel_calibration_y['m'] = accel_offset[1]
-        
-        accel_calibration_z['a_x'] = accel_slope[2]
-        accel_calibration_z['m'] = accel_offset[2]
+        # Timer to read and publish data periodically
+        self.timer = self.create_timer(0.1, self.timer_callback)  # 10 Hz
 
-        gyro_calibration_x['b'] = gyro_offset[0]
-        gyro_calibration_y['b'] = gyro_offset[1]
-        gyro_calibration_z['b'] = gyro_offset[2]
-        
-        accel_slope, accel_offset, gyro_offset = self.calibrate_mpu(mpu9250_address_2)
-        accel_calibration_x_2['a_x'] = accel_slope[0]
-        accel_calibration_x_2['m'] = accel_offset[0]
+        # Calibrate MPU on startup
+        self.calibrate_mpu(mpu9250_address, "mpu1")
+        self.calibrate_mpu(mpu9250_address_2, "mpu2")
 
-        accel_calibration_y_2['a_x'] = accel_slope[1]
-        accel_calibration_y_2['m'] = accel_offset[1]
+    def initialize_mpu(self, address):
+        """Initializes the MPU by waking it up from sleep mode"""
+        self.bus.write_byte_data(address, PWR_MGMT_1, 0x00)
+        time.sleep(0.1)
 
-        accel_calibration_z_2['a_x'] = accel_slope[2]
-        accel_calibration_z_2['m'] = accel_offset[2]
+    def read_sensor_data(self, address, calibration_key):
+        """Reads the raw sensor data from the MPU9250"""
+        # Read accelerometer and gyroscope data
+        accel_data = self.bus.read_i2c_block_data(address, 0x3B, 6)
+        gyro_data = self.bus.read_i2c_block_data(address, 0x43, 6)
 
-        gyro_calibration_x_2['b'] = gyro_offset[0]
-        gyro_calibration_y_2['b'] = gyro_offset[1]
-        gyro_calibration_z_2['b'] = gyro_offset[2]
+        # Process accelerometer data
+        accel_x = self.convert_data(accel_data[0], accel_data[1])
+        accel_y = self.convert_data(accel_data[2], accel_data[3])
+        accel_z = self.convert_data(accel_data[4], accel_data[5])
 
-        self.Check_communication(mpu9250_address)
-        self.Check_communication(mpu9250_address_2)
-        timer_period = 1/50   # seconds 50Hz
-        self.timer = self.create_timer(timer_period, self.timer_callback)
-        self.i = 0
-    def convert_mpu_to_imu(self,mpu_msg):
-        imu_msg = Imu()
+        # Process gyroscope data
+        gyro_x = self.convert_data(gyro_data[0], gyro_data[1])
+        gyro_y = self.convert_data(gyro_data[2], gyro_data[3])
+        gyro_z = self.convert_data(gyro_data[4], gyro_data[5])
 
-        # Fill in the header (if you have a timestamp and frame_id)
-        imu_msg.header.stamp = self.get_clock().now().to_msg()   # Assuming your Mpu message has a header
-        imu_msg.header.frame_id = "base_link"  # Set your appropriate frame_id
+        # Apply calibration
+        accel_x = (accel_x - calibration_data[calibration_key]["accel"]["offset"][0]) * calibration_data[calibration_key]["accel"]["slope"][0]
+        accel_y = (accel_y - calibration_data[calibration_key]["accel"]["offset"][1]) * calibration_data[calibration_key]["accel"]["slope"][1]
+        accel_z = (accel_z - calibration_data[calibration_key]["accel"]["offset"][2]) * calibration_data[calibration_key]["accel"]["slope"][2]
 
-        # Accelerometer data
-        imu_msg.linear_acceleration.x = mpu_msg.acx
-        imu_msg.linear_acceleration.y = mpu_msg.acy
-        imu_msg.linear_acceleration.z = mpu_msg.acz
+        gyro_x -= calibration_data[calibration_key]["gyro"]["offset"][0]
+        gyro_y -= calibration_data[calibration_key]["gyro"]["offset"][1]
+        gyro_z -= calibration_data[calibration_key]["gyro"]["offset"][2]
 
-        # Gyroscope data
-        imu_msg.angular_velocity.x = mpu_msg.gx
-        imu_msg.angular_velocity.y = mpu_msg.gy
-        imu_msg.angular_velocity.z = mpu_msg.gz
+        # Convert to correct units
+        accel_x /= ACCEL_SENSITIVITY
+        accel_y /= ACCEL_SENSITIVITY
+        accel_z /= ACCEL_SENSITIVITY
 
-        # You may also need to fill in the orientation if available, or set it to 0
-        imu_msg.orientation.x = 0.0
-        imu_msg.orientation.y = 0.0
-        imu_msg.orientation.z = 0.0
-        imu_msg.orientation.w = 1.0  # Default quaternion
+        gyro_x /= GYRO_SENSITIVITY
+        gyro_y /= GYRO_SENSITIVITY
+        gyro_z /= GYRO_SENSITIVITY
 
-        # Covariance (You can set custom covariance values or leave them as defaults)
-        imu_msg.orientation_covariance[0] = -1  # Indicates no orientation data if not available
-        imu_msg.angular_velocity_covariance = [float(0.1), float(0), float(0), 
-                                       float(0), float(0.1), float(0), 
-                                       float(0), float(0), float(0.1)]
+        return accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z
 
-        imu_msg.linear_acceleration_covariance = [float(0.1), float(0), float(0), 
-                                          float(0), float(0.1), float(0), 
-                                          float(0), float(0), float(0.1)]
+    def convert_data(self, high_byte, low_byte):
+        """Converts high and low bytes into a signed integer"""
+        value = (high_byte << 8) | low_byte
+        if value > 32767:
+            value -= 65536
+        return value
 
+    def calibrate_mpu(self, address, calibration_key):
+        """Calibrates the MPU by calculating offsets"""
+        accel_offset = [0.0, 0.0, 0.0]
+        gyro_offset = [0.0, 0.0, 0.0]
 
-        return imu_msg
+        # Take multiple readings and average them to find the offsets
+        num_samples = 100
+        for i in range(num_samples):
+            accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z = self.read_sensor_data(address, calibration_key)
+            accel_offset[0] += accel_x
+            accel_offset[1] += accel_y
+            accel_offset[2] += accel_z
+            gyro_offset[0] += gyro_x
+            gyro_offset[1] += gyro_y
+            gyro_offset[2] += gyro_z
 
-    def Check_communication(self,address):
-        try:
-           
-            who_am_i = self.bus.read_byte_data(address, MPU9250_WHO_AM_I)
-            self.get_logger().info('I heard: "%s"' % hex(who_am_i))
-        except Exception as e:
-            self.get_logger().info(f'Error in communication: {e}')
-        
-    def mpu_wake(self, address):
-        try:
-            
-            self.bus.write_byte_data(address, 0x6B, 0)
-        except Exception as e:
-            self.get_logger().info(f'Error in mpu_wake: {e}')
-        
-    def read_raw_data(self,address, reg,sensitivity):
-        # Accelero and Gyro values are 16-bit
-       
-        high = self.bus.read_byte_data(address, reg)
-        low = self.bus.read_byte_data(address, reg + 1)
-        value = ((high << 8) | low)
-        if value > 32768:
-            value = value - 65536
-        return value/sensitivity
-    
-    def calibrate_mpu(self,address, num_samples=500):
-        accel_data = []
-        gyro_data = []
-        self.calibrationTime = time.time()
-        
-        self.get_logger().info(f"Calibrating MPU at address {hex(address)}...")
+        # Calculate average offsets
+        accel_offset = [x / num_samples for x in accel_offset]
+        gyro_offset = [x / num_samples for x in gyro_offset]
 
-        for _ in range(num_samples):
-            # Read raw accelerometer and gyroscope data
-            accel_x = self.read_raw_data(address, ACCEL_XOUT_H,ACCEL_SENSITIVITY)
-            accel_y = self.read_raw_data(address, ACCEL_XOUT_H + 2,ACCEL_SENSITIVITY)
-            accel_z = self.read_raw_data(address, ACCEL_XOUT_H + 4,ACCEL_SENSITIVITY)
+        # Store the offsets for calibration
+        calibration_data[calibration_key]["accel"]["offset"] = accel_offset
+        calibration_data[calibration_key]["gyro"]["offset"] = gyro_offset
 
-            gyro_x = self.read_raw_data(address, GYRO_XOUT_H,GYRO_SENSITIVITY)
-            gyro_y = self.read_raw_data(address, GYRO_XOUT_H + 2,GYRO_SENSITIVITY)
-            gyro_z = self.read_raw_data(address, GYRO_XOUT_H + 4,GYRO_SENSITIVITY)
+        print(f"Calibration completed for {calibration_key}. Accel offsets: {accel_offset}, Gyro offsets: {gyro_offset}")
 
-            accel_data.append([accel_x, accel_y, accel_z])
-            gyro_data.append([gyro_x, gyro_y, gyro_z])
+    def check_full_scale(self, address):
+        """Checks if the sensor is configured for full scale"""
+        accel_config = self.bus.read_byte_data(address, 0x1C)
+        gyro_config = self.bus.read_byte_data(address, 0x1B)
 
-            time.sleep(0.01)
+        accel_full_scale = (accel_config >> 3) & 0x03
+        gyro_full_scale = (gyro_config >> 3) & 0x03
 
-        accel_data = np.array(accel_data)
-        gyro_data = np.array(gyro_data)
-
-        # Accelerometer calibration (slope and offset calculation using linear regression)
-        accel_mean = np.mean(accel_data, axis=0)
-        accel_min = np.min(accel_data, axis=0)
-        accel_max = np.max(accel_data, axis=0)
-
-        accel_slope = np.ones(3)  # Slope should generally be near 1 for accelerometer
-        accel_offset = accel_mean  # Use the mean as the offset
-
-        # Gyroscope calibration (offset calculation)
-        gyro_offset = np.mean(gyro_data, axis=0)
-
-        # Gyroscope calibration (calculate offsets/bias)
-        gyro_offset = np.mean(gyro_data, axis=0)
-        
-        self.get_logger().info(f"Accelerometer slope (X, Y, Z): {accel_slope}")
-        self.get_logger().info(f"Accelerometer offset (X, Y, Z): {accel_offset}")
-        self.get_logger().info(f"Gyroscope offset (X, Y, Z): {gyro_offset}")
-
-
-        return accel_slope, accel_offset, gyro_offset
-
-
-    def read_sensor_data(self, addres,register, calibration_params, sensitivity,IsGyro):
-        try:
-            high = self.bus.read_byte_data(addres, register)
-            low = self.bus.read_byte_data(addres, register + 1)
-            value = (high << 8) | low
-
-            if value > 32767:
-                value -= 65536
-
-            value = value / sensitivity
-            if IsGyro:
-                # Apply calibration
-                calibrated_value = (value - calibration_params['b']) * np.pi / 180.0   # Convert to rad/s
-            else:
-                # Apply calibration
-                calibrated_value = (calibration_params['a_x'] * (value + calibration_params['m']) + calibration_params['b'])*9.81   # Convert to m/s^2
-
-            # Convert to physical units
-            physical_value = calibrated_value
-
-            return float(physical_value)
-        except Exception as e:
-            self.get_logger().info(f'Error in read_sensor_data: {e}')
-       
-    
+        if accel_full_scale != 0 or gyro_full_scale != 0:
+            print("Warning: Sensor is not configured for full scale (2g accel, 250 dps gyro).")
 
     def timer_callback(self):
-        msg = Mpu()
-        try:
-            self.current_time = time.time()
-            if self.current_time - self.calibrationTime > 600:
-                self.calibrate_mpu(mpu9250_address)
-                self.calibrate_mpu(mpu9250_address_2)
-            # Read accelerometer data
-            accel_x = self.read_sensor_data(mpu9250_address,ACCEL_XOUT_H, accel_calibration_x, ACCEL_SENSITIVITY,False)
-            accel_y = self.read_sensor_data(mpu9250_address,ACCEL_XOUT_H + 2, accel_calibration_y, ACCEL_SENSITIVITY,False)
-            accel_z = self.read_sensor_data(mpu9250_address,ACCEL_XOUT_H + 4, accel_calibration_z, ACCEL_SENSITIVITY,False)
-            # Read, calibrate, and convert gyroscope data to dps
-            gyro_x = self.read_sensor_data(mpu9250_address,GYRO_XOUT_H, gyro_calibration_x, GYRO_SENSITIVITY,True)
-            gyro_y = self.read_sensor_data(mpu9250_address,GYRO_XOUT_H + 2, gyro_calibration_y, GYRO_SENSITIVITY,True)
-            gyro_z = self.read_sensor_data(mpu9250_address,GYRO_XOUT_H + 4, gyro_calibration_z, GYRO_SENSITIVITY,True)
+        """Callback function to read sensor data and publish it"""
+        # Read data from MPU1
+        accel_x1, accel_y1, accel_z1, gyro_x1, gyro_y1, gyro_z1 = self.read_sensor_data(mpu9250_address, "mpu1")
+        mpu_msg1 = Mpu()
+        mpu_msg1.accel_x = accel_x1
+        mpu_msg1.accel_y = accel_y1
+        mpu_msg1.accel_z = accel_z1
+        mpu_msg1.gyro_x = gyro_x1
+        mpu_msg1.gyro_y = gyro_y1
+        mpu_msg1.gyro_z = gyro_z1
+        self.publisher_mpu1.publish(mpu_msg1)
 
-            # Read data from the second sensor on the second bus
-            accel_x_2 = self.read_sensor_data( mpu9250_address_2, ACCEL_XOUT_H, accel_calibration_x_2, ACCEL_SENSITIVITY,False)
-            accel_y_2 = self.read_sensor_data( mpu9250_address_2, ACCEL_XOUT_H + 2, accel_calibration_y_2, ACCEL_SENSITIVITY,False)
-            accel_z_2 = self.read_sensor_data( mpu9250_address_2, ACCEL_XOUT_H + 4, accel_calibration_z_2, ACCEL_SENSITIVITY,False)
+        # Read data from MPU2
+        accel_x2, accel_y2, accel_z2, gyro_x2, gyro_y2, gyro_z2 = self.read_sensor_data(mpu9250_address_2, "mpu2")
+        mpu_msg2 = Mpu()
+        mpu_msg2.accel_x = accel_x2
+        mpu_msg2.accel_y = accel_y2
+        mpu_msg2.accel_z = accel_z2
+        mpu_msg2.gyro_x = gyro_x2
+        mpu_msg2.gyro_y = gyro_y2
+        mpu_msg2.gyro_z = gyro_z2
+        self.publisher_mpu2.publish(mpu_msg2)
 
-            gyro_x_2 = self.read_sensor_data( mpu9250_address_2, GYRO_XOUT_H , gyro_calibration_x_2, GYRO_SENSITIVITY,True)
-            gyro_y_2 = self.read_sensor_data( mpu9250_address_2, GYRO_XOUT_H + 2, gyro_calibration_y_2, GYRO_SENSITIVITY,True)
-            gyro_z_2 = self.read_sensor_data( mpu9250_address_2, GYRO_XOUT_H + 4, gyro_calibration_z_2, GYRO_SENSITIVITY,True)
-
-
-            
-            msg.message = "EL mensaje es"
-            msg.acx = float(accel_x)
-            msg.acy = float(accel_y)
-            msg.acz = float(accel_z)
-            msg.gx = float(gyro_x)
-            msg.gy = float(gyro_y)
-            msg.gz = float(gyro_z)
-
-            msg2 = Mpu()
-            msg2.message = "EL mensaje es"
-            msg2.acx = float(accel_x_2)
-            msg2.acy = float(accel_y_2)
-            msg2.acz = float(accel_z_2)
-            msg2.gx = float(gyro_x_2)
-            msg2.gy = float(gyro_y_2)
-            msg2.gz = float(gyro_z_2)
-            # Convert to Imu message and publish
-            #imu_msg_1 = self.convert_mpu_to_imu(msg)  # First sensor
-            #imu_msg_2 = self.convert_mpu_to_imu(msg2)  # Second sensor
-
-            #self.imu_publisher_.publish(imu_msg_1)
-            #self.imu_publisher_second.publish(imu_msg_2)
-            self.publisher_.publish(msg)
-            self.publisher_secondMPU.publish(msg2)
-            #self.get_logger().info('is publishing')
-
-        except KeyboardInterrupt:
-            self.get_logger().info('Exiting the system key')
-        #finally:
-            #self.get_logger().info('Exiting the system')
-
+        # Optionally check full-scale settings
+        self.check_full_scale(mpu9250_address)
+        self.check_full_scale(mpu9250_address_2)
 
 
 def main(args=None):
     rclpy.init(args=args)
+    minimal_publisher = MinimalPublisher()
+    rclpy.spin(minimal_publisher)
 
-    mpu_publisher = MinimalPublisher()
-
-    rclpy.spin(mpu_publisher)
-
-    # Destroy the node explicitly
-    # (optional - otherwise it will be done automatically
-    # when the garbage collector destroys the node object)
-    mpu_publisher.destroy_node()
+    minimal_publisher.destroy_node()
     rclpy.shutdown()
 
 
