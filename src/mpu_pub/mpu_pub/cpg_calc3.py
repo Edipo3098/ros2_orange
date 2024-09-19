@@ -4,10 +4,13 @@ from robot_interfaces.msg import Mpu, COGframe
 from time import time
 import numpy as np
 from filterpy.kalman import KalmanFilter
+from madgwick_py import MadgwickAHRS
 
 """
 Fusion sensor increase measuremetes to 12
 6 for each sensor
+pip install madgwick_py
+
 """
 
 class IMUKalmanFilter:
@@ -76,7 +79,7 @@ class IMUKalmanFilter:
 class CalCOGFrame(Node):
 
     def __init__(self):
-        super().__init__('cog_calc2')
+        super().__init__('cog_calc3')
         self.subscription_mpu = self.create_subscription(Mpu, 'mpu_data', self.listener_callback, 10)
         self.subscription_mpu2 = self.create_subscription(Mpu, 'mpu_data_2', self.listener_callback2, 10)
         
@@ -84,8 +87,12 @@ class CalCOGFrame(Node):
         self.publishTrapezFrame = self.create_publisher(COGframe, 'trapez_cog_frame', 10)
 
         # Kalman filter for fusing data from both MPUs
-        self.kf = IMUKalmanFilter(dt=0.01)
-        
+        self.kf = IMUKalmanFilter(dt=0.02)
+        # Madgwick filter initialization
+        self.madgwick_filter = MadgwickAHRS(sampleperiod=0.02,beta = 0.1)  # Adjust sample period as needed
+        """
+        If your IMU data is noisy, a lower beta value may help reduce jitter, though you will need to balance this with the slower data rate.
+        """
         # Buffers to hold the last measurements from each MPU
         self.mpu1_data = None
         self.mpu2_data = None
@@ -99,6 +106,25 @@ class CalCOGFrame(Node):
     def listener_callback2(self, msg):
         self.mpu2_data = msg
         self.process_fusion()
+
+    def quaternion_to_euler_angles(self, q):
+        """
+        Convert a quaternion into Euler angles (roll, pitch, yaw)
+        q: quaternion as [w, x, y, z]
+        """
+        w, x, y, z = q
+        t0 = +2.0 * (w * x + y * z)
+        t1 = +1.0 - 2.0 * (x * x + y * y)
+        roll = np.arctan2(t0, t1)
+
+        t2 = +2.0 * (w * y - z * x)
+        t2 = np.clip(t2, -1.0, 1.0)
+        pitch = np.arcsin(t2)
+
+        t3 = +2.0 * (w * z + x * y)
+        t4 = +1.0 - 2.0 * (y * y + z * z)
+        yaw = np.arctan2(t3, t4)
+
 
     def process_fusion(self):
         if self.mpu1_data is None or self.mpu2_data is None:
@@ -120,6 +146,19 @@ class CalCOGFrame(Node):
 
         self.kf.predict()  # Prediction step based on the current state
         self.kf.update(measurements)  # Update Kalman filter with new measurements
+        # Madgwick filter update (Orientation calculation)
+        # Inputs: gyroscope in rad/s and accelerometer in G (gravity)
+        gyroscope_data = np.array([self.mpu1_data.gx, self.mpu1_data.gy, self.mpu1_data.gz]) * np.pi / 180  # deg/s to rad/s
+        accelerometer_data = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz]) / 9.81  # m/s² to G
+        
+        # Update Madgwick filter
+        self.madgwick_filter.update_imu(gyroscope_data, accelerometer_data)
+
+        # Retrieve quaternion from Madgwick filter
+        quaternion = self.madgwick_filter.quaternion.q  # [w, x, y, z]
+
+        # Convert quaternion to Euler angles (roll, pitch, yaw)
+        roll, pitch, yaw = self.quaternion_to_euler_angles(quaternion)
 
         # Retrieve filtered state (position, velocity, orientation)
         pos, vel, orient = self.kf.get_state()
@@ -127,7 +166,7 @@ class CalCOGFrame(Node):
         # Publish the Kalman filter output
         msg = COGframe()
         msg.pos_x, msg.pos_y, msg.pos_z = float(pos[0]), float(pos[1]), float(pos[2])
-        msg.roll, msg.pitch, msg.yaw = float(orient[0]), float(orient[1]), float(orient[2])
+        msg.roll, msg.pitch, msg.yaw = float(roll), float(pitch), float(yaw)
         self.publishKalmanFrame.publish(msg)
         self.get_logger().info(f"Kalman pose (X, Y, Z): {msg.pos_x}, {msg.pos_y}, {msg.pos_z}")
         self.get_logger().info(f"Kalman orientation (roll pitch yaw): {msg.roll}, {msg.pitch}, {msg.yaw}")

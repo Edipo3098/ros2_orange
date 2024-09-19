@@ -113,7 +113,9 @@ class MinimalPublisher(Node):
         # Publisher for Imu (standard message)
         self.imu_publisher_ = self.create_publisher(Imu, 'imu_data', 10)
         self.imu_publisher_second = self.create_publisher(Imu, 'imu_data_2', 10)
-
+        self.i2c_bus = 1
+        self.bus = smbus.SMBus(i2c_bus)
+        # Then use self.bus.read_byte_data, etc. in the respective functions
         accel_slope  = []
         accel_offset  = []
         gyro_offset  = []
@@ -152,7 +154,7 @@ class MinimalPublisher(Node):
 
         self.Check_communication(mpu9250_address)
         self.Check_communication(mpu9250_address_2)
-        timer_period = 0.1  # seconds
+        timer_period = 1/50   # seconds 50Hz
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0
     def convert_mpu_to_imu(self,mpu_msg):
@@ -193,24 +195,24 @@ class MinimalPublisher(Node):
 
     def Check_communication(self,address):
         try:
-            bus = smbus.SMBus(i2c_bus)
-            who_am_i = bus.read_byte_data(address, MPU9250_WHO_AM_I)
+           
+            who_am_i = self.bus.read_byte_data(address, MPU9250_WHO_AM_I)
             self.get_logger().info('I heard: "%s"' % hex(who_am_i))
         except Exception as e:
             self.get_logger().info(f'Error in communication: {e}')
         
     def mpu_wake(self, address):
         try:
-            bus = smbus.SMBus(i2c_bus)
-            bus.write_byte_data(address, 0x6B, 0)
+            
+            self.bus.write_byte_data(address, 0x6B, 0)
         except Exception as e:
             self.get_logger().info(f'Error in mpu_wake: {e}')
         
     def read_raw_data(self,address, reg,sensitivity):
         # Accelero and Gyro values are 16-bit
-        bus = smbus.SMBus(i2c_bus)
-        high = bus.read_byte_data(address, reg)
-        low = bus.read_byte_data(address, reg + 1)
+       
+        high = self.bus.read_byte_data(address, reg)
+        low = self.bus.read_byte_data(address, reg + 1)
         value = ((high << 8) | low)
         if value > 32768:
             value = value - 65536
@@ -265,9 +267,8 @@ class MinimalPublisher(Node):
 
     def read_sensor_data(self, addres,register, calibration_params, sensitivity,IsGyro):
         try:
-            bus = smbus.SMBus(i2c_bus)
-            high = bus.read_byte_data(addres, register)
-            low = bus.read_byte_data(addres, register + 1)
+            high = self.bus.read_byte_data(addres, register)
+            low = self.bus.read_byte_data(addres, register + 1)
             value = (high << 8) | low
 
             if value > 32767:
@@ -279,7 +280,7 @@ class MinimalPublisher(Node):
                 calibrated_value = value- calibration_params['b']
             else:
                 # Apply calibration
-                calibrated_value = calibration_params['a_x'] * (value + calibration_params['m']) + calibration_params['b']
+                calibrated_value = (calibration_params['a_x'] * (value + calibration_params['m']) + calibration_params['b'])*9.81 
 
             # Convert to physical units
             physical_value = calibrated_value 
@@ -289,7 +290,7 @@ class MinimalPublisher(Node):
             self.get_logger().info(f'Error in read_sensor_data: {e}')
         finally:
             try:
-                bus.close()
+                self.bus.close()
             except:
                 pass
     
@@ -298,7 +299,7 @@ class MinimalPublisher(Node):
         msg = Mpu()
         try:
             self.current_time = time.time()
-            if self.current_time - self.calibrationTime > 60:
+            if self.current_time - self.calibrationTime > 600:
                 self.calibrate_mpu(mpu9250_address)
                 self.calibrate_mpu(mpu9250_address_2)
             # Read accelerometer data
