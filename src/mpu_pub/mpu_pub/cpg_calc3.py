@@ -125,6 +125,8 @@ class CalCOGFrame(Node):
         t4 = +1.0 - 2.0 * (y * y + z * z)
         yaw = np.arctan2(t3, t4)
 
+        return roll, pitch, yaw
+
 
     def process_fusion(self):
         if self.mpu1_data is None or self.mpu2_data is None:
