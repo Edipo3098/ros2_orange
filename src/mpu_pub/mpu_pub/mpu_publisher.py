@@ -200,9 +200,9 @@ class MinimalPublisher(Node):
         gyro_z /= GYRO_SENSITIVITY
 
         # Apply calibration
-        accel_x = (calibration_data[calibration_key]["accel"]["offset"][0]) * accel_x  + calibration_data[calibration_key]["accel"]["slope"][0]
-        accel_y = ( calibration_data[calibration_key]["accel"]["offset"][1]) * accel_y  +calibration_data[calibration_key]["accel"]["slope"][1]
-        accel_z = ( calibration_data[calibration_key]["accel"]["offset"][2]) * accel_z  +calibration_data[calibration_key]["accel"]["slope"][2]
+        accel_x = (accel_x - calibration_data[calibration_key]["accel"]["offset"][0])    + calibration_data[calibration_key]["accel"]["slope"][0]
+        accel_y = ( accel_y - calibration_data[calibration_key]["accel"]["offset"][1])    +calibration_data[calibration_key]["accel"]["slope"][1]
+        accel_z = ( accel_z - calibration_data[calibration_key]["accel"]["offset"][2])    +calibration_data[calibration_key]["accel"]["slope"][2]
 
         gyro_x -= calibration_data[calibration_key]["gyro"]["offset"][0]
         gyro_y -= calibration_data[calibration_key]["gyro"]["offset"][1]
@@ -230,7 +230,7 @@ class MinimalPublisher(Node):
                 self.calibrate_mpu(mpu9250_address_2,1000,'mpu2')
             # Read accelerometer data
             key = 'mpu1'
-            accel_x,accel_y,accel_z,gyro_x,gyro_y,gyro_z = self.read_sensor_data(mpu9250_address,key, )
+            accel_x,accel_y,accel_z,gyro_x,gyro_y,gyro_z = self.read_sensor_data(mpu9250_address,key )
             
             # Read, calibrate, and convert gyroscope data to dps
             key = 'mpu2'
