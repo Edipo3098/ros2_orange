@@ -28,6 +28,7 @@ setup(
             'mpu_publisher = mpu_pub.mpu_publisher:main',
             'cog_calc = mpu_pub.cog_calc:main',
             'cog_calc2 = mpu_pub.cog_calc2:main',
+            'cog_calc3 = mpu_pub.cog_calc3:main',
         ],
     },
 )

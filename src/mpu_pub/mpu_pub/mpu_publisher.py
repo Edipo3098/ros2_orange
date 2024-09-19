@@ -323,21 +323,21 @@ class MinimalPublisher(Node):
 
             
             msg.message = "EL mensaje es"
-            msg.acx = accel_x
-            msg.acy = accel_y
-            msg.acz = accel_z
-            msg.gx = gyro_x
-            msg.gy = gyro_y
-            msg.gz = gyro_z
+            msg.acx = float(accel_x))
+            msg.acy = float(accel_y)
+            msg.acz = float(accel_z)
+            msg.gx = float(gyro_x)
+            msg.gy = float(gyro_y)
+            msg.gz = float(gyro_z)
 
             msg2 = Mpu()
             msg2.message = "EL mensaje es"
-            msg2.acx = accel_x_2
-            msg2.acy = accel_y_2
-            msg2.acz = accel_z_2
-            msg2.gx = gyro_x_2
-            msg2.gy = gyro_y_2
-            msg2.gz = gyro_z_2
+            msg2.acx = float(accel_x_2)
+            msg2.acy = float(accel_y_2)
+            msg2.acz = float(accel_z_2)
+            msg2.gx = float(gyro_x_2)
+            msg2.gy = float(gyro_y_2)
+            msg2.gz = float(gyro_z_2)
             # Convert to Imu message and publish
             imu_msg_1 = self.convert_mpu_to_imu(msg)  # First sensor
             imu_msg_2 = self.convert_mpu_to_imu(msg2)  # Second sensor
