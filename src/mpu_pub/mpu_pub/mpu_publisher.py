@@ -277,10 +277,10 @@ class MinimalPublisher(Node):
             value = value / sensitivity
             if IsGyro:
                 # Apply calibration
-                calibrated_value = value- calibration_params['b']
+                calibrated_value = (value - calibration_params['b']) * np.pi / 180.0   # Convert to rad/s
             else:
                 # Apply calibration
-                calibrated_value = (calibration_params['a_x'] * (value + calibration_params['m']) + calibration_params['b'])*9.81 
+                calibrated_value = (calibration_params['a_x'] * (value + calibration_params['m']) + calibration_params['b'])*9.81   # Convert to m/s^2
 
             # Convert to physical units
             physical_value = calibrated_value

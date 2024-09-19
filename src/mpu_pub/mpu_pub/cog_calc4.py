@@ -3,7 +3,7 @@ from rclpy.node import Node
 from robot_interfaces.msg import Mpu, COGframe
 from time import time
 import numpy as np
-from filterpy.kalman import KalmanFilter
+from filterpy.kalman import ExtendedKalmanFilter
 from ahrs.filters import Madgwick  # Use Madgwick from ahrs package
 from collections import deque
 """
@@ -13,83 +13,113 @@ pip install madgwick_py
 
 """
 
-class IMUKalmanFilter:
+
+
+from filterpy.kalman import ExtendedKalmanFilter
+import numpy as np
+
+class IMUFusionEKF:
     def __init__(self, dt):
-        self.kf = KalmanFilter(dim_x=9, dim_z=12)  # 9 state variables, 12 measurements (6 from each IMU)
         self.dt = dt
+        self.ekf = ExtendedKalmanFilter(dim_x=9, dim_z=3)  # 9 state variables, 3 fused measurements (linear acceleration)
+        
+        # Initial state vector (position, velocity, orientation)
+        self.ekf.x = np.zeros(9)  # [pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, roll, pitch, yaw]
 
-        # Gyroscope noise variance (º/s)^2
-        self.gyro_rms_noise = 0.1  # º/s-rms
-        self.gyro_variance = self.gyro_rms_noise ** 2  # Variance for gx, gy, gz
-        self.gyro_variance2 = self.gyro_rms_noise ** 2  # Variance for gx, gy, gz
-        # Accelerometer noise variance (m/s^2)^2
-        self.acc_rms_noise = 0.008 * 9.81  # Convert from g to m/s^2
-        self.acc_variance = self.acc_rms_noise ** 2  # Variance for acx, acy, acz
-        self.acc_variance2 = self.acc_rms_noise ** 2  # Variance for acx, acy, acz
-        self.kf.x = np.zeros(9)  # Initial state: assume system is stationary initially
-        
-        # Smoothing factor for the low-pass filter (tune this as needed)
-        
-        # State transition matrix (F)
-        self.kf.F = np.eye(9)
-        self.kf.F[0, 3] = self.dt  # x += vx * dt
-        self.kf.F[1, 4] = self.dt  # y += vy * dt
-        self.kf.F[2, 5] = self.dt  # z += vz * dt
-        
-        # Measurement matrix (H) for both IMUs
-        self.kf.H = np.zeros((12, 9))
-        # IMU 1
-        self.kf.H[0, 3] = 1  # acx_1 -> vx
-        self.kf.H[1, 4] = 1  # acy_1 -> vy
-        self.kf.H[2, 5] = 1  # acz_1 -> vz
-        self.kf.H[3, 6] = 1  # gx_1 -> roll
-        self.kf.H[4, 7] = 1  # gy_1 -> pitch
-        self.kf.H[5, 8] = 1  # gz_1 -> yaw
-        # IMU 2
-        self.kf.H[6, 3] = 1  # acx_2 -> vx
-        self.kf.H[7, 4] = 1  # acy_2 -> vy
-        self.kf.H[8, 5] = 1  # acz_2 -> vz
-        self.kf.H[9, 6] = 1  # gx_2 -> roll
-        self.kf.H[10, 7] = 1  # gy_2 -> pitch
-        self.kf.H[11, 8] = 1  # gz_2 -> yaw
-        
+        # State covariance matrix (P)
+        self.ekf.P = np.eye(9) * 1  # Initial uncertainty
+
         # Process noise covariance matrix (Q)
-        self.kf.Q = np.diag([1e-5, 1e-5, 1e-5, 1e-3, 1e-3, 1e-3, 1e-5, 1e-5, 1e-5])
-        
-        # Measurement noise covariance matrix (R)
-        self.kf.R = np.diag([self.acc_variance, self.acc_variance, self.acc_variance, 
-                             self.gyro_variance, self.gyro_variance, self.gyro_variance,
-                             self.acc_variance, self.acc_variance, self.acc_variance, 
-                             self.gyro_variance, self.gyro_variance, self.gyro_variance])
-        
-        # Covariance matrix (P)
-        self.kf.P = np.eye(9) * 1  # Initial uncertainty
+        self.ekf.Q = np.diag([1e-4, 1e-4, 1e-4, 1e-2, 1e-2, 1e-2, 1e-3, 1e-3, 1e-3])
 
+        # Measurement noise covariance matrix (R)
+        self.ekf.R = np.diag([1e-2, 1e-2, 1e-2])  # Noise for fused accelerations
+
+        # Madgwick filter instance
+        self.madgwick_filter = Madgwick(frequency=1/dt)
+
+        # Initial quaternion for Madgwick filter
+        self.quaternion = np.array([1.0, 0.0, 0.0, 0.0])
+
+    def state_transition_function(self, x, u):
+        """
+        State transition function for EKF.
+        - x: state vector [pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, roll, pitch, yaw]
+        - u: fused accelerations [acx_fused, acy_fused, acz_fused]
+        """
+        dt = self.dt
+        # Predict new position and velocity based on acceleration
+        pos = x[:3] + x[3:6] * dt + 0.5 * u[:3] * dt**2  # Position update
+        vel = x[3:6] + u[:3] * dt  # Velocity update based on acceleration
+
+        return np.hstack((pos, vel))
+
+    def predict(self, u):
+        """
+        Use filterpy's built-in EKF prediction function.
+        - u: fused accelerations [acx_fused, acy_fused, acz_fused]
+        """
+        # Use the state transition function to predict new position and velocity
+        self.ekf.x[:6] = self.state_transition_function(self.ekf.x, u)
         
-    
-    def predict(self):
-        self.kf.predict()
-    
-    def update(self, measurements):
-        self.kf.update(measurements)
-    
+        # Update covariance matrix with state transition
+        F = self.calculate_jacobian(self.ekf.x)  # Jacobian matrix for state transition
+        self.ekf.P = F @ self.ekf.P @ F.T + self.ekf.Q
+    def measurement_function(self, x):
+        """
+        Measurement function that maps the state to the expected measurement.
+        In this case, we're predicting accelerations (which are related to velocity).
+        """
+        # Return the velocity components from the state as expected measurements (acceleration)
+        return np.array([x[3], x[4], x[5]])  # Velocity (vx, vy, vz) are proxies for acceleration
+    def measurement_jacobian(self, x):
+        """
+        Jacobian of the measurement function (H).
+        This maps the velocity components in the state vector to the measured accelerations.
+        """
+        H = np.zeros((3, 9))
+        H[0, 3] = H[1, 4] = H[2, 5] = 1  # Map velocity to acceleration (3x9 matrix)
+        return H
+    def update(self, z_imu1, z_imu2, orientation_madgwick):
+        """
+        Update the EKF with fused accelerations and Madgwick orientation.
+        - z_imu1: IMU1 accelerations [acx, acy, acz]
+        - z_imu2: IMU2 accelerations [acx, acy, acz]
+        - orientation_madgwick: [roll, pitch, yaw] from the Madgwick filter
+        """
+        # Fuse the accelerations from both IMUs (average or weighted)
+        accel_fused = 0.5 * (z_imu1[:3] + z_imu2[:3])
+
+        # Update the state vector's orientation directly from Madgwick
+        self.ekf.x[6:9] = orientation_madgwick  # Update roll, pitch, yaw from Madgwick
+
+        # Use filterpy's update function with the fused acceleration data
+        self.ekf.update(z=accel_fused, HJacobian=self.measurement_jacobian, Hx=self.measurement_function)
+
+    def calculate_jacobian(self, x):
+        """
+        Calculate the Jacobian matrix for the state transition function.
+        """
+        dt = self.dt
+        F = np.eye(9)
+        F[0, 3] = F[1, 4] = F[2, 5] = dt  # Partial derivatives for position w.r.t. velocity
+
+        return F
+
     def change_dt(self, dt):
         self.dt = dt
-        self.kf.F[0, 3] = dt  # x += vx * dt
-        self.kf.F[1, 4] = dt  # y += vy * dt
-        self.kf.F[2, 5] = dt  # z += vz * dt
-        
-        # Adjust process noise covariance matrix (Q) based on dt
-        self.kf.Q = np.diag([1e-5, 1e-5, 1e-5, 1e-3 * dt, 1e-3 * dt, 1e-3 * dt, 1e-5, 1e-5, 1e-5])
 
-    
     def get_state(self):
-        return self.kf.x[:3], self.kf.x[3:6], self.kf.x[6:9]  # Position, velocity, orientation
+        """
+        Return position, velocity, and orientation.
+        Orientation comes from the Madgwick filter.
+        """
+        return self.ekf.x[:3], self.ekf.x[3:6], self.ekf.x[6:9]  # Position, velocity, orientation
 
 class CalCOGFrame(Node):
 
     def __init__(self):
-        super().__init__('cog_calc3')
+        super().__init__('cog_calc4')
         self.subscription_mpu = self.create_subscription(Mpu, 'mpu_data', self.listener_callback, 10)
         self.subscription_mpu2 = self.create_subscription(Mpu, 'mpu_data_2', self.listener_callback2, 10)
         
@@ -123,7 +153,7 @@ class CalCOGFrame(Node):
             'gz': deque(maxlen=self.window_size),
         }
         # Kalman filter for fusing data from both MPUs
-        self.kf = IMUKalmanFilter(dt=0.02)
+        self.kf = IMUFusionEKF(dt=0.02)
         # Madgwick filter initialization
         self.madgwick_filter = Madgwick(frequency=50.0,gain=0.033)  # Adjust sample period as needed
         """
@@ -225,7 +255,35 @@ class CalCOGFrame(Node):
 
         return roll, pitch, yaw
 
+    def compensate_gravity(self,accel, roll, pitch):
+        """
+        Compensate for the gravitational component in the accelerometer reading
+        using the roll and pitch from the Madgwick filter.
 
+        accel: 3D vector of accelerometer data [ax, ay, az] (in m/s²)
+        roll: roll angle in radians
+        pitch: pitch angle in radians
+        """
+        # Gravity vector in the sensor frame
+        g = np.array([0, 0, 9.81])  # Gravity in m/s²
+
+        # Calculate the rotation matrix from the roll and pitch
+        # Note: Yaw isn't needed for gravity compensation
+        R_x = np.array([[1, 0, 0],
+                        [0, np.cos(roll), -np.sin(roll)],
+                        [0, np.sin(roll), np.cos(roll)]])  # Rotation matrix for roll
+        
+        R_y = np.array([[np.cos(pitch), 0, np.sin(pitch)],
+                        [0, 1, 0],
+                        [-np.sin(pitch), 0, np.cos(pitch)]])  # Rotation matrix for pitch
+        
+        # Rotate gravity into the sensor frame
+        g_sensor = R_x @ R_y @ g
+
+        # Subtract the gravity vector from the accelerometer readings
+        accel_compensated = accel - g_sensor
+
+        return accel_compensated
     def process_fusion(self):
         if self.mpu1_data is None or self.mpu2_data is None:
             return  # Wait until data from both MPUs is available
@@ -249,14 +307,8 @@ class CalCOGFrame(Node):
         # Update the measurement noise covariance matrix based on recent data
         self.update_measurement_noise()
         # Create the measurement vector with data from both IMUs
-        measurements = np.array([filtered_acx, filtered_acy, filtered_acz,
-                                 self.mpu1_data.gx, self.mpu1_data.gy, self.mpu1_data.gz,
-                                 filtered_acx2, filtered_acy2, filtered_acz2,
-                                 self.mpu2_data.gx, self.mpu2_data.gy, self.mpu2_data.gz]) # 12 measurements m/s^2, grados/s
-
-        self.kf.predict()  # Prediction step based on the current state
-        self.kf.update(measurements)  # Update Kalman filter with new measurements
-        # Madgwick filter update (Orientation calculation)
+        
+        # In process_fusion:
         
         alpha = 0.7  # Weight for IMU1, 1 - alpha for IMU2
         alpha2 = 0.3
@@ -265,7 +317,7 @@ class CalCOGFrame(Node):
             alpha * self.mpu1_data.gx + (1 - alpha) * self.mpu2_data.gx,
             alpha * self.mpu1_data.gy + (1 - alpha) * self.mpu2_data.gy,
             alpha * self.mpu1_data.gz + (1 - alpha) * self.mpu2_data.gz
-        ]) * np.pi / 180  # Convert to rad/s
+        ]) # already in rad/s
 
         # Weighted average for accelerometer data
         accelerometer_data = np.array([
@@ -278,17 +330,40 @@ class CalCOGFrame(Node):
 
        
         roll, pitch, yaw = self.quaternion_to_euler_angles(self.quaternion)
+        # Compensate for gravity using the orientation from the Madgwick filter
+        # Convert accelerometer readings to m/s² (if not already in m/s²)
+        accel_imu1 = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz]) * 1
+        accel_imu2 = np.array([self.mpu2_data.acx, self.mpu2_data.acy, self.mpu2_data.acz]) * 1
+        accel_imu1_comp = self.compensate_gravity(accel_imu1, roll, pitch)
+        accel_imu2_comp = self.compensate_gravity(accel_imu2, roll, pitch)
 
-        # Retrieve filtered state (position, velocity, orientation)
+        # Fused measurement vector for EKF (acceleration from both IMUs)
+        z_imu1 = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz])
+        z_imu2 = np.array([self.mpu2_data.acx, self.mpu2_data.acy, self.mpu2_data.acz])
+
+            # Fuse the accelerations (average)
+        u_fused = 0.5 * (accel_imu1_comp + accel_imu2_comp)
+
+        # EKF Prediction step with fused acceleration
+        self.kf.predict(u_fused)
+
+        # EKF Update step with fused measurements and Madgwick orientation
+        self.kf.update(z_imu1, z_imu2, [roll, pitch, yaw])
+
+        # Retrieve filtered state (position, velocity)
         pos, vel, orient = self.kf.get_state()
 
+        # Retrieve filtered state (position, velocity)
+        pos, vel, orient = self.kf.get_state()
         # Publish the Kalman filter output
         msg = COGframe()
         msg.pos_x, msg.pos_y, msg.pos_z = float(pos[0]), float(pos[1]), float(pos[2])
         msg.roll, msg.pitch, msg.yaw = float(roll), float(pitch), float(yaw)
         self.publishKalmanFrame.publish(msg)
         self.get_logger().info(f"Kalman pose (X, Y, Z): {msg.pos_x}, {msg.pos_y}, {msg.pos_z}")
-        self.get_logger().info(f"Kalman orientation (roll pitch yaw): {msg.roll}, {msg.pitch}, {msg.yaw}")
+        self.get_logger().info(f"Kalman speed (vx vy vz): {float(vel[0])}, {float(vel[1])}, {float(vel[2])}")
+        self.get_logger().info(f"Kalman speed  2(vx vy vz): {float(accel_imu1_comp[0])}, {float(accel_imu1_comp[1])}, {float(accel_imu1_comp[2])}")
+        self.get_logger().info(f"Kalman acc 2 (vx vy vz): {float(accel_imu2_comp[0])}, {float(accel_imu2_comp[1])}, {float(accel_imu2_comp[2])}")
 
 def main(args=None):
     rclpy.init(args=args)

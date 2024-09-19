@@ -29,6 +29,7 @@ setup(
             'cog_calc = mpu_pub.cog_calc:main',
             'cog_calc2 = mpu_pub.cog_calc2:main',
             'cog_calc3 = mpu_pub.cog_calc3:main',
+            'cog_calc4 = mpu_pub.cog_calc4:main',
         ],
     },
 )
