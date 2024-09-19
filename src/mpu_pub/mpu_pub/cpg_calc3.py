@@ -27,6 +27,10 @@ class IMUKalmanFilter:
         self.acc_variance = self.acc_rms_noise ** 2  # Variance for acx, acy, acz
         self.acc_variance2 = self.acc_rms_noise ** 2  # Variance for acx, acy, acz
         self.kf.x = np.zeros(9)  # Initial state: assume system is stationary initially
+         # Initial values for filtered accelerometer data
+        self.filtered_acc = {'acx': 0.0, 'acy': 0.0, 'acz': 0.0}
+        # Smoothing factor for the low-pass filter (tune this as needed)
+        self.alpha = 0.2  # Lower alpha = more smoothing, higher alpha = faster response
 
         # State transition matrix (F)
         self.kf.F = np.eye(9)
@@ -136,7 +140,17 @@ class IMUKalmanFilter:
         self.gyro_buffers2['gx'].append(imu_data2.gx)
         self.gyro_buffers2['gy'].append(imu_data2.gy)
         self.gyro_buffers2['gz'].append(imu_data2.gz)
-
+    def low_pass_filter(self, axis, raw_data):
+            """
+            Apply an exponential moving average (EMA) low-pass filter to accelerometer data.
+            axis: 'acx', 'acy', or 'acz'
+            raw_data: new raw accelerometer reading
+            """
+            # Update the filtered value using EMA formula
+            self.filtered_acc[axis] = self.alpha * raw_data + (1 - self.alpha) * self.filtered_acc[axis]
+            
+            # Return the filtered value
+            return self.filtered_acc[axis]
     def predict(self):
         self.kf.predict()
     
@@ -216,7 +230,14 @@ class CalCOGFrame(Node):
         dt = current_time - self.prev_time
         if dt < 1e-6:
             dt = 1e-6  # Set a minimum time step threshold
+         # Apply low-pass filter to the raw accelerometer data
 
+        filtered_acx = self.low_pass_filter('acx', self.mpu1_data.acx)
+        filtered_acy = self.low_pass_filter('acy', self.mpu1_data.acy)
+        filtered_acz = self.low_pass_filter('acz', self.mpu1_data.acz)
+        filtered_acx2 = self.low_pass_filter('acx', self.mpu2_data.acx)
+        filtered_acy2 = self.low_pass_filter('acy', self.mpu2_data.acy)
+        filtered_acz2 = self.low_pass_filter('acz', self.mpu2_data.acz)
         self.kf.change_dt(dt)
         self.prev_time = current_time  # Update previous time
         # Add new measurement data to the buffers
@@ -224,9 +245,9 @@ class CalCOGFrame(Node):
         # Update the measurement noise covariance matrix based on recent data
         self.update_measurement_noise()
         # Create the measurement vector with data from both IMUs
-        measurements = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz,
+        measurements = np.array([filtered_acx, filtered_acy, filtered_acz,
                                  self.mpu1_data.gx, self.mpu1_data.gy, self.mpu1_data.gz,
-                                 self.mpu2_data.acx, self.mpu2_data.acy, self.mpu2_data.acz,
+                                 filtered_acx2, filtered_acy2, filtered_acz2,
                                  self.mpu2_data.gx, self.mpu2_data.gy, self.mpu2_data.gz])
 
         self.kf.predict()  # Prediction step based on the current state
