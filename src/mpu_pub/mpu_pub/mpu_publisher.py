@@ -85,6 +85,11 @@ class MinimalPublisher(Node):
         timer_period = 1/50   # seconds 50Hz
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0
+        self.prev_accel_x, self.prev_accel_y, self.prev_accel_z = 0, 0, 0
+        self.prev_gyro_x, self.prev_gyro_y, self.prev_gyro_z = 0, 0, 0
+
+        self.prev_accel_x2, self.prev_accel_y2, self.prev_accel_z2 = 0, 0, 0
+        self.prev_gyro_x2, self.prev_gyro_y2, self.prev_gyro_z2 = 0, 0, 0
 
     def check_full_scale(self, address):
         """Checks if the sensor is configured for full scale"""
@@ -128,7 +133,8 @@ class MinimalPublisher(Node):
         accel_data = []
         gyro_data = []
         self.calibrationTime = time.time()
-        
+        prev_accel_x, prev_accel_y, prev_accel_z = 0, 0, 0
+        prev_gyro_x, prev_gyro_y, prev_gyro_z = 0, 0, 0
         self.get_logger().info(f"Calibrating MPU at address {hex(address)}...")
 
         for _ in range(num_samples):
@@ -144,6 +150,19 @@ class MinimalPublisher(Node):
             gyro_x = self.convert_data(gyro_raw_data[0], gyro_raw_data[1])
             gyro_y = self.convert_data(gyro_raw_data[2], gyro_raw_data[3])
             gyro_z = self.convert_data(gyro_raw_data[4], gyro_raw_data[5])
+
+            # Apply low-pass filter to raw values
+            accel_x = self.low_pass_filter(accel_x, prev_accel_x)
+            accel_y = self.low_pass_filter(accel_y, prev_accel_y)
+            accel_z = self.low_pass_filter(accel_z, prev_accel_z)
+
+            gyro_x = self.low_pass_filter(gyro_x, prev_gyro_x)
+            gyro_y = self.low_pass_filter(gyro_y, prev_gyro_y)
+            gyro_z = self.low_pass_filter(gyro_z, prev_gyro_z)
+
+            # Update previous values for next iteration
+            prev_accel_x, prev_accel_y, prev_accel_z = accel_x, accel_y, accel_z
+            prev_gyro_x, prev_gyro_y, prev_gyro_z = gyro_x, gyro_y, gyro_z
 
                 # Convert to correct units
             accel_x = accel_x / ACCEL_SENSITIVITY * 9.81  # Convert to m/s²
@@ -185,14 +204,23 @@ class MinimalPublisher(Node):
         self.get_logger().info(f"Accel standard deviation: {accel_std}, Gyro standard deviation: {gyro_std}")
 
         self.get_logger().info(f"Calibration completed for {key}. Accel offsets: {accel_offset}, Gyro offsets: {gyro_offset}")
-    
+
+    def low_pass_filter_raw(data, alpha=0.5):
+        filtered_data = [data[0]]  # Initialize with the first value
+        for i in range(1, len(data)):
+            filtered_data.append(alpha * data[i] + (1 - alpha) * filtered_data[i - 1])
+        return np.array(filtered_data)
     def convert_data(self, high_byte, low_byte):
         """Converts high and low bytes into a signed integer"""
         value = (high_byte << 8) | low_byte
         if value > 32767:
             value -= 65536
         return value
-    def read_sensor_data(self, address, calibration_key):
+    
+    def low_pass_filter(current_value, previous_value, alpha=0.5):
+        """Applies a low-pass filter to smooth raw sensor data."""
+        return alpha * current_value + (1 - alpha) * previous_value
+    def read_sensor_data(self, address, calibration_key,prev):
         """Reads the raw sensor data from the MPU9250"""
         # Read accelerometer and gyroscope data
         accel_data = self.bus.read_i2c_block_data(address, 0x3B, 6)
@@ -207,22 +235,24 @@ class MinimalPublisher(Node):
         gyro_x = self.convert_data(gyro_data[0], gyro_data[1])
         gyro_y = self.convert_data(gyro_data[2], gyro_data[3])
         gyro_z = self.convert_data(gyro_data[4], gyro_data[5])
+        # Apply low-pass filter to raw values
+        accel_x = self.low_pass_filter(accel_x, prev[0])
+        accel_y = self.low_pass_filter(accel_y, prev[1])
+        accel_z = self.low_pass_filter(accel_z, prev[2])
 
+        gyro_x = self.low_pass_filter(gyro_x, prev[3])
+        gyro_y = self.low_pass_filter(gyro_y, prev[4])
+        gyro_z = self.low_pass_filter(gyro_z, prev[5])
+
+        
         # Convert to correct units
-        accel_x /= ACCEL_SENSITIVITY
-        accel_y /= ACCEL_SENSITIVITY
-        accel_z /= ACCEL_SENSITIVITY
-
-        gyro_x /= GYRO_SENSITIVITY
-        gyro_y /= GYRO_SENSITIVITY
-        gyro_z /= GYRO_SENSITIVITY
-        accel_x = (accel_x * 9.81)  # Convert to m/s^2
-        accel_y = (accel_y * 9.81)
-        accel_z = (accel_z * 9.81)
-
-        gyro_x = (gyro_x * np.pi / 180.0)  # Convert to rad/s
-        gyro_y = (gyro_y * np.pi / 180.0)
-        gyro_z = (gyro_z * np.pi / 180.0)
+            # Convert to correct units
+        accel_x = accel_x / ACCEL_SENSITIVITY * 9.81  # Convert to m/s²
+        accel_y = accel_y / ACCEL_SENSITIVITY * 9.81
+        accel_z = accel_z / ACCEL_SENSITIVITY * 9.81
+        gyro_x = gyro_x / GYRO_SENSITIVITY * (np.pi / 180.0)  # Convert to rad/s
+        gyro_y = gyro_y / GYRO_SENSITIVITY * (np.pi / 180.0)
+        gyro_z = gyro_z / GYRO_SENSITIVITY * (np.pi / 180.0)
         # Apply calibration
         accel_x = (accel_x - calibration_data[calibration_key]["accel"]["offset"][0])    + calibration_data[calibration_key]["accel"]["slope"][0]
         accel_y = ( accel_y - calibration_data[calibration_key]["accel"]["offset"][1])    +calibration_data[calibration_key]["accel"]["slope"][1]
@@ -248,12 +278,16 @@ class MinimalPublisher(Node):
                 self.calibrate_mpu(mpu9250_address_2,10000,'mpu2')
             # Read accelerometer data
             key = 'mpu1'
-            accel_x,accel_y,accel_z,gyro_x,gyro_y,gyro_z = self.read_sensor_data(mpu9250_address,key )
-            
+            prev = [self.prev_accel_x, self.prev_accel_y, self.prev_accel_z, self.prev_gyro_x, self.prev_gyro_y, self.prev_gyro_z]
+            accel_x,accel_y,accel_z,gyro_x,gyro_y,gyro_z = self.read_sensor_data(mpu9250_address,key ,prev)
+            self.prev_accel_x, self.prev_accel_y, self.prev_accel_z = accel_x, accel_y, accel_z
+            self.prev_gyro_x, self.prev_gyro_y, self.prev_gyro_z = gyro_x, gyro_y, gyro_z
             # Read, calibrate, and convert gyroscope data to dps
             key = 'mpu2'
-            accel_x_2 ,accel_y_2,accel_z_2,gyro_x_2,gyro_y_2,gyro_z_2 = self.read_sensor_data(mpu9250_address, key )
-            
+            prev = [self.prev_accel_x2, self.prev_accel_y2, self.prev_accel_z2, self.prev_gyro_x2, self.prev_gyro_y2, self.prev_gyro_z2]
+            accel_x_2 ,accel_y_2,accel_z_2,gyro_x_2,gyro_y_2,gyro_z_2 = self.read_sensor_data(mpu9250_address, key,prev )
+            self.prev_accel_x2, self.prev_accel_y2, self.prev_accel_z2 = accel_x_2, accel_y_2, accel_z_2
+            self.prev_gyro_x2, self.prev_gyro_y2, self.prev_gyro_z2 = gyro_x_2, gyro_y_2, gyro_z_2
             self.get_logger().info(f"Accel_x: {accel_x}, Accel_y: {accel_y}, Accel_z: {accel_z}")
             self.get_logger().info(f"Accel_x_2: {accel_x_2}, Accel_y_2: {accel_y_2}, Accel_z_2: {accel_z_2}")
 
