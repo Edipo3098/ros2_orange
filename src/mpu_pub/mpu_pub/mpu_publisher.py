@@ -132,36 +132,33 @@ class MinimalPublisher(Node):
         self.get_logger().info(f"Calibrating MPU at address {hex(address)}...")
 
         for _ in range(num_samples):
-            accel_data = self.bus.read_i2c_block_data(address, 0x3B, 6)
-            gyro_data = self.bus.read_i2c_block_data(address, 0x43, 6)
+            accel_raw_data = self.bus.read_i2c_block_data(address, 0x3B, 6)
+            gyro_raw_data = self.bus.read_i2c_block_data(address, 0x43, 6)
 
             # Process accelerometer data
-            accel_x = self.convert_data(accel_data[0], accel_data[1])
-            accel_y = self.convert_data(accel_data[2], accel_data[3])
-            accel_z = self.convert_data(accel_data[4], accel_data[5])
+            accel_x = self.convert_data(accel_raw_data[0], accel_raw_data[1])
+            accel_y = self.convert_data(accel_raw_data[2], accel_raw_data[3])
+            accel_z = self.convert_data(accel_raw_data[4], accel_raw_data[5])
 
             # Process gyroscope data
-            gyro_x = self.convert_data(gyro_data[0], gyro_data[1])
-            gyro_y = self.convert_data(gyro_data[2], gyro_data[3])
-            gyro_z = self.convert_data(gyro_data[4], gyro_data[5])
+            gyro_x = self.convert_data(gyro_raw_data[0], gyro_raw_data[1])
+            gyro_y = self.convert_data(gyro_raw_data[2], gyro_raw_data[3])
+            gyro_z = self.convert_data(gyro_raw_data[4], gyro_raw_data[5])
 
-            # Convert to correct units
-            accel_x /= ACCEL_SENSITIVITY
-            accel_y /= ACCEL_SENSITIVITY
-            accel_z /= ACCEL_SENSITIVITY
+                # Convert to correct units
+            accel_x = accel_x / ACCEL_SENSITIVITY * 9.81  # Convert to m/s²
+            accel_y = accel_y / ACCEL_SENSITIVITY * 9.81
+            accel_z = accel_z / ACCEL_SENSITIVITY * 9.81
 
-            gyro_x /= GYRO_SENSITIVITY
-            gyro_y /= GYRO_SENSITIVITY
-            gyro_z /= GYRO_SENSITIVITY
-            accel_x = (accel_x * 9.81)  # Convert to m/s^2
-            accel_y = (accel_y * 9.81)
-            accel_z = (accel_z * 9.81)
+            gyro_x = gyro_x / GYRO_SENSITIVITY * (np.pi / 180.0)  # Convert to rad/s
+            gyro_y = gyro_y / GYRO_SENSITIVITY * (np.pi / 180.0)
+            gyro_z = gyro_z / GYRO_SENSITIVITY * (np.pi / 180.0)
 
             accel_data.append([accel_x, accel_y, accel_z])
             gyro_data.append([gyro_x, gyro_y, gyro_z])
 
             
-
+        
         accel_data = np.array(accel_data)
         gyro_data = np.array(gyro_data)
 
