@@ -47,12 +47,12 @@ GYRO_ZOUT_H  = 0x47
 # Calibration data for two MPU9250s
 calibration_data = {
     "mpu1": {
-        "accel": {"slope": [1.0, 1.0, 1.0], "offset": [0.0, 0.0, 0.0]},
-        "gyro": {"offset": [0.0, 0.0, 0.0]}
+        "accel": {"slope": [-1.00287361, -0.99886526, -1.00341099], "offset": [0.00174287, 0.00552432, -0.03603273]},
+        "gyro": {"offset": [0.41042327880859375, 1.2082672119140625, 0.06053924560546875]}
     },
     "mpu2": {
-        "accel": {"slope": [1.0, 1.0, 1.0], "offset": [0.0, 0.0, 0.0]},
-        "gyro": {"offset": [0.0, 0.0, 0.0]}
+        "accel": {"slope": [-1.00038423, -1.00699974, -1.00256861 ], "offset": [-0.02106848, -0.00323046,  -0.05491282]},
+        "gyro": {"offset": [0.9417724609375, 1.201019287109375, -1.0709762573242188]}
     }
 }
 # Constants for sensitivity values
@@ -83,11 +83,11 @@ class MinimalPublisher(Node):
         self.check_full_scale(mpu9250_address)
         calibration_key = 'mpu1'
         
-        self.calibrate_mpu(mpu9250_address,20000,calibration_key)
+        #self.calibrate_mpu(mpu9250_address,20000,calibration_key)
 
         calibration_key = 'mpu2'
         self.check_full_scale(mpu9250_address_2)
-        self.calibrate_mpu(mpu9250_address_2,20000,calibration_key)
+        #self.calibrate_mpu(mpu9250_address_2,20000,calibration_key)
         
 
         self.Check_communication(mpu9250_address)
@@ -189,6 +189,10 @@ class MinimalPublisher(Node):
             gyro_y = self.convert_data(gyro_raw_data[2], gyro_raw_data[3])
             gyro_z = self.convert_data(gyro_raw_data[4], gyro_raw_data[5])
 
+            
+
+                # Convert to correct units
+            """
             # Apply low-pass filter to raw values
             accel_x = self.low_pass_filter(accel_x, prev_accel_x)
             accel_y = self.low_pass_filter(accel_y, prev_accel_y)
@@ -202,8 +206,6 @@ class MinimalPublisher(Node):
             prev_accel_x, prev_accel_y, prev_accel_z = accel_x, accel_y, accel_z
             prev_gyro_x, prev_gyro_y, prev_gyro_z = gyro_x, gyro_y, gyro_z
 
-                # Convert to correct units
-            """
             accel_x = accel_x / ACCEL_SENSITIVITY * 9.81  # Convert to m/s²
             accel_y = accel_y / ACCEL_SENSITIVITY * 9.81
             accel_z = accel_z / ACCEL_SENSITIVITY * 9.81
