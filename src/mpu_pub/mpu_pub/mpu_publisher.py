@@ -178,6 +178,11 @@ class MinimalPublisher(Node):
         calibration_data[key]["accel"]["offset"] = accel_offset
         calibration_data[key]["gyro"]["offset"] = gyro_offset
 
+        # Log the standard deviation for diagnostic purposes
+        # You can also compute standard deviation and discard high variance data
+        accel_std = np.std(accel_data, axis=0)
+        gyro_std = np.std(gyro_data, axis=0)
+        self.get_logger().info(f"Accel standard deviation: {accel_std}, Gyro standard deviation: {gyro_std}")
 
         self.get_logger().info(f"Calibration completed for {key}. Accel offsets: {accel_offset}, Gyro offsets: {gyro_offset}")
     
