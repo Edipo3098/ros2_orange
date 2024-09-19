@@ -283,16 +283,12 @@ class MinimalPublisher(Node):
                 calibrated_value = (calibration_params['a_x'] * (value + calibration_params['m']) + calibration_params['b'])*9.81 
 
             # Convert to physical units
-            physical_value = calibrated_value 
+            physical_value = calibrated_value/sensitivity
 
-            return physical_value
+            return float(physical_value)
         except Exception as e:
             self.get_logger().info(f'Error in read_sensor_data: {e}')
-        finally:
-            try:
-                self.bus.close()
-            except:
-                pass
+       
     
 
     def timer_callback(self):
