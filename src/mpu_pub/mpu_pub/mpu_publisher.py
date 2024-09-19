@@ -198,7 +198,13 @@ class MinimalPublisher(Node):
         gyro_x /= GYRO_SENSITIVITY
         gyro_y /= GYRO_SENSITIVITY
         gyro_z /= GYRO_SENSITIVITY
+        accel_x = (accel_x * 9.81)  # Convert to m/s^2
+        accel_y = (accel_y * 9.81)
+        accel_z = (accel_z * 9.81)
 
+        gyro_x = (gyro_x * np.pi / 180.0)  # Convert to rad/s
+        gyro_y = (gyro_y * np.pi / 180.0)
+        gyro_z = (gyro_z * np.pi / 180.0)
         # Apply calibration
         accel_x = (accel_x - calibration_data[calibration_key]["accel"]["offset"][0])    + calibration_data[calibration_key]["accel"]["slope"][0]
         accel_y = ( accel_y - calibration_data[calibration_key]["accel"]["offset"][1])    +calibration_data[calibration_key]["accel"]["slope"][1]
@@ -209,13 +215,7 @@ class MinimalPublisher(Node):
         gyro_z -= calibration_data[calibration_key]["gyro"]["offset"][2]
 
 
-        accel_x = (accel_x * 9.81)  # Convert to m/s^2
-        accel_y = (accel_y * 9.81)
-        accel_z = (accel_z * 9.81)
-
-        gyro_x = (gyro_x * np.pi / 180.0)  # Convert to rad/s
-        gyro_y = (gyro_y * np.pi / 180.0)
-        gyro_z = (gyro_z * np.pi / 180.0)
+        
         
 
         return accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z
