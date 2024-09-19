@@ -4,7 +4,7 @@ from robot_interfaces.msg import Mpu, COGframe
 from time import time
 import numpy as np
 from filterpy.kalman import KalmanFilter
-from madgwick_py import MadgwickAHRS
+from ahrs.filters import Madgwick  # Use Madgwick from ahrs package
 from collections import deque
 """
 Fusion sensor increase measuremetes to 12
@@ -27,11 +27,9 @@ class IMUKalmanFilter:
         self.acc_variance = self.acc_rms_noise ** 2  # Variance for acx, acy, acz
         self.acc_variance2 = self.acc_rms_noise ** 2  # Variance for acx, acy, acz
         self.kf.x = np.zeros(9)  # Initial state: assume system is stationary initially
-         # Initial values for filtered accelerometer data
-        self.filtered_acc = {'acx': 0.0, 'acy': 0.0, 'acz': 0.0}
+        
         # Smoothing factor for the low-pass filter (tune this as needed)
-        self.alpha = 0.2  # Lower alpha = more smoothing, higher alpha = faster response
-
+        
         # State transition matrix (F)
         self.kf.F = np.eye(9)
         self.kf.F[0, 3] = self.dt  # x += vx * dt
@@ -67,6 +65,41 @@ class IMUKalmanFilter:
         # Covariance matrix (P)
         self.kf.P = np.eye(9) * 1  # Initial uncertainty
 
+        
+    
+    def predict(self):
+        self.kf.predict()
+    
+    def update(self, measurements):
+        self.kf.update(measurements)
+    
+    def change_dt(self, dt):
+        self.dt = dt
+        self.kf.F[0, 3] = dt  # x += vx * dt
+        self.kf.F[1, 4] = dt  # y += vy * dt
+        self.kf.F[2, 5] = dt  # z += vz * dt
+        
+        # Adjust process noise covariance matrix (Q) based on dt
+        self.kf.Q = np.diag([1e-5, 1e-5, 1e-5, 1e-3 * dt, 1e-3 * dt, 1e-3 * dt, 1e-5, 1e-5, 1e-5])
+
+    
+    def get_state(self):
+        return self.kf.x[:3], self.kf.x[3:6], self.kf.x[6:9]  # Position, velocity, orientation
+
+class CalCOGFrame(Node):
+
+    def __init__(self):
+        super().__init__('cog_calc3')
+        self.subscription_mpu = self.create_subscription(Mpu, 'mpu_data', self.listener_callback, 10)
+        self.subscription_mpu2 = self.create_subscription(Mpu, 'mpu_data_2', self.listener_callback2, 10)
+        
+        self.publishKalmanFrame = self.create_publisher(COGframe, 'kalman_cog_frame_3', 10)
+        self.publishTrapezFrame = self.create_publisher(COGframe, 'trapez_cog_frame_3', 10)
+
+        self.alpha = 0.2  # Lower alpha = more smoothing, higher alpha = faster response
+         # Initial values for filtered accelerometer data
+        self.filtered_acc = {'acx': 0.0, 'acy': 0.0, 'acz': 0.0}
+        self.quaternion = np.array([1.0, 0.0, 0.0, 0.0])  # Initial quaternion representing no rotation
         # Initialize the measurement buffers for sliding window (store last N measurements)
         self.window_size = 50  # Number of recent measurements to consider
         self.acc_buffers = {
@@ -89,6 +122,37 @@ class IMUKalmanFilter:
             'gy': deque(maxlen=self.window_size),
             'gz': deque(maxlen=self.window_size),
         }
+        # Kalman filter for fusing data from both MPUs
+        self.kf = IMUKalmanFilter(dt=0.02)
+        # Madgwick filter initialization
+        self.madgwick_filter = Madgwick(frequency=50.0,gain=0.033)  # Adjust sample period as needed
+        """
+        If your IMU data is noisy, a lower beta value may help reduce jitter, though you will need to balance this with the slower data rate.
+        """
+        # Buffers to hold the last measurements from each MPU
+        self.mpu1_data = None
+        self.mpu2_data = None
+
+        self.prev_time = time()
+
+    def listener_callback(self, msg):
+        self.mpu1_data = msg
+        self.process_fusion()
+        
+    def listener_callback2(self, msg):
+        self.mpu2_data = msg
+        self.process_fusion()
+    def low_pass_filter(self, axis, raw_data):
+            """
+            Apply an exponential moving average (EMA) low-pass filter to accelerometer data.
+            axis: 'acx', 'acy', or 'acz'
+            raw_data: new raw accelerometer reading
+            """
+            # Update the filtered value using EMA formula
+            self.filtered_acc[axis] = self.alpha * raw_data + (1 - self.alpha) * self.filtered_acc[axis]
+            
+            # Return the filtered value
+            return self.filtered_acc[axis]
     def update_measurement_noise(self):
         """
         Calculate new measurement noise covariance matrix R based on sliding window variance.
@@ -140,67 +204,7 @@ class IMUKalmanFilter:
         self.gyro_buffers2['gx'].append(imu_data2.gx)
         self.gyro_buffers2['gy'].append(imu_data2.gy)
         self.gyro_buffers2['gz'].append(imu_data2.gz)
-    def low_pass_filter(self, axis, raw_data):
-            """
-            Apply an exponential moving average (EMA) low-pass filter to accelerometer data.
-            axis: 'acx', 'acy', or 'acz'
-            raw_data: new raw accelerometer reading
-            """
-            # Update the filtered value using EMA formula
-            self.filtered_acc[axis] = self.alpha * raw_data + (1 - self.alpha) * self.filtered_acc[axis]
-            
-            # Return the filtered value
-            return self.filtered_acc[axis]
-    def predict(self):
-        self.kf.predict()
     
-    def update(self, measurements):
-        self.kf.update(measurements)
-    
-    def change_dt(self, dt):
-        self.dt = dt
-        self.kf.F[0, 3] = dt  # x += vx * dt
-        self.kf.F[1, 4] = dt  # y += vy * dt
-        self.kf.F[2, 5] = dt  # z += vz * dt
-        
-        # Adjust process noise covariance matrix (Q) based on dt
-        self.kf.Q = np.diag([1e-5, 1e-5, 1e-5, 1e-3 * dt, 1e-3 * dt, 1e-3 * dt, 1e-5, 1e-5, 1e-5])
-
-    
-    def get_state(self):
-        return self.kf.x[:3], self.kf.x[3:6], self.kf.x[6:9]  # Position, velocity, orientation
-
-class CalCOGFrame(Node):
-
-    def __init__(self):
-        super().__init__('cog_calc3')
-        self.subscription_mpu = self.create_subscription(Mpu, 'mpu_data', self.listener_callback, 10)
-        self.subscription_mpu2 = self.create_subscription(Mpu, 'mpu_data_2', self.listener_callback2, 10)
-        
-        self.publishKalmanFrame = self.create_publisher(COGframe, 'kalman_cog_frame', 10)
-        self.publishTrapezFrame = self.create_publisher(COGframe, 'trapez_cog_frame', 10)
-
-        # Kalman filter for fusing data from both MPUs
-        self.kf = IMUKalmanFilter(dt=0.02)
-        # Madgwick filter initialization
-        self.madgwick_filter = MadgwickAHRS(sampleperiod=0.02,beta = 0.1)  # Adjust sample period as needed
-        """
-        If your IMU data is noisy, a lower beta value may help reduce jitter, though you will need to balance this with the slower data rate.
-        """
-        # Buffers to hold the last measurements from each MPU
-        self.mpu1_data = None
-        self.mpu2_data = None
-
-        self.prev_time = time()
-
-    def listener_callback(self, msg):
-        self.mpu1_data = msg
-        self.process_fusion()
-        
-    def listener_callback2(self, msg):
-        self.mpu2_data = msg
-        self.process_fusion()
-
     def quaternion_to_euler_angles(self, q):
         """
         Convert a quaternion into Euler angles (roll, pitch, yaw)
@@ -269,15 +273,11 @@ class CalCOGFrame(Node):
             alpha * self.mpu1_data.acy + (1 - alpha) * self.mpu2_data.acy,
             alpha * self.mpu1_data.acz + (1 - alpha) * self.mpu2_data.acz
         ]) / 9.81  # Convert to G
-        # Inputs: gyroscope in rad/s and accelerometer in G (gravity)
-        # Update Madgwick filter
-        self.madgwick_filter.update_imu(gyroscope_data, accelerometer_data)
+        self.quaternion
+        self.quaternion  = self.madgwick_filter.updateIMU(q=self.quaternion,gyr=gyroscope_data, acc=accelerometer_data)
 
-        # Retrieve quaternion from Madgwick filter
-        quaternion = self.madgwick_filter.quaternion.q  # [w, x, y, z]
-
-        # Convert quaternion to Euler angles (roll, pitch, yaw)
-        roll, pitch, yaw = self.quaternion_to_euler_angles(quaternion)
+       
+        roll, pitch, yaw = self.quaternion_to_euler_angles(self.quaternion)
 
         # Retrieve filtered state (position, velocity, orientation)
         pos, vel, orient = self.kf.get_state()

@@ -283,7 +283,7 @@ class MinimalPublisher(Node):
                 calibrated_value = (calibration_params['a_x'] * (value + calibration_params['m']) + calibration_params['b'])*9.81 
 
             # Convert to physical units
-            physical_value = calibrated_value/sensitivity
+            physical_value = calibrated_value
 
             return float(physical_value)
         except Exception as e:

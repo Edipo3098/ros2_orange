@@ -80,8 +80,8 @@ class CalCOGFrame(Node):
         self.subscription_mpu = self.create_subscription(Mpu, 'mpu_data', self.listener_callback, 10)
         self.subscription_mpu2 = self.create_subscription(Mpu, 'mpu_data_2', self.listener_callback2, 10)
         
-        self.publishKalmanFrame = self.create_publisher(COGframe, 'kalman_cog_frame', 10)
-        self.publishTrapezFrame = self.create_publisher(COGframe, 'trapez_cog_frame', 10)
+        self.publishKalmanFrame = self.create_publisher(COGframe, 'kalman_cog_frame_2', 10)
+        self.publishTrapezFrame = self.create_publisher(COGframe, 'trapez_cog_frame_2', 10)
 
         # Kalman filter for fusing data from both MPUs
         self.kf = IMUKalmanFilter(dt=0.01)
