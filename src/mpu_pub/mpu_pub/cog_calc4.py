@@ -324,22 +324,22 @@ class CalCOGFrame(Node):
             alpha * self.mpu1_data.acx + (1 - alpha) * self.mpu2_data.acx,
             alpha * self.mpu1_data.acy + (1 - alpha) * self.mpu2_data.acy,
             alpha * self.mpu1_data.acz + (1 - alpha) * self.mpu2_data.acz
-        ]) / 9.81  # Convert to G
+        ]) # already in g
         self.quaternion
         self.quaternion  = self.madgwick_filter.updateIMU(q=self.quaternion,gyr=gyroscope_data, acc=accelerometer_data)
 
        
-        roll, pitch, yaw = self.quaternion_to_euler_angles(self.quaternion)
+        roll, pitch, yaw = self.quaternion_to_euler_angles(self.quaternion)  # in rads
         # Compensate for gravity using the orientation from the Madgwick filter
         # Convert accelerometer readings to m/s² (if not already in m/s²)
-        accel_imu1 = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz]) * 1
-        accel_imu2 = np.array([self.mpu2_data.acx, self.mpu2_data.acy, self.mpu2_data.acz]) * 1
+        accel_imu1 = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz]) * 9.81
+        accel_imu2 = np.array([self.mpu2_data.acx, self.mpu2_data.acy, self.mpu2_data.acz]) * 9.81
         accel_imu1_comp = self.compensate_gravity(accel_imu1, roll, pitch)
         accel_imu2_comp = self.compensate_gravity(accel_imu2, roll, pitch)
 
         # Fused measurement vector for EKF (acceleration from both IMUs)
-        z_imu1 = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz])
-        z_imu2 = np.array([self.mpu2_data.acx, self.mpu2_data.acy, self.mpu2_data.acz])
+        z_imu1 = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz])*9.81
+        z_imu2 = np.array([self.mpu2_data.acx, self.mpu2_data.acy, self.mpu2_data.acz])*9.81
 
             # Fuse the accelerations (average)
         u_fused = 0.5 * (z_imu1 + z_imu2)
