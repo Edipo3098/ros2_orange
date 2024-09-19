@@ -323,7 +323,7 @@ class MinimalPublisher(Node):
 
             
             msg.message = "EL mensaje es"
-            msg.acx = float(accel_x))
+            msg.acx = float(accel_x)
             msg.acy = float(accel_y)
             msg.acz = float(accel_z)
             msg.gx = float(gyro_x)
