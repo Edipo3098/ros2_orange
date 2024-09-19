@@ -311,7 +311,7 @@ class CalCOGFrame(Node):
         # In process_fusion:
         
         alpha = 0.7  # Weight for IMU1, 1 - alpha for IMU2
-        alpha2 = 0.3
+        
         # Weighted average for gyroscope data
         gyroscope_data = np.array([
             alpha * self.mpu1_data.gx + (1 - alpha) * self.mpu2_data.gx,
@@ -321,9 +321,9 @@ class CalCOGFrame(Node):
 
         # Weighted average for accelerometer data
         accelerometer_data = np.array([
-            alpha2 * self.mpu1_data.acx + (1 - alpha2) * self.mpu2_data.acx,
-            alpha2 * self.mpu1_data.acy + (1 - alpha2) * self.mpu2_data.acy,
-            alpha2 * self.mpu1_data.acz + (1 - alpha2) * self.mpu2_data.acz
+            alpha * self.mpu1_data.acx + (1 - alpha) * self.mpu2_data.acx,
+            alpha * self.mpu1_data.acy + (1 - alpha) * self.mpu2_data.acy,
+            alpha * self.mpu1_data.acz + (1 - alpha) * self.mpu2_data.acz
         ]) / 9.81  # Convert to G
         self.quaternion
         self.quaternion  = self.madgwick_filter.updateIMU(q=self.quaternion,gyr=gyroscope_data, acc=accelerometer_data)
@@ -342,13 +342,13 @@ class CalCOGFrame(Node):
         z_imu2 = np.array([self.mpu2_data.acx, self.mpu2_data.acy, self.mpu2_data.acz])
 
             # Fuse the accelerations (average)
-        u_fused = 0.5 * (accel_imu1 + accel_imu2)
+        u_fused = 0.5 * (z_imu1 + z_imu2)
 
         # EKF Prediction step with fused acceleration
         self.kf.predict(u_fused)
 
         # EKF Update step with fused measurements and Madgwick orientation Z
-        self.kf.update(accel_imu1, accel_imu1, [roll, pitch, yaw])
+        self.kf.update(z_imu1, z_imu1, [roll, pitch, yaw])
 
         # Retrieve filtered state (position, velocity)
         pos, vel, orient = self.kf.get_state()
