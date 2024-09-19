@@ -5,7 +5,7 @@ from time import time
 import numpy as np
 from filterpy.kalman import KalmanFilter
 from madgwick_py import MadgwickAHRS
-
+from collections import deque
 """
 Fusion sensor increase measuremetes to 12
 6 for each sensor
@@ -21,10 +21,12 @@ class IMUKalmanFilter:
         # Gyroscope noise variance (º/s)^2
         self.gyro_rms_noise = 0.1  # º/s-rms
         self.gyro_variance = self.gyro_rms_noise ** 2  # Variance for gx, gy, gz
-
+        self.gyro_variance2 = self.gyro_rms_noise ** 2  # Variance for gx, gy, gz
         # Accelerometer noise variance (m/s^2)^2
         self.acc_rms_noise = 0.008 * 9.81  # Convert from g to m/s^2
         self.acc_variance = self.acc_rms_noise ** 2  # Variance for acx, acy, acz
+        self.acc_variance2 = self.acc_rms_noise ** 2  # Variance for acx, acy, acz
+        self.kf.x = np.zeros(9)  # Initial state: assume system is stationary initially
 
         # State transition matrix (F)
         self.kf.F = np.eye(9)
@@ -60,7 +62,81 @@ class IMUKalmanFilter:
         
         # Covariance matrix (P)
         self.kf.P = np.eye(9) * 1  # Initial uncertainty
-    
+
+        # Initialize the measurement buffers for sliding window (store last N measurements)
+        self.window_size = 50  # Number of recent measurements to consider
+        self.acc_buffers = {
+            'acx': deque(maxlen=self.window_size),
+            'acy': deque(maxlen=self.window_size),
+            'acz': deque(maxlen=self.window_size),
+        }
+        self.gyro_buffers = {
+            'gx': deque(maxlen=self.window_size),
+            'gy': deque(maxlen=self.window_size),
+            'gz': deque(maxlen=self.window_size),
+        }
+        self.acc_buffers2 = {
+            'acx': deque(maxlen=self.window_size),
+            'acy': deque(maxlen=self.window_size),
+            'acz': deque(maxlen=self.window_size),
+        }
+        self.gyro_buffers2 = {
+            'gx': deque(maxlen=self.window_size),
+            'gy': deque(maxlen=self.window_size),
+            'gz': deque(maxlen=self.window_size),
+        }
+    def update_measurement_noise(self):
+        """
+        Calculate new measurement noise covariance matrix R based on sliding window variance.
+        """
+        # Compute variance for accelerometer
+        acc_variance = {
+            axis: np.var(self.acc_buffers[axis]) if len(self.acc_buffers[axis]) > 1 else 1.0
+            for axis in ['acx', 'acy', 'acz']
+        }
+
+        # Compute variance for gyroscope
+        gyro_variance = {
+            axis: np.var(self.gyro_buffers[axis]) if len(self.gyro_buffers[axis]) > 1 else 1.0
+            for axis in ['gx', 'gy', 'gz']
+        }
+         # Compute variance for accelerometer
+        acc_variance2 = {
+            axis: np.var(self.acc_buffers2[axis]) if len(self.acc_buffers2[axis]) > 1 else 1.0
+            for axis in ['acx', 'acy', 'acz']
+        }
+
+        # Compute variance for gyroscope
+        gyro_variance2 = {
+            axis: np.var(self.gyro_buffers2[axis]) if len(self.gyro_buffers2[axis]) > 1 else 1.0
+            for axis in ['gx', 'gy', 'gz']
+        }
+        # Update the measurement noise covariance matrix (R)
+        self.kf.R = np.diag([
+            acc_variance['acx'], acc_variance['acy'], acc_variance['acz'],
+            gyro_variance['gx'], gyro_variance['gy'], gyro_variance['gz'],
+            acc_variance2['acx'], acc_variance2['acy'], acc_variance2['acz'],
+            gyro_variance2['gx'], gyro_variance2['gy'], gyro_variance2['gz']
+        ])
+
+    def add_measurement_to_buffers(self, imu_data,imu_data2):
+        """
+        Add new IMU data to the sliding window buffers for noise calculation.
+        """
+        self.acc_buffers['acx'].append(imu_data.acx)
+        self.acc_buffers['acy'].append(imu_data.acy)
+        self.acc_buffers['acz'].append(imu_data.acz)
+        self.gyro_buffers['gx'].append(imu_data.gx)
+        self.gyro_buffers['gy'].append(imu_data.gy)
+        self.gyro_buffers['gz'].append(imu_data.gz)
+
+        self.acc_buffers2['acx'].append(imu_data2.acx)
+        self.acc_buffers2['acy'].append(imu_data2.acy)
+        self.acc_buffers2['acz'].append(imu_data2.acz)
+        self.gyro_buffers2['gx'].append(imu_data2.gx)
+        self.gyro_buffers2['gy'].append(imu_data2.gy)
+        self.gyro_buffers2['gz'].append(imu_data2.gz)
+
     def predict(self):
         self.kf.predict()
     
@@ -69,9 +145,13 @@ class IMUKalmanFilter:
     
     def change_dt(self, dt):
         self.dt = dt
-        self.kf.F[0, 3] = dt
-        self.kf.F[1, 4] = dt
-        self.kf.F[2, 5] = dt
+        self.kf.F[0, 3] = dt  # x += vx * dt
+        self.kf.F[1, 4] = dt  # y += vy * dt
+        self.kf.F[2, 5] = dt  # z += vz * dt
+        
+        # Adjust process noise covariance matrix (Q) based on dt
+        self.kf.Q = np.diag([1e-5, 1e-5, 1e-5, 1e-3 * dt, 1e-3 * dt, 1e-3 * dt, 1e-5, 1e-5, 1e-5])
+
     
     def get_state(self):
         return self.kf.x[:3], self.kf.x[3:6], self.kf.x[6:9]  # Position, velocity, orientation
@@ -135,11 +215,14 @@ class CalCOGFrame(Node):
         current_time = time()
         dt = current_time - self.prev_time
         if dt < 1e-6:
-            return  # Skip very small time steps to prevent instability
+            dt = 1e-6  # Set a minimum time step threshold
 
         self.kf.change_dt(dt)
         self.prev_time = current_time  # Update previous time
-
+        # Add new measurement data to the buffers
+        self.add_measurement_to_buffers(self.mpu1_data,self.mpu2_data)
+        # Update the measurement noise covariance matrix based on recent data
+        self.update_measurement_noise()
         # Create the measurement vector with data from both IMUs
         measurements = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz,
                                  self.mpu1_data.gx, self.mpu1_data.gy, self.mpu1_data.gz,
@@ -149,10 +232,23 @@ class CalCOGFrame(Node):
         self.kf.predict()  # Prediction step based on the current state
         self.kf.update(measurements)  # Update Kalman filter with new measurements
         # Madgwick filter update (Orientation calculation)
-        # Inputs: gyroscope in rad/s and accelerometer in G (gravity)
-        gyroscope_data = np.array([self.mpu1_data.gx, self.mpu1_data.gy, self.mpu1_data.gz]) * np.pi / 180  # deg/s to rad/s
-        accelerometer_data = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz]) / 9.81  # m/s² to G
         
+        alpha = 0.7  # Weight for IMU1, 1 - alpha for IMU2
+
+        # Weighted average for gyroscope data
+        gyroscope_data = np.array([
+            alpha * self.mpu1_data.gx + (1 - alpha) * self.mpu2_data.gx,
+            alpha * self.mpu1_data.gy + (1 - alpha) * self.mpu2_data.gy,
+            alpha * self.mpu1_data.gz + (1 - alpha) * self.mpu2_data.gz
+        ]) * np.pi / 180  # Convert to rad/s
+
+        # Weighted average for accelerometer data
+        accelerometer_data = np.array([
+            alpha * self.mpu1_data.acx + (1 - alpha) * self.mpu2_data.acx,
+            alpha * self.mpu1_data.acy + (1 - alpha) * self.mpu2_data.acy,
+            alpha * self.mpu1_data.acz + (1 - alpha) * self.mpu2_data.acz
+        ]) / 9.81  # Convert to G
+        # Inputs: gyroscope in rad/s and accelerometer in G (gravity)
         # Update Madgwick filter
         self.madgwick_filter.update_imu(gyroscope_data, accelerometer_data)
 
