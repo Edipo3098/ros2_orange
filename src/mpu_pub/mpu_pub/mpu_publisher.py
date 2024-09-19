@@ -217,8 +217,8 @@ class MinimalPublisher(Node):
 
             #convert to acceleration in g and gyro dps
             accel_x = (accel_x/(2.0**15.0))*ACCEL_SENSITIVITY
-            a_y = (a_y/(2.0**15.0))*ACCEL_SENSITIVITY
-            a_z = (a_z/(2.0**15.0))*ACCEL_SENSITIVITY
+            accel_y = (accel_y/(2.0**15.0))*ACCEL_SENSITIVITY
+            accel_z = (accel_z/(2.0**15.0))*ACCEL_SENSITIVITY
 
             gyro_x = (gyro_x/(2.0**15.0))*GYRO_SENSITIVITY
             gyro_y = (gyro_y/(2.0**15.0))*GYRO_SENSITIVITY
@@ -300,17 +300,22 @@ class MinimalPublisher(Node):
             # Convert to correct units
         #convert to acceleration in g and gyro dps
         accel_x = (accel_x/(2.0**15.0))*ACCEL_SENSITIVITY
-        a_y = (a_y/(2.0**15.0))*ACCEL_SENSITIVITY
-        a_z = (a_z/(2.0**15.0))*ACCEL_SENSITIVITY
+        accel_y = (accel_y/(2.0**15.0))*ACCEL_SENSITIVITY
+        accel_z = (accel_z/(2.0**15.0))*ACCEL_SENSITIVITY
 
         gyro_x = (gyro_x/(2.0**15.0))*GYRO_SENSITIVITY
         gyro_y = (gyro_y/(2.0**15.0))*GYRO_SENSITIVITY
         gyro_z = (gyro_z/(2.0**15.0))*GYRO_SENSITIVITY
         # Apply calibration
+        """
         accel_x = (accel_x - calibration_data[calibration_key]["accel"]["offset"][0])    + calibration_data[calibration_key]["accel"]["slope"][0]
         accel_y = ( accel_y - calibration_data[calibration_key]["accel"]["offset"][1])    +calibration_data[calibration_key]["accel"]["slope"][1]
         accel_z = ( accel_z - calibration_data[calibration_key]["accel"]["offset"][2])    +calibration_data[calibration_key]["accel"]["slope"][2]
-
+        
+        """
+        accel_x = ( calibration_data[calibration_key]["accel"]["offset"][0]) +   accel_x* calibration_data[calibration_key]["accel"]["slope"][0]
+        accel_y = (  calibration_data[calibration_key]["accel"]["offset"][1]) +  accel_y * calibration_data[calibration_key]["accel"]["slope"][1]
+        accel_z = (  calibration_data[calibration_key]["accel"]["offset"][2])  + accel_y * calibration_data[calibration_key]["accel"]["slope"][2]
         gyro_x -= calibration_data[calibration_key]["gyro"]["offset"][0]
         gyro_y -= calibration_data[calibration_key]["gyro"]["offset"][1]
         gyro_z -= calibration_data[calibration_key]["gyro"]["offset"][2]
