@@ -30,12 +30,20 @@ i2c_bus = 1  # Assuming you want to use /dev/i2c-1
 
 # MPU9250 register addresses
 MPU9250_WHO_AM_I = 0x75
+WR_MGMT_1   = 0x6B
+SMPLRT_DIV   = 0x19
+CONFIG       = 0x1A
+GYRO_CONFIG  = 0x1B
+ACCEL_CONFIG = 0x1C
+INT_PIN_CFG  = 0x37
+INT_ENABLE   = 0x38
 ACCEL_XOUT_H = 0x3B
 ACCEL_YOUT_H = 0x3D
 ACCEL_ZOUT_H = 0x3F
-GYRO_XOUT_H = 0x43
-GYRO_YOUT_H = 0x45
-GYRO_ZOUT_H = 0x47
+TEMP_OUT_H   = 0x41
+GYRO_XOUT_H  = 0x43
+GYRO_YOUT_H  = 0x45
+GYRO_ZOUT_H  = 0x47
 # Calibration data for two MPU9250s
 calibration_data = {
     "mpu1": {
@@ -48,8 +56,8 @@ calibration_data = {
     }
 }
 # Constants for sensitivity values
-ACCEL_SENSITIVITY = 16384.0  # LSB/g for +/- 2g range
-GYRO_SENSITIVITY = 131.0  # LSB/dps for +/- 250 dps range
+ACCEL_SENSITIVITY = 2  # LSB/g for +/- 2g range
+GYRO_SENSITIVITY = 250  # LSB/dps for +/- 250 dps range
 
 class MinimalPublisher(Node):
 
@@ -64,11 +72,13 @@ class MinimalPublisher(Node):
         self.i2c_bus = 1
         self.bus = smbus.SMBus(i2c_bus)
         # Then use self.bus.read_byte_data, etc. in the respective functions
-        
+        self.configure_sensor(mpu9250_address)
+        self.configure_sensor(mpu9250_address_2)
+
+
         self.calibrationTime = time.time()
         self.current_time = time.time()
-        self.mpu_wake(mpu9250_address)
-        self.mpu_wake(mpu9250_address_2)
+        
 
         self.check_full_scale(mpu9250_address)
         calibration_key = 'mpu1'
@@ -102,7 +112,35 @@ class MinimalPublisher(Node):
         if accel_full_scale != 0 or gyro_full_scale != 0:
             self.get_logger().info("Warning: Sensor is not configured for full scale (2g accel, 250 dps gyro).")
 
-
+    def configure_sensor(self, address):
+        self.bus.write_byte_data(address,PWR_MGMT_1,0x80)
+        time.sleep(0.1)
+        self.bus.write_byte_data(address,PWR_MGMT_1,0x00)
+        time.sleep(0.1)
+        # power management and crystal settings
+        self.bus.write_byte_data(address, PWR_MGMT_1, 0x01)
+        time.sleep(0.1)
+        # alter sample rate (stability)
+        samp_rate_div = 0 # sample rate = 8 kHz/(1+samp_rate_div)
+        self.bus.write_byte_data(address, SMPLRT_DIV, samp_rate_div)
+        time.sleep(0.1)
+        #Write to Configuration register
+        self.bus.write_byte_data(address, CONFIG, 0)
+        time.sleep(0.1)
+        #Write to Gyro configuration register
+        gyro_config_sel = [0b00000,0b01000,0b10000,0b11000] # byte registers
+        gyro_config_vals = [250.0,500.0,1000.0,2000.0] # degrees/sec
+        gyro_indx = 0
+        self.bus.write_byte_data(address, GYRO_CONFIG, int(gyro_config_sel[gyro_indx]))
+        time.sleep(0.1)
+        #Write to Accel configuration register
+        accel_config_sel = [0b00000,0b01000,0b10000,0b11000] # byte registers
+        accel_config_vals = [2.0,4.0,8.0,16.0] # g (g = 9.81 m/s^2)
+        accel_indx = 0
+        self.bus.write_byte_data(address, ACCEL_CONFIG, int(accel_config_sel[accel_indx]))
+        time.sleep(0.1)
+        # interrupt register (related to overflow of data [FIFO])
+        self.bus.write_byte_data(address,INT_PIN_CFG,0x22)
 
     def Check_communication(self,address):
         try:
@@ -165,6 +203,7 @@ class MinimalPublisher(Node):
             prev_gyro_x, prev_gyro_y, prev_gyro_z = gyro_x, gyro_y, gyro_z
 
                 # Convert to correct units
+            """
             accel_x = accel_x / ACCEL_SENSITIVITY * 9.81  # Convert to m/s²
             accel_y = accel_y / ACCEL_SENSITIVITY * 9.81
             accel_z = accel_z / ACCEL_SENSITIVITY * 9.81
@@ -172,6 +211,16 @@ class MinimalPublisher(Node):
             gyro_x = gyro_x / GYRO_SENSITIVITY * (np.pi / 180.0)  # Convert to rad/s
             gyro_y = gyro_y / GYRO_SENSITIVITY * (np.pi / 180.0)
             gyro_z = gyro_z / GYRO_SENSITIVITY * (np.pi / 180.0)
+            """
+
+            #convert to acceleration in g and gyro dps
+            accel_x = (accel_x/(2.0**15.0))*ACCEL_SENSITIVITY
+            a_y = (a_y/(2.0**15.0))*ACCEL_SENSITIVITY
+            a_z = (a_z/(2.0**15.0))*ACCEL_SENSITIVITY
+
+            gyro_x = (gyro_x/(2.0**15.0))*GYRO_SENSITIVITY
+            gyro_y = (gyro_y/(2.0**15.0))*GYRO_SENSITIVITY
+            gyro_z = (gyro_z/(2.0**15.0))*GYRO_SENSITIVITY
 
             accel_data.append([accel_x, accel_y, accel_z])
             gyro_data.append([gyro_x, gyro_y, gyro_z])
@@ -247,12 +296,14 @@ class MinimalPublisher(Node):
         
         # Convert to correct units
             # Convert to correct units
-        accel_x = accel_x / ACCEL_SENSITIVITY * 9.81  # Convert to m/s²
-        accel_y = accel_y / ACCEL_SENSITIVITY * 9.81
-        accel_z = accel_z / ACCEL_SENSITIVITY * 9.81
-        gyro_x = gyro_x / GYRO_SENSITIVITY * (np.pi / 180.0)  # Convert to rad/s
-        gyro_y = gyro_y / GYRO_SENSITIVITY * (np.pi / 180.0)
-        gyro_z = gyro_z / GYRO_SENSITIVITY * (np.pi / 180.0)
+        #convert to acceleration in g and gyro dps
+        accel_x = (accel_x/(2.0**15.0))*ACCEL_SENSITIVITY
+        a_y = (a_y/(2.0**15.0))*ACCEL_SENSITIVITY
+        a_z = (a_z/(2.0**15.0))*ACCEL_SENSITIVITY
+
+        gyro_x = (gyro_x/(2.0**15.0))*GYRO_SENSITIVITY
+        gyro_y = (gyro_y/(2.0**15.0))*GYRO_SENSITIVITY
+        gyro_z = (gyro_z/(2.0**15.0))*GYRO_SENSITIVITY
         # Apply calibration
         accel_x = (accel_x - calibration_data[calibration_key]["accel"]["offset"][0])    + calibration_data[calibration_key]["accel"]["slope"][0]
         accel_y = ( accel_y - calibration_data[calibration_key]["accel"]["offset"][1])    +calibration_data[calibration_key]["accel"]["slope"][1]
