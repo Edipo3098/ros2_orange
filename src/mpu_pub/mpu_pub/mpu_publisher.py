@@ -132,14 +132,30 @@ class MinimalPublisher(Node):
         self.get_logger().info(f"Calibrating MPU at address {hex(address)}...")
 
         for _ in range(num_samples):
-            # Read raw accelerometer and gyroscope data
-            accel_x = self.read_raw_data(address, ACCEL_XOUT_H,ACCEL_SENSITIVITY)
-            accel_y = self.read_raw_data(address, ACCEL_XOUT_H + 2,ACCEL_SENSITIVITY)
-            accel_z = self.read_raw_data(address, ACCEL_XOUT_H + 4,ACCEL_SENSITIVITY)
+            accel_data = self.bus.read_i2c_block_data(address, 0x3B, 6)
+            gyro_data = self.bus.read_i2c_block_data(address, 0x43, 6)
 
-            gyro_x = self.read_raw_data(address, GYRO_XOUT_H,GYRO_SENSITIVITY)
-            gyro_y = self.read_raw_data(address, GYRO_XOUT_H + 2,GYRO_SENSITIVITY)
-            gyro_z = self.read_raw_data(address, GYRO_XOUT_H + 4,GYRO_SENSITIVITY)
+            # Process accelerometer data
+            accel_x = self.convert_data(accel_data[0], accel_data[1])
+            accel_y = self.convert_data(accel_data[2], accel_data[3])
+            accel_z = self.convert_data(accel_data[4], accel_data[5])
+
+            # Process gyroscope data
+            gyro_x = self.convert_data(gyro_data[0], gyro_data[1])
+            gyro_y = self.convert_data(gyro_data[2], gyro_data[3])
+            gyro_z = self.convert_data(gyro_data[4], gyro_data[5])
+
+            # Convert to correct units
+            accel_x /= ACCEL_SENSITIVITY
+            accel_y /= ACCEL_SENSITIVITY
+            accel_z /= ACCEL_SENSITIVITY
+
+            gyro_x /= GYRO_SENSITIVITY
+            gyro_y /= GYRO_SENSITIVITY
+            gyro_z /= GYRO_SENSITIVITY
+            accel_x = (accel_x * 9.81)  # Convert to m/s^2
+            accel_y = (accel_y * 9.81)
+            accel_z = (accel_z * 9.81)
 
             accel_data.append([accel_x, accel_y, accel_z])
             gyro_data.append([gyro_x, gyro_y, gyro_z])
