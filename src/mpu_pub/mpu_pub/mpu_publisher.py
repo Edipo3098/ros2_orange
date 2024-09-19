@@ -39,7 +39,7 @@ class MinimalPublisher(Node):
         self.initialize_mpu(mpu9250_address_2)
 
         # Timer to read and publish data periodically
-        self.timer = self.create_timer(0.1, self.timer_callback)  # 10 Hz
+        self.timer = self.create_timer(0.5, self.timer_callback)  # 10 Hz
 
         # Calibrate MPU on startup
         self.calibrate_mpu(mpu9250_address, "mpu1")
@@ -66,15 +66,7 @@ class MinimalPublisher(Node):
         gyro_y = self.convert_data(gyro_data[2], gyro_data[3])
         gyro_z = self.convert_data(gyro_data[4], gyro_data[5])
 
-        # Apply calibration
-        accel_x = (accel_x - calibration_data[calibration_key]["accel"]["offset"][0]) * calibration_data[calibration_key]["accel"]["slope"][0]
-        accel_y = (accel_y - calibration_data[calibration_key]["accel"]["offset"][1]) * calibration_data[calibration_key]["accel"]["slope"][1]
-        accel_z = (accel_z - calibration_data[calibration_key]["accel"]["offset"][2]) * calibration_data[calibration_key]["accel"]["slope"][2]
-
-        gyro_x -= calibration_data[calibration_key]["gyro"]["offset"][0]
-        gyro_y -= calibration_data[calibration_key]["gyro"]["offset"][1]
-        gyro_z -= calibration_data[calibration_key]["gyro"]["offset"][2]
-
+        #Apply RAW sensitibity 
         # Convert to correct units
         accel_x /= ACCEL_SENSITIVITY
         accel_y /= ACCEL_SENSITIVITY
@@ -84,6 +76,23 @@ class MinimalPublisher(Node):
         gyro_y /= GYRO_SENSITIVITY
         gyro_z /= GYRO_SENSITIVITY
 
+
+        # Apply calibration
+        accel_x = ((accel_x - calibration_data[calibration_key]["accel"]["offset"][0]) * calibration_data[calibration_key]["accel"]["slope"][0])
+        accel_y = (accel_y - calibration_data[calibration_key]["accel"]["offset"][1]) * calibration_data[calibration_key]["accel"]["slope"][1]
+        accel_z = (accel_z - calibration_data[calibration_key]["accel"]["offset"][2]) * calibration_data[calibration_key]["accel"]["slope"][2]
+
+        gyro_x -= calibration_data[calibration_key]["gyro"]["offset"][0]
+        gyro_y -= calibration_data[calibration_key]["gyro"]["offset"][1]
+        gyro_z -= calibration_data[calibration_key]["gyro"]["offset"][2]
+
+        accel_x = accel_x*9.81
+        accel_y = accel_y*9.81
+        accel_z = accel_z*9.81
+        gyro_x = gyro_x*np.pi/180  
+        gyro_y = gyro_y*np.pi/180
+        gyro_z = gyro_z*np.pi/180
+        
         return accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z
 
     def convert_data(self, high_byte, low_byte):

@@ -120,7 +120,7 @@ class CalCOGFrame(Node):
 
     def __init__(self):
         super().__init__('cog_calc4')
-        self.subscription_mpu = self.create_subscription(Mpu, 'mpu_data', self.listener_callback, 10)
+        self.subscription_mpu = self.create_subscription(Mpu, 'mpu_data_1', self.listener_callback, 10)
         self.subscription_mpu2 = self.create_subscription(Mpu, 'mpu_data_2', self.listener_callback2, 10)
         
         self.publishKalmanFrame = self.create_publisher(COGframe, 'kalman_cog_frame_3', 10)
@@ -342,13 +342,13 @@ class CalCOGFrame(Node):
         z_imu2 = np.array([self.mpu2_data.acx, self.mpu2_data.acy, self.mpu2_data.acz])
 
             # Fuse the accelerations (average)
-        u_fused = 0.5 * (accel_imu1_comp + accel_imu2_comp)
+        u_fused = 0.5 * (accel_imu1 + accel_imu2)
 
         # EKF Prediction step with fused acceleration
         self.kf.predict(u_fused)
 
-        # EKF Update step with fused measurements and Madgwick orientation
-        self.kf.update(z_imu1, z_imu2, [roll, pitch, yaw])
+        # EKF Update step with fused measurements and Madgwick orientation Z
+        self.kf.update(accel_imu1, accel_imu1, [roll, pitch, yaw])
 
         # Retrieve filtered state (position, velocity)
         pos, vel, orient = self.kf.get_state()
@@ -360,10 +360,10 @@ class CalCOGFrame(Node):
         msg.pos_x, msg.pos_y, msg.pos_z = float(pos[0]), float(pos[1]), float(pos[2])
         msg.roll, msg.pitch, msg.yaw = float(roll), float(pitch), float(yaw)
         self.publishKalmanFrame.publish(msg)
-        self.get_logger().info(f"Kalman pose (X, Y, Z): {msg.pos_x}, {msg.pos_y}, {msg.pos_z}")
-        self.get_logger().info(f"Kalman speed (vx vy vz): {float(vel[0])}, {float(vel[1])}, {float(vel[2])}")
-        self.get_logger().info(f"Kalman speed  2(vx vy vz): {float(accel_imu1_comp[0])}, {float(accel_imu1_comp[1])}, {float(accel_imu1_comp[2])}")
-        self.get_logger().info(f"Kalman acc 2 (vx vy vz): {float(accel_imu2_comp[0])}, {float(accel_imu2_comp[1])}, {float(accel_imu2_comp[2])}")
+        self.get_logger().info(f"Kalman ACC 1  2(vx vy vz): {float(accel_imu1[0])}, {float(accel_imu1[1])}, {float(accel_imu1[2])}")
+        self.get_logger().info(f"Kalman acc 2 (vx vy vz): {float(accel_imu2[0])}, {float(accel_imu2[1])}, {float(accel_imu2[2])}")
+        self.get_logger().info(f"Kalman acc -g 1  2(vx vy vz): {float(accel_imu1_comp[0])}, {float(accel_imu1_comp[1])}, {float(accel_imu1_comp[2])}")
+        self.get_logger().info(f"Kalman acc -2  2 (vx vy vz): {float(accel_imu2_comp[0])}, {float(accel_imu2_comp[1])}, {float(accel_imu2_comp[2])}")
 
 def main(args=None):
     rclpy.init(args=args)
