@@ -73,11 +73,11 @@ class MinimalPublisher(Node):
         self.check_full_scale(mpu9250_address)
         calibration_key = 'mpu1'
         
-        self.calibrate_mpu(mpu9250_address,1000,calibration_key)
+        self.calibrate_mpu(mpu9250_address,20000,calibration_key)
 
         calibration_key = 'mpu2'
         self.check_full_scale(mpu9250_address_2)
-        self.calibrate_mpu(mpu9250_address_2,1000,calibration_key)
+        self.calibrate_mpu(mpu9250_address_2,20000,calibration_key)
         
 
         self.Check_communication(mpu9250_address)
@@ -124,7 +124,7 @@ class MinimalPublisher(Node):
             value = value - 65536
         return value/sensitivity
     
-    def calibrate_mpu(self,address, num_samples=500,key='mpu1'):
+    def calibrate_mpu(self,address, num_samples=10000,key='mpu1'):
         accel_data = []
         gyro_data = []
         self.calibrationTime = time.time()
@@ -244,8 +244,8 @@ class MinimalPublisher(Node):
         try:
             self.current_time = time.time()
             if self.current_time - self.calibrationTime > 600:
-                self.calibrate_mpu(mpu9250_address,1000,'mpu1')
-                self.calibrate_mpu(mpu9250_address_2,1000,'mpu2')
+                self.calibrate_mpu(mpu9250_address,10000,'mpu1')
+                self.calibrate_mpu(mpu9250_address_2,10000,'mpu2')
             # Read accelerometer data
             key = 'mpu1'
             accel_x,accel_y,accel_z,gyro_x,gyro_y,gyro_z = self.read_sensor_data(mpu9250_address,key )
