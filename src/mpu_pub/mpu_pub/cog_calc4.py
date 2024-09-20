@@ -214,9 +214,9 @@ class CalCOGFrame(Node):
             for axis in ['gx', 'gy', 'gz']
         }
         # Update the measurement noise covariance matrix (R)
-        vaAcx = np.mean(acc_variance['acx'])
-        vaAcy = np.mean(acc_variance['vaAcy'])
-        vaAcz = np.mean(acc_variance['acx'])
+        vaAcx = np.mean([ acc_variance['acx'],acc_variance2['acx']] )
+        vaAcy = np.mean([ acc_variance['acy'],acc_variance2['acy']] )
+        vaAcz = np.mean([ acc_variance['acz'],acc_variance2['acz']] )
         self.kf.ekf.R = np.diag([ vaAcx   , vaAcy,  vaAcz])
 
     def add_measurement_to_buffers(self, imu_data):

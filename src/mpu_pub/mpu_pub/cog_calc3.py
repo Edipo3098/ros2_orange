@@ -376,8 +376,10 @@ class CalCOGFrame(Node):
 
             # Fuse the accelerations (average)
          # Fuse the accelerations (average of both IMUs)
-        u_fused = 0.5 * (accel_imu1_comp + accel_imu2_comp)
-
+        u1 = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz, self.mpu1_data.gx, self.mpu1_data.gy, self.mpu1_data.gz])
+        u2 = np.array([self.mpu1_data.acx2, self.mpu1_data.acy2, self.mpu1_data.acz2, self.mpu1_data.gx2, self.mpu1_data.gy2, self.mpu1_data.gz2])
+        u_fused = 0.5 * (u1 + u2)
+        
         # EKF Prediction step with fused acceleration
         self.kf.predict(u_fused)
 
