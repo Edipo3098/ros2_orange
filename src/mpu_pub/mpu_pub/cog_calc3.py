@@ -386,8 +386,8 @@ class CalCOGFrame(Node):
 
         u1 = np.concatenate((u1_acc, u1_gyro))
         u2 = np.concatenate((u2_acc, u2_gyro))
-       
-        u_fused = 0.5 * (u1 + u2)
+        multiplier = 0.9
+        u_fused = multiplier * (u1 )+  (1-multiplier)* u2
         
         # EKF Prediction step with fused acceleration
         self.kf.predict(u_fused)
