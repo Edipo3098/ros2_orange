@@ -102,7 +102,7 @@ class MinimalPublisher(Node):
 
         self.Check_communication(mpu9250_address)
         self.Check_communication(mpu9250_address_2)
-        timer_period = 1/100   # seconds 50Hz
+        timer_period = 1/20   # seconds 50Hz
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0
         self.prev_accel_x, self.prev_accel_y, self.prev_accel_z = 0, 0, 0

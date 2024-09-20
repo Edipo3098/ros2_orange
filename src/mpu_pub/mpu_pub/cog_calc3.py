@@ -182,9 +182,10 @@ class CalCOGFrame(Node):
             'gz': deque(maxlen=self.window_size),
         }
         # Kalman filter for fusing data from both MPUs
-        self.kf = IMUFusionEKF(dt=0.02)
+        self.frecuency = 20
+        self.kf = IMUFusionEKF(dt=1/self.frecuency)  # Initialize the EKF with the sample period
         # Madgwick filter initialization
-        self.madgwick_filter = Madgwick(frequency=1/0.02,gain=0.033)  # Adjust sample period as needed
+        self.madgwick_filter = Madgwick(frequency=self.frecuency,gain=0.033)  # Adjust sample period as needed
         """
         If your IMU data is noisy, a lower beta value may help reduce jitter, though you will need to balance this with the slower data rate.
         """
