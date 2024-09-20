@@ -32,12 +32,12 @@ class IMUFusionEKF:
         self.ekf.P = np.eye(12) * 1  # Updated to 12x12 for the new state vector
 
         # Process noise covariance matrix (Q) - also 12x12
-        self.mul  = 1
+        self.mul  = 10
         self.residuals_window = deque(maxlen=100)  # Store last 100 residuals
         self.ekf.Q = np.diag([1e-4, 1e-4, 1e-4, 1e-2, 1e-2, 1e-2, 1e-3, 1e-3, 1e-3, 1e-4, 1e-4, 1e-4])*self.mul 
 
         # Measurement noise covariance matrix (R) - 12x12 for 12 measurements
-        self.ekf.R = np.diag([1e-2] * self.mul )
+        self.ekf.R = np.diag([1e-2] * 12 )
 
         
 
@@ -88,9 +88,16 @@ class IMUFusionEKF:
         # Gyroscope readings (angular velocities are roll, pitch, yaw)
         gyro_imu1 = np.array([x[6], x[7], x[8]])  # IMU1 orientation rates (roll, pitch, yaw)
         gyro_imu2 = np.array([x[6], x[7], x[8]])  # Assuming similar dynamics for IMU2
+
+        # Create the full measurement vector
+        full_measurement = np.hstack((acc_imu1, gyro_imu1, acc_imu2, gyro_imu2))
+        
+        # Log the size and values of the full measurement vector
+        print(f"Measurement function output size: {full_measurement.shape}")
+        print(f"Measurement function output content: {full_measurement}")
         
         # Return both accelerometer and gyroscope data for IMU1 and IMU2
-        return np.hstack((acc_imu1, gyro_imu1, acc_imu2, gyro_imu2))
+        return full_measurement
     def measurement_jacobian(self, x):
         """
         Jacobian of the measurement function (H). Maps the state vector to 12 measurements.
@@ -119,20 +126,38 @@ class IMUFusionEKF:
         """
         # Combine both IMUs' measurements into a single 12-dimensional vector
         # Compute predicted measurements from the current state
+        print(f"State covariance matrix (P) before update size: {self.ekf.P.shape}")
         Hx = self.measurement_function(self.ekf.x)
-        measurements = np.hstack((z_imu1[:3], orientation_madgwick, z_imu2[:3], orientation_madgwick))
+        # Log the size and values of the predicted measurement Hx
+        print(f"Predicted measurement (Hx) size: {Hx.shape}")
+        print(f"Predicted measurement (Hx) content: {Hx}")
+        measurements = np.hstack((z_imu1, orientation_madgwick, z_imu2, orientation_madgwick))
+        print(f"Measurements vector size: {measurements.shape}")
+        print(f"Measurements vector content: {measurements}")
         # Compute residual (innovation)
         residual = self.compute_residual(measurements, Hx)
         # Store the residual for adaptive noise estimation
         self.residuals_window.append(residual)
         # Periodically update measurement noise covariance R based on residual variance
-        if len(self.residuals_window) > 10:  # Ensure enough residuals for variance calculation
+        if len(self.residuals_window) > 12:  # Ensure enough residuals for variance calculation
             self.update_R(self.residuals_window)
         # Update orientation directly from Madgwick filter
         self.ekf.x[6:9] = orientation_madgwick
+
         
-        # Perform the EKF update with the combined measurements
-        self.ekf.update(z=measurements, HJacobian=self.measurement_jacobian, Hx=self.measurement_function)
+        
+        # EKF Update step
+        try:
+            self.ekf.update(z=measurements, HJacobian=self.measurement_jacobian, Hx=self.measurement_function)
+        except np.linalg.LinAlgError:
+            print("Singular matrix error, adding regularization")
+            # Regularize P if there's an issue
+            self.ekf.P += np.eye(12) * 1e-6
+
+        # Regularize P after the update to avoid singularity issues in future updates
+         # Log the state covariance matrix after regularization
+        print(f"State covariance matrix (P) after regularization size: {self.ekf.P.shape}")
+
 
 
     def calculate_jacobian(self, x):
@@ -173,6 +198,9 @@ class IMUFusionEKF:
         
         # Update the measurement noise covariance matrix R
         self.ekf.R = np.diag(variance) * self.mul  # self.kf.mul is your multiplier
+        # Log the size and values of R
+        print(f"Measurement noise covariance (R) size: {self.ekf.R.shape}")
+        print(f"Measurement noise covariance (R) content: {self.ekf.R}")
     def update_Q(self, state_predictions):
         """
         Update the process noise covariance matrix Q based on the variance of prediction errors.

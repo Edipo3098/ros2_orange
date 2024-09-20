@@ -23,7 +23,7 @@ import numpy as np
 class IMUFusionEKF:
     def __init__(self, dt):
         self.dt = dt
-        self.ekf = ExtendedKalmanFilter(dim_x=9, dim_z=3)  # 9 state variables, 3 fused measurements (linear acceleration)
+        self.ekf = ExtendedKalmanFilter(dim_x=9, dim_z=9)  # 9 state variables, 3 fused measurements (linear acceleration)
         
         # Initial state vector (position, velocity, orientation)
         self.ekf.x = np.zeros(9)  # [pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, roll, pitch, yaw]
@@ -36,7 +36,7 @@ class IMUFusionEKF:
         self.ekf.Q = np.diag([1e-4, 1e-4, 1e-4, 1e-2, 1e-2, 1e-2, 1e-3, 1e-3, 1e-3])*self.mul   # Noise for position, velocity, orientation
 
         # Measurement noise covariance matrix (R)
-        self.ekf.R = np.diag([1e-2, 1e-2, 1e-2]) *self.mul  # Noise for fused accelerations
+        self.ekf.R = np.diag([1e-2, 1e-2, 1e-2,1e-2, 1e-2, 1e-2,1e-2, 1e-2, 1e-2]) *self.mul  # Noise for fused accelerations
 
         
 
@@ -72,15 +72,29 @@ class IMUFusionEKF:
         Measurement function that maps the state to the expected measurement.
         In this case, we're predicting accelerations (which are related to velocity).
         """
-        # Return the velocity components from the state as expected measurements (acceleration)
-        return np.array([x[3], x[4], x[5]])  # Velocity (vx, vy, vz) are proxies for acceleration
+        # Predicted accelerations for IMU 1 and IMU 2 (using velocity components)
+        acc_imu1 = np.array([x[3], x[4], x[5]])  # From velocity components
+        acc_imu2 = np.array([x[3], x[4], x[5]])  # Assuming similar dynamics for IMU 2
+        
+        # Orientation from the state (roll, pitch, yaw)
+        orientation = x[6:9]  # [roll, pitch, yaw]
+        
+        # Return a combined prediction of accelerations and orientation
+        return np.hstack((acc_imu1, acc_imu2, orientation))
     def measurement_jacobian(self, x):
         """
         Jacobian of the measurement function (H).
-        This maps the velocity components in the state vector to the measured accelerations.
+        This maps the velocity components in the state vector to the measured accelerations
+        and orientation components to the measured orientation.
         """
-        H = np.zeros((3, 9))
-        H[0, 3] = H[1, 4] = H[2, 5] = 1  # Map velocity to acceleration (3x9 matrix)
+        H = np.zeros((9, 9))
+        # Map velocity to acceleration (first 6 elements are for accelerations from IMU1 and IMU2)
+        H[0, 3] = H[1, 4] = H[2, 5] = 1  # IMU1 acceleration from velocity
+        H[3, 3] = H[4, 4] = H[5, 5] = 1  # IMU2 acceleration from velocity
+        
+        # Map orientation (roll, pitch, yaw)
+        H[6, 6] = H[7, 7] = H[8, 8] = 1  # Roll, pitch, yaw from the state
+        
         return H
     def update(self, z_imu1, z_imu2, orientation_madgwick):
         """
@@ -89,29 +103,29 @@ class IMUFusionEKF:
         - z_imu2: IMU2 accelerations [acx, acy, acz]
         - orientation_madgwick: [roll, pitch, yaw] from the Madgwick filter
         """
-        # Fuse the accelerations from both IMUs (average or weighted)
-        accel_fused = 0.5 * (z_imu1[:3] + z_imu2[:3])   
-        # Compute predicted measurements from the current state
-        Hx = self.measurement_function(self.ekf.x)
-        # Combine IMU1 and IMU2 measurements into a single vector
-        measurements = np.hstack((accel_fused[:3], orientation_madgwick))
-
-        # Update the state vector's orientation directly from Madgwick
-        self.ekf.x[6:9] = orientation_madgwick  # Update roll, pitch, yaw from Madgwick
-        # Compute residual (innovation)
-        residual = self.compute_residual(measurements, Hx)
+        # Combine both IMUs' accelerations and Madgwick orientation into a single 9-dimensional vector
+        measurements = np.hstack((z_imu1[:3], z_imu2[:3], orientation_madgwick))  # Shape (9,)
         
+        # Compute predicted measurements from the current state
+        Hx = self.measurement_function(self.ekf.x)  # Predicted measurement also of shape (9,)
+
+        # Compute the residual (innovation) between the actual and predicted measurement
+        residual = self.compute_residual(measurements, Hx)
+
         # Store the residual for adaptive noise estimation
         self.residuals_window.append(residual)
-        
-        # Periodically update measurement noise covariance R based on residual variance
-        if len(self.residuals_window) > 10:  # Ensure enough residuals for variance calculation
-            self.update_R(self.residuals_window)
-         # Perform first update with IMU1 data
-        self.ekf.update(z=z_imu1[:3], HJacobian=self.measurement_jacobian, Hx=self.measurement_function)
 
-        # Perform second update with IMU2 data
-        self.ekf.update(z=z_imu2[:3], HJacobian=self.measurement_jacobian, Hx=self.measurement_function)
+        # Perform the EKF update step
+        try:
+            self.ekf.update(z=measurements, HJacobian=self.measurement_jacobian, Hx=self.measurement_function)
+        except np.linalg.LinAlgError:
+            print("Singular matrix error, adding regularization")
+            # Regularize P if there's an issue
+            self.ekf.P += np.eye(9) * 1e-6
+
+        # Regularize P after the update to avoid singularity issues in future updates
+        self.ekf.P += np.eye(9) * 1e-6
+        
 
     def calculate_jacobian(self, x):
         """
@@ -139,6 +153,8 @@ class IMUFusionEKF:
             - z: actual measurement (from sensors)
             - Hx: predicted measurement (from the measurement function)
             """
+            print(f"Measurement z: {z.shape}")
+            print(f"Measurement Hx: {Hx.shape}")
             return z - Hx
     def update_R(self, residuals):
         """
