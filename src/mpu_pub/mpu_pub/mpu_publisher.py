@@ -64,7 +64,7 @@ class MinimalPublisher(Node):
     def __init__(self):
         super().__init__('mpu_publisher')
         self.publisher_ = self.create_publisher(Mpu, 'mpu_data_1', 10)
-        self.publisher_secondMPU = self.create_publisher(Mpu, 'mpu_data_2', 10)
+        
 
         # Publisher for Imu (standard message)
         self.imu_publisher_ = self.create_publisher(Imu, 'imu_data', 10)
@@ -364,14 +364,14 @@ class MinimalPublisher(Node):
             msg.gy = float(gyro_y)
             msg.gz = float(gyro_z)
 
-            msg2 = Mpu()
-            msg2.message = "EL mensaje es"
-            msg2.acx = float(accel_x_2)
-            msg2.acy = float(accel_y_2)
-            msg2.acz = float(accel_z_2)
-            msg2.gx = float(gyro_x_2)
-            msg2.gy = float(gyro_y_2)
-            msg2.gz = float(gyro_z_2)
+           
+            
+            msg.acx2 = float(accel_x_2)
+            msg.acy2 = float(accel_y_2)
+            msg.acz2 = float(accel_z_2)
+            msg.gx2 = float(gyro_x_2)
+            msg.gy2 = float(gyro_y_2)
+            msg.gz2 = float(gyro_z_2)
             # Convert to Imu message and publish
             #imu_msg_1 = self.convert_mpu_to_imu(msg)  # First sensor
             #imu_msg_2 = self.convert_mpu_to_imu(msg2)  # Second sensor
@@ -379,7 +379,7 @@ class MinimalPublisher(Node):
             #self.imu_publisher_.publish(imu_msg_1)
             #self.imu_publisher_second.publish(imu_msg_2)
             self.publisher_.publish(msg)
-            self.publisher_secondMPU.publish(msg2)
+            
             #self.get_logger().info('is publishing')
 
         except KeyboardInterrupt:
