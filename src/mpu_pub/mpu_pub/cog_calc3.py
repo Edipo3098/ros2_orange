@@ -6,6 +6,7 @@ import numpy as np
 from filterpy.kalman import ExtendedKalmanFilter
 from ahrs.filters import Madgwick  # Use Madgwick from ahrs package
 from collections import deque
+
 """
 Fusion sensor increase measuremetes to 12
 6 for each sensor
@@ -15,8 +16,7 @@ pip install madgwick_py
 
 
 
-from filterpy.kalman import ExtendedKalmanFilter
-import numpy as np
+
 
 class IMUFusionEKF:
     def __init__(self, dt):
@@ -122,7 +122,7 @@ class IMUFusionEKF:
         self.ekf.x[6:9] = orientation_madgwick
         
         # Perform the EKF update with the combined measurements
-        self.ekf.update(z=measurements, HJacobian=self.measurement_jacobian(self.ekf.x), Hx=self.measurement_function)
+        self.ekf.update(z=measurements, HJacobian=self.measurement_jacobian, Hx=self.measurement_function)
 
     def calculate_jacobian(self, x):
         """
@@ -147,7 +147,7 @@ class IMUFusionEKF:
 class CalCOGFrame(Node):
 
     def __init__(self):
-        super().__init__('cog_calc4')
+        super().__init__('cog_calc3')
         self.subscription_mpu = self.create_subscription(Mpu, 'mpu_data_1', self.listener_callback, 10)
         
         
@@ -330,7 +330,7 @@ class CalCOGFrame(Node):
         self.kf.change_dt(dt)
         self.prev_time = current_time  # Update previous time
         # Add new measurement data to the buffers
-        self.add_measurement_to_buffers(self.mpu1_data,self.mpu2_data)
+        self.add_measurement_to_buffers(self.mpu1_data)
         # Update the measurement noise covariance matrix based on recent data
         self.update_measurement_noise()
         # Create the measurement vector with data from both IMUs
@@ -359,11 +359,13 @@ class CalCOGFrame(Node):
         roll, pitch, yaw = self.quaternion_to_euler_angles(self.quaternion)
         # Compensate for gravity using the orientation from the Madgwick filter
         # Convert accelerometer readings to m/s² (if not already in m/s²)
+        accel_imu1_raw = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz]) 
+        accel_imu2_raw = np.array([self.mpu1_data.acx2, self.mpu1_data.acy2, self.mpu1_data.acz2]) 
         accel_imu1 = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz]) * 9.81
         accel_imu2 = np.array([self.mpu1_data.acx2, self.mpu1_data.acy2, self.mpu1_data.acz2]) * 9.81
 
-        accel_imu1filt = np.array([filtered_acx, filtered_acy, filtered_acz]) 
-        accel_imu2filt = np.array([filtered_acx2, filtered_acy2, filtered_acz2]) 
+        accel_imu1filt = np.array([filtered_acx, filtered_acy, filtered_acz]) * 9.81
+        accel_imu2filt = np.array([filtered_acx2, filtered_acy2, filtered_acz2]) * 9.81
 
         accel_imu1_comp = self.compensate_gravity(accel_imu1, roll, pitch)
         accel_imu2_comp = self.compensate_gravity(accel_imu2, roll, pitch)
@@ -376,8 +378,15 @@ class CalCOGFrame(Node):
 
             # Fuse the accelerations (average)
          # Fuse the accelerations (average of both IMUs)
-        u1 = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz, self.mpu1_data.gx, self.mpu1_data.gy, self.mpu1_data.gz])
-        u2 = np.array([self.mpu1_data.acx2, self.mpu1_data.acy2, self.mpu1_data.acz2, self.mpu1_data.gx2, self.mpu1_data.gy2, self.mpu1_data.gz2])
+        u1_acc = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz])*9.81
+        u2_acc = np.array([self.mpu1_data.acx2, self.mpu1_data.acy2, self.mpu1_data.acz2])*9.81
+
+        u1_gyro = np.array([self.mpu1_data.gx, self.mpu1_data.gy, self.mpu1_data.gz])*np.pi/180 # Convert to rad/s
+        u2_gyro = np.array([self.mpu1_data.gx2, self.mpu1_data.gy2, self.mpu1_data.gz2])*np.pi/180 # Convert to rad/s
+
+        u1 = np.concatenate((u1_acc, u1_gyro))
+        u2 = np.concatenate((u2_acc, u2_gyro))
+       
         u_fused = 0.5 * (u1 + u2)
         
         # EKF Prediction step with fused acceleration
@@ -395,6 +404,8 @@ class CalCOGFrame(Node):
         msg.pos_x, msg.pos_y, msg.pos_z = float(pos[0]), float(pos[1]), float(pos[2])
         msg.roll, msg.pitch, msg.yaw = float(roll), float(pitch), float(yaw)
         self.publishKalmanFrame.publish(msg)
+        self.get_logger().info(f"MPU 1 raw: {float(accel_imu1_raw[0])}, {float(accel_imu1_raw[1])}, {float(accel_imu1_raw[2])}")
+        self.get_logger().info(f"MPU 2 raw:  {float(accel_imu2_raw[0])}, {float(accel_imu2_raw[1])}, {float(accel_imu2_raw[2])}")
         self.get_logger().info(f"MPU 1: {float(accel_imu1[0])}, {float(accel_imu1[1])}, {float(accel_imu1[2])}")
         self.get_logger().info(f"MPU 2:  {float(accel_imu2[0])}, {float(accel_imu2[1])}, {float(accel_imu2[2])}")
         self.get_logger().info(f"MPU 1 Filtered: {float(filtered_acx)}, {float(filtered_acy)},{float(filtered_acz)}")

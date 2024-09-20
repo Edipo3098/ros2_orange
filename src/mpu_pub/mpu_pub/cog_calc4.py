@@ -337,7 +337,7 @@ class CalCOGFrame(Node):
         self.kf.change_dt(dt)
         self.prev_time = current_time  # Update previous time
         # Add new measurement data to the buffers
-        self.add_measurement_to_buffers(self.mpu1_data,self.mpu2_data)
+        self.add_measurement_to_buffers(self.mpu1_data)
         # Update the measurement noise covariance matrix based on recent data
         self.update_measurement_noise()
         # Create the measurement vector with data from both IMUs
@@ -366,11 +366,13 @@ class CalCOGFrame(Node):
         roll, pitch, yaw = self.quaternion_to_euler_angles(self.quaternion)  # in rads
         # Compensate for gravity using the orientation from the Madgwick filter
         # Convert accelerometer readings to m/s² (if not already in m/s²)
+        accel_imu1_raw = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz]) 
+        accel_imu2_raw = np.array([self.mpu1_data.acx2, self.mpu1_data.acy2, self.mpu1_data.acz2]) 
         accel_imu1 = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz]) * 9.81
         accel_imu2 = np.array([self.mpu1_data.acx2, self.mpu1_data.acy2, self.mpu1_data.acz2]) * 9.81
 
-        accel_imu1filt = np.array([filtered_acx, filtered_acy, filtered_acz]) 
-        accel_imu2filt = np.array([filtered_acx2, filtered_acy2, filtered_acz2]) 
+        accel_imu1filt = np.array([filtered_acx, filtered_acy, filtered_acz]) * 9.81
+        accel_imu2filt = np.array([filtered_acx2, filtered_acy2, filtered_acz2]) * 9.81
 
         accel_imu1_comp = self.compensate_gravity_with_quaternion(accel_imu1, self.quaternion)
         accel_imu2_comp = self.compensate_gravity_with_quaternion(accel_imu2, self.quaternion)
@@ -399,6 +401,8 @@ class CalCOGFrame(Node):
         msg.pos_x, msg.pos_y, msg.pos_z = float(pos[0]), float(pos[1]), float(pos[2])
         msg.roll, msg.pitch, msg.yaw = float(roll), float(pitch), float(yaw)
         self.publishKalmanFrame.publish(msg)
+        self.get_logger().info(f"MPU 1 raw: {float(accel_imu1_raw[0])}, {float(accel_imu1_raw[1])}, {float(accel_imu1_raw[2])}")
+        self.get_logger().info(f"MPU 2 raw:  {float(accel_imu2_raw[0])}, {float(accel_imu2_raw[1])}, {float(accel_imu2_raw[2])}")
         self.get_logger().info(f"MPU 1: {float(accel_imu1[0])}, {float(accel_imu1[1])}, {float(accel_imu1[2])}")
         self.get_logger().info(f"MPU 2:  {float(accel_imu2[0])}, {float(accel_imu2[1])}, {float(accel_imu2[2])}")
         self.get_logger().info(f"MPU 1 Filtered: {float(filtered_acx)}, {float(filtered_acy)},{float(filtered_acz)}")

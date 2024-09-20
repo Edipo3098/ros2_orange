@@ -315,7 +315,7 @@ class MinimalPublisher(Node):
         """
         accel_x = ( calibration_data[calibration_key]["accel"]["offset"][0]) +   accel_x* calibration_data[calibration_key]["accel"]["slope"][0]
         accel_y = (  calibration_data[calibration_key]["accel"]["offset"][1]) +  accel_y * calibration_data[calibration_key]["accel"]["slope"][1]
-        accel_z = (  calibration_data[calibration_key]["accel"]["offset"][2])  + accel_y * calibration_data[calibration_key]["accel"]["slope"][2]
+        accel_z = (  calibration_data[calibration_key]["accel"]["offset"][2])  + accel_z * calibration_data[calibration_key]["accel"]["slope"][2]
         gyro_x -= calibration_data[calibration_key]["gyro"]["offset"][0]
         gyro_y -= calibration_data[calibration_key]["gyro"]["offset"][1]
         gyro_z -= calibration_data[calibration_key]["gyro"]["offset"][2]
