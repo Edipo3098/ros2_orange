@@ -7,9 +7,11 @@ from filterpy.kalman import ExtendedKalmanFilter
 from ahrs.filters import Madgwick  # Use Madgwick from ahrs package
 from collections import deque
 """
-Fusion sensor increase measuremetes to 12
-6 for each sensor
-pip install madgwick_py
+Fusion sensor increase measuremetes to 6
+Accx Accy AccZ
+The fuses is being implemented in 
+update that update uses both measurements
+G
 
 """
 
@@ -92,8 +94,11 @@ class IMUFusionEKF:
         # Update the state vector's orientation directly from Madgwick
         self.ekf.x[6:9] = orientation_madgwick  # Update roll, pitch, yaw from Madgwick
 
-        # Use filterpy's update function with the fused acceleration data
-        self.ekf.update(z=accel_fused, HJacobian=self.measurement_jacobian, Hx=self.measurement_function)
+         # Perform first update with IMU1 data
+        self.ekf.update(z=z_imu1[:3], HJacobian=self.measurement_jacobian, Hx=self.measurement_function)
+
+        # Perform second update with IMU2 data
+        self.ekf.update(z=z_imu2[:3], HJacobian=self.measurement_jacobian, Hx=self.measurement_function)
 
     def calculate_jacobian(self, x):
         """
@@ -209,12 +214,10 @@ class CalCOGFrame(Node):
             for axis in ['gx', 'gy', 'gz']
         }
         # Update the measurement noise covariance matrix (R)
-        self.kf.R = np.diag([
-            acc_variance['acx'], acc_variance['acy'], acc_variance['acz'],
-            gyro_variance['gx'], gyro_variance['gy'], gyro_variance['gz'],
-            acc_variance2['acx'], acc_variance2['acy'], acc_variance2['acz'],
-            gyro_variance2['gx'], gyro_variance2['gy'], gyro_variance2['gz']
-        ])
+        vaAcx = np.mean(acc_variance['acx'])
+        vaAcy = np.mean(acc_variance['vaAcy'])
+        vaAcz = np.mean(acc_variance['acx'])
+        self.kf.ekf.R = np.diag([ vaAcx   , vaAcy,  vaAcz])
 
     def add_measurement_to_buffers(self, imu_data):
         """
@@ -283,6 +286,39 @@ class CalCOGFrame(Node):
         accel_compensated = accel - g_sensor
 
         return accel_compensated
+    def compensate_gravity_with_quaternion(self, accel, q):
+        """
+        Compensate for the gravitational component in the accelerometer reading
+        using the quaternion from the Madgwick filter to avoid singularities.
+        
+        Parameters:
+        - accel: 3D vector of accelerometer data [ax, ay, az] (in m/s²)
+        - q: quaternion as [w, x, y, z]
+
+        Returns:
+        - accel_compensated: gravity-compensated acceleration vector
+        """
+        # Quaternion components
+        w, x, y, z = q
+
+        # Gravity vector in the global frame (assuming Z points upwards)
+        gravity = np.array([0, 0, 9.81])
+
+        # Convert quaternion to rotation matrix to rotate gravity vector
+        # This is the rotation matrix derived from the quaternion
+        R = np.array([
+            [1 - 2*(y**2 + z**2), 2*(x*y - z*w),     2*(x*z + y*w)],
+            [2*(x*y + z*w),     1 - 2*(x**2 + z**2), 2*(y*z - x*w)],
+            [2*(x*z - y*w),     2*(y*z + x*w),     1 - 2*(x**2 + y**2)]
+        ])
+
+        # Rotate the gravity vector into the sensor frame
+        gravity_sensor_frame = R @ gravity
+
+        # Subtract the gravity vector from the accelerometer readings
+        accel_compensated = accel - gravity_sensor_frame
+
+        return accel_compensated
     def process_fusion(self):
         
 
@@ -333,14 +369,14 @@ class CalCOGFrame(Node):
         accel_imu1 = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz]) * 9.81
         accel_imu2 = np.array([self.mpu1_data.acx2, self.mpu1_data.acy2, self.mpu1_data.acz2]) * 9.81
 
-        accel_imu1filt = np.array([filtered_acx, filtered_acy, filtered_acz]) * 9.81
-        accel_imu2filt = np.array([filtered_acx2, filtered_acy2, filtered_acz2]) * 9.81
+        accel_imu1filt = np.array([filtered_acx, filtered_acy, filtered_acz]) 
+        accel_imu2filt = np.array([filtered_acx2, filtered_acy2, filtered_acz2]) 
 
-        accel_imu1_comp = self.compensate_gravity(accel_imu1, roll, pitch)
-        accel_imu2_comp = self.compensate_gravity(accel_imu2, roll, pitch)
+        accel_imu1_comp = self.compensate_gravity_with_quaternion(accel_imu1, self.quaternion)
+        accel_imu2_comp = self.compensate_gravity_with_quaternion(accel_imu2, self.quaternion)
 
-        accel_imu1_comp_filt = self.compensate_gravity(accel_imu1filt, roll, pitch)
-        accel_imu2_comp_filt = self.compensate_gravity(accel_imu2filt, roll, pitch)
+        accel_imu1_comp_filt = self.compensate_gravity_with_quaternion(accel_imu1filt, self.quaternion)
+        accel_imu2_comp_filt = self.compensate_gravity_with_quaternion(accel_imu2filt, self.quaternion)
         # Fused measurement vector for EKF (acceleration from both IMUs)
         z_imu1 = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz])
         z_imu2 = np.array([self.mpu1_data.acx2, self.mpu1_data.acy2, self.mpu1_data.acz2])
