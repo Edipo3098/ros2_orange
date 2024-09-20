@@ -408,9 +408,10 @@ class CalCOGFrame(Node):
         self.get_logger().info(f"MPU 2 raw:  {float(accel_imu2_raw[0])}, {float(accel_imu2_raw[1])}, {float(accel_imu2_raw[2])}")
         self.get_logger().info(f"MPU 1: {float(accel_imu1[0])}, {float(accel_imu1[1])}, {float(accel_imu1[2])}")
         self.get_logger().info(f"MPU 2:  {float(accel_imu2[0])}, {float(accel_imu2[1])}, {float(accel_imu2[2])}")
-        self.get_logger().info(f"MPU 1 Filtered: {float(filtered_acx)}, {float(filtered_acy)},{float(filtered_acz)}")
-        self.get_logger().info(f"MPU 2 Filtered: {float(filtered_acx2)}, {float(filtered_acy2)},{float(filtered_acz2)}")
+        self.get_logger().info(f"MPU 1 Filtered: {float(accel_imu1filt[0])}, {float(accel_imu1filt[1])},{float(accel_imu1filt[2])}")
+        self.get_logger().info(f"MPU 2 Filtered: {float(accel_imu2filt[0])}, {float(accel_imu2filt[1])},{float(accel_imu2filt[2])}")
         self.get_logger().info(f"Pos X Y Z: {float(pos[0])}, {float(pos[1])}, {float(pos[2])}")
+
 
         """
         self.get_logger().info(f"MPU 1 Filtered: {float(filtered_acx)}, {float(filtered_acy)},{float(filtered_acz)}")

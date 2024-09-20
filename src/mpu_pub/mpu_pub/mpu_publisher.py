@@ -93,11 +93,11 @@ class MinimalPublisher(Node):
         self.check_full_scale(mpu9250_address)
         calibration_key = 'mpu1'
         
-        #self.calibrate_mpu(mpu9250_address,20000,calibration_key)
+        self.calibrate_mpu(mpu9250_address,20000,calibration_key)
 
         calibration_key = 'mpu2'
         self.check_full_scale(mpu9250_address_2)
-        #self.calibrate_mpu(mpu9250_address_2,20000,calibration_key)
+        self.calibrate_mpu(mpu9250_address_2,20000,calibration_key)
         
 
         self.Check_communication(mpu9250_address)
