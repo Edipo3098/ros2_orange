@@ -278,13 +278,14 @@ class CalCOGFrame(Node):
             for axis in ['gx', 'gy', 'gz']
         }
         # Update the measurement noise covariance matrix (R)
+        """
         self.kf.ekf.R = np.diag([
             acc_variance['acx'], acc_variance['acy'], acc_variance['acz'],
             gyro_variance['gx'], gyro_variance['gy'], gyro_variance['gz'],
             acc_variance2['acx'], acc_variance2['acy'], acc_variance2['acz'],
             gyro_variance2['gx'], gyro_variance2['gy'], gyro_variance2['gz']
         ])*self.kf.mul 
-
+        """
     def add_measurement_to_buffers(self, imu_data):
         """
         Add new IMU data to the sliding window buffers for noise calculation.

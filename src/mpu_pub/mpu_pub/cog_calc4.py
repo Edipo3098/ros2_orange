@@ -250,8 +250,9 @@ class CalCOGFrame(Node):
         vaAcy = np.mean([ acc_variance['acy'],acc_variance2['acy']] )
         vaAcz = np.mean([ acc_variance['acz'],acc_variance2['acz']] )
         
+        """
         self.kf.ekf.R = np.diag([ vaAcx   , vaAcy,  vaAcz])*self.kf.mul
-
+        """
     def add_measurement_to_buffers(self, imu_data):
         """
         Add new IMU data to the sliding window buffers for noise calculation.
