@@ -256,9 +256,9 @@ class MinimalPublisher(Node):
         mul = 1
         # Store calibration parameters
         if key == 'mpu2':
-            mul = 1.2
+            mul = 1
 
-        calibration_data[key]["accel"]["slope"] =  (calibration_data[key]["accel"]["slope"]  + accel_std**2)*mul
+        calibration_data[key]["accel"]["slope"] =  (calibration_data[key]["accel"]["slope"]  )*mul
         calibration_data[key]["accel"]["offset"] = (accel_offset*mul)
         calibration_data[key]["gyro"]["offset"] = gyro_offset
 
