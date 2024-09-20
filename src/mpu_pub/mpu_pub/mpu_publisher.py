@@ -310,6 +310,15 @@ class MinimalPublisher(Node):
         gyro_x = self.convert_data(gyro_data[0], gyro_data[1])
         gyro_y = self.convert_data(gyro_data[2], gyro_data[3])
         gyro_z = self.convert_data(gyro_data[4], gyro_data[5])
+
+        # Apply low-pass filter to raw values
+        accel_x = self.low_pass_filter(accel_x, prev[0])
+        accel_y = self.low_pass_filter(accel_y, prev[1])
+        accel_z = self.low_pass_filter(accel_z, prev[2])
+
+        gyro_x = self.low_pass_filter(gyro_x, prev[3])
+        gyro_y = self.low_pass_filter(gyro_y, prev[4])
+        gyro_z = self.low_pass_filter(gyro_z, prev[5])
         # Apply low-pass filter to raw values
         #accel_x = self.low_pass_filter(accel_x, prev[0])
         #accel_y = self.low_pass_filter(accel_y, prev[1])
