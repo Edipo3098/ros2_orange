@@ -45,7 +45,7 @@ GYRO_XOUT_H  = 0x43
 GYRO_YOUT_H  = 0x45
 GYRO_ZOUT_H  = 0x47
 # Calibration data for two MPU9250s
-calibration_data1 = {
+calibration_data = {
     "mpu1": {
         "accel": {"slope": [-1.00287361, -0.99886526, -1.00341099], "offset": [0.00174287, 0.00552432, -0.03603273]},
         "gyro": {"offset": [0.41042327880859375, 1.2082672119140625, 0.06053924560546875]}
@@ -55,7 +55,7 @@ calibration_data1 = {
         "gyro": {"offset": [0.9417724609375, 1.201019287109375, -1.0709762573242188]}
     }
 }
-calibration_data = {
+calibration_data1 = {
     "mpu1": {
         "accel": {"slope": [1.00287361, 0.99886526, 1.00341099], "offset": [0-.00174287, -0.00552432, 0.03603273]},
         "gyro": {"offset": [0.41042327880859375, 1.2082672119140625, 0.06053924560546875]}
