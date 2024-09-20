@@ -32,7 +32,8 @@ class IMUFusionEKF:
         self.ekf.P = np.eye(9) * 1  # Initial uncertainty
 
         # Process noise covariance matrix (Q)
-        self.ekf.Q = np.diag([1e-4, 1e-4, 1e-4, 1e-2, 1e-2, 1e-2, 1e-3, 1e-3, 1e-3])
+        mul = 2
+        self.ekf.Q = np.diag([1e-4, 1e-4, 1e-4, 1e-2, 1e-2, 1e-2, 1e-3, 1e-3, 1e-3])*mul  # Noise for position, velocity, orientation
 
         # Measurement noise covariance matrix (R)
         self.ekf.R = np.diag([1e-2, 1e-2, 1e-2])  # Noise for fused accelerations
@@ -217,7 +218,8 @@ class CalCOGFrame(Node):
         vaAcx = np.mean([ acc_variance['acx'],acc_variance2['acx']] )
         vaAcy = np.mean([ acc_variance['acy'],acc_variance2['acy']] )
         vaAcz = np.mean([ acc_variance['acz'],acc_variance2['acz']] )
-        self.kf.ekf.R = np.diag([ vaAcx   , vaAcy,  vaAcz])
+        mult = 2
+        self.kf.ekf.R = np.diag([ vaAcx   , vaAcy,  vaAcz])*mult
 
     def add_measurement_to_buffers(self, imu_data):
         """
@@ -344,9 +346,9 @@ class CalCOGFrame(Node):
         
         # In process_fusion:
         
-        alpha = 0.7  # Weight for IMU1, 1 - alpha for IMU2
+        alpha = 0.95  # Weight for IMU1, 1 - alpha for IMU2
         
-        # Weighted average for gyroscope data
+        # Weighted average for gyroscope data in
         gyroscope_data = np.array([
             alpha * self.mpu1_data.gx + (1 - alpha) * self.mpu1_data.gx2,
             alpha * self.mpu1_data.gy + (1 - alpha) * self.mpu1_data.gy2,
@@ -358,6 +360,19 @@ class CalCOGFrame(Node):
             alpha * self.mpu1_data.acx + (1 - alpha) * self.mpu1_data.acx2,
             alpha * self.mpu1_data.acy + (1 - alpha) * self.mpu1_data.acy2,
             alpha * self.mpu1_data.acz + (1 - alpha) * self.mpu1_data.acz2
+        ])   # Convert to G
+
+        gyroscope_data_filtered = np.array([
+            alpha * self.mpu1_data.gx + (1 - alpha) * self.mpu1_data.gx2,
+            alpha * self.mpu1_data.gy + (1 - alpha) * self.mpu1_data.gy2,
+            alpha * self.mpu1_data.gz + (1 - alpha) * self.mpu1_data.gz2
+        ]) # already in rad/s
+
+        # Weighted average for accelerometer data
+        accelerometer_data_filtered = np.array([
+            alpha * filtered_acx + (1 - alpha) * filtered_acx2,
+            alpha * filtered_acy + (1 - alpha) * filtered_acy2,
+            alpha * filtered_acz + (1 - alpha) * filtered_acz2
         ])   # Convert to G
         self.quaternion
         self.quaternion  = self.madgwick_filter.updateIMU(q=self.quaternion,gyr=gyroscope_data, acc=accelerometer_data)
@@ -380,12 +395,11 @@ class CalCOGFrame(Node):
         accel_imu1_comp_filt = self.compensate_gravity_with_quaternion(accel_imu1filt, self.quaternion)
         accel_imu2_comp_filt = self.compensate_gravity_with_quaternion(accel_imu2filt, self.quaternion)
         # Fused measurement vector for EKF (acceleration from both IMUs)
-        z_imu1 = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz])
-        z_imu2 = np.array([self.mpu1_data.acx2, self.mpu1_data.acy2, self.mpu1_data.acz2])
-
+        z_imu1 = accel_imu1filt
+        z_imu2 = accel_imu2filt
             # Fuse the accelerations (average)
-        u_fused = 0.5 * (z_imu1 + z_imu2)
-
+        u_fused = alpha*accel_imu1 + (1-alpha)*accel_imu2_raw
+        
         # EKF Prediction step with fused acceleration
         self.kf.predict(u_fused)
 
@@ -405,13 +419,18 @@ class CalCOGFrame(Node):
         self.get_logger().info(f"MPU 2 raw:  {float(accel_imu2_raw[0])}, {float(accel_imu2_raw[1])}, {float(accel_imu2_raw[2])}")
         self.get_logger().info(f"MPU 1: {float(accel_imu1[0])}, {float(accel_imu1[1])}, {float(accel_imu1[2])}")
         self.get_logger().info(f"MPU 2:  {float(accel_imu2[0])}, {float(accel_imu2[1])}, {float(accel_imu2[2])}")
+        self.get_logger().info(f"MPU 1 Filtered: {float(accel_imu1filt[0])}, {float(accel_imu1filt[1])},{float(accel_imu1filt[2])}")
+        self.get_logger().info(f"MPU 2 Filtered: {float(accel_imu2filt[0])}, {float(accel_imu2filt[1])},{float(accel_imu2filt[2])}")
+        self.get_logger().info(f"Pos X Y Z: {float(pos[0])}, {float(pos[1])}, {float(pos[2])}")
+
+        """
         self.get_logger().info(f"MPU 1 Filtered: {float(filtered_acx)}, {float(filtered_acy)},{float(filtered_acz)}")
         self.get_logger().info(f"MPU 2 Filtered: {float(filtered_acx2)}, {float(filtered_acy2)},{float(filtered_acz2)}")
         self.get_logger().info(f"MPU 1  compensate G: {float(accel_imu1_comp[0])}, {float(accel_imu1_comp[1])}, {float(accel_imu1_comp[2])}")
         self.get_logger().info(f"MPU 2  compensate G: {float(accel_imu2_comp[0])}, {float(accel_imu2_comp[1])}, {float(accel_imu2_comp[2])}")
         self.get_logger().info(f"MPU 1  compensate G filt: {float(accel_imu1_comp_filt[0])}, {float(accel_imu1_comp_filt[1])}, {float(accel_imu1_comp_filt[2])}")
         self.get_logger().info(f"MPU 2  compensate G filt: {float(accel_imu2_comp_filt[0])}, {float(accel_imu2_comp_filt[1])}, {float(accel_imu2_comp_filt[2])}")
-
+        """
 def main(args=None):
     rclpy.init(args=args)
     cog_calculate = CalCOGFrame()

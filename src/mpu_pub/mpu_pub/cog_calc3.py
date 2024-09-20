@@ -378,8 +378,8 @@ class CalCOGFrame(Node):
 
             # Fuse the accelerations (average)
          # Fuse the accelerations (average of both IMUs)
-        u1_acc = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz])*9.81
-        u2_acc = np.array([self.mpu1_data.acx2, self.mpu1_data.acy2, self.mpu1_data.acz2])*9.81
+        u1_acc = accel_imu1filt
+        u2_acc = accel_imu2filt
 
         u1_gyro = np.array([self.mpu1_data.gx, self.mpu1_data.gy, self.mpu1_data.gz])*np.pi/180 # Convert to rad/s
         u2_gyro = np.array([self.mpu1_data.gx2, self.mpu1_data.gy2, self.mpu1_data.gz2])*np.pi/180 # Convert to rad/s
@@ -410,11 +410,16 @@ class CalCOGFrame(Node):
         self.get_logger().info(f"MPU 2:  {float(accel_imu2[0])}, {float(accel_imu2[1])}, {float(accel_imu2[2])}")
         self.get_logger().info(f"MPU 1 Filtered: {float(filtered_acx)}, {float(filtered_acy)},{float(filtered_acz)}")
         self.get_logger().info(f"MPU 2 Filtered: {float(filtered_acx2)}, {float(filtered_acy2)},{float(filtered_acz2)}")
+        self.get_logger().info(f"Pos X Y Z: {float(pos[0])}, {float(pos[1])}, {float(pos[2])}")
+
+        """
+        self.get_logger().info(f"MPU 1 Filtered: {float(filtered_acx)}, {float(filtered_acy)},{float(filtered_acz)}")
+        self.get_logger().info(f"MPU 2 Filtered: {float(filtered_acx2)}, {float(filtered_acy2)},{float(filtered_acz2)}")
         self.get_logger().info(f"MPU 1  compensate G: {float(accel_imu1_comp[0])}, {float(accel_imu1_comp[1])}, {float(accel_imu1_comp[2])}")
         self.get_logger().info(f"MPU 2  compensate G: {float(accel_imu2_comp[0])}, {float(accel_imu2_comp[1])}, {float(accel_imu2_comp[2])}")
         self.get_logger().info(f"MPU 1  compensate G filt: {float(accel_imu1_comp_filt[0])}, {float(accel_imu1_comp_filt[1])}, {float(accel_imu1_comp_filt[2])}")
         self.get_logger().info(f"MPU 2  compensate G filt: {float(accel_imu2_comp_filt[0])}, {float(accel_imu2_comp_filt[1])}, {float(accel_imu2_comp_filt[2])}")
-
+        """
 def main(args=None):
     rclpy.init(args=args)
     cog_calculate = CalCOGFrame()
