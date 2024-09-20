@@ -253,10 +253,13 @@ class MinimalPublisher(Node):
 
         # Gyroscope calibration (offset calculation)
         gyro_offset = np.mean(gyro_data, axis=0)
-
+        mul = 1
         # Store calibration parameters
-        calibration_data[key]["accel"]["slope"] =  calibration_data[key]["accel"]["slope"]  + accel_std**2
-        calibration_data[key]["accel"]["offset"] = accel_offset
+        if key == 'mpu2':
+            mul = 1.2
+
+        calibration_data[key]["accel"]["slope"] =  (calibration_data[key]["accel"]["slope"]  + accel_std**2)*mul
+        calibration_data[key]["accel"]["offset"] = (accel_offset*mul)
         calibration_data[key]["gyro"]["offset"] = gyro_offset
 
         # Log the standard deviation for diagnostic purposes

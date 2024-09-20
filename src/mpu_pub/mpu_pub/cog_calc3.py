@@ -386,14 +386,14 @@ class CalCOGFrame(Node):
 
         u1 = np.concatenate((u1_acc, u1_gyro))
         u2 = np.concatenate((u2_acc, u2_gyro))
-        multiplier = 0.9
+        multiplier = 0.2
         u_fused = multiplier * (u1 )+  (1-multiplier)* u2
         
         # EKF Prediction step with fused acceleration
         self.kf.predict(u_fused)
 
         # EKF Update step with fused measurements and Madgwick orientation
-        self.kf.update(accel_imu1, accel_imu2, [roll, pitch, yaw])
+        self.kf.update(accel_imu1filt, accel_imu2filt, [roll, pitch, yaw])
 
         # Retrieve the filtered state (position, velocity, orientation)
         pos, vel, orient = self.kf.get_state()
