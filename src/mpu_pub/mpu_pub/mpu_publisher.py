@@ -67,7 +67,7 @@ calibration_data1 = {
 }
 # Constants for sensitivity values
 ACCEL_SENSITIVITY = 16  # LSB/g for +/- 2g range
-GYRO_SENSITIVITY = 5000  # LSB/dps for +/- 250 dps range
+GYRO_SENSITIVITY = 250  # LSB/dps for +/- 250 dps range
 
 class MinimalPublisher(Node):
 
@@ -102,7 +102,7 @@ class MinimalPublisher(Node):
 
         self.Check_communication(mpu9250_address)
         self.Check_communication(mpu9250_address_2)
-        timer_period = 1/50   # seconds 50Hz
+        timer_period = 1/100   # seconds 50Hz
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0
         self.prev_accel_x, self.prev_accel_y, self.prev_accel_z = 0, 0, 0
@@ -140,7 +140,7 @@ class MinimalPublisher(Node):
         #Write to Gyro configuration register
         gyro_config_sel = [0b00000,0b01000,0b10000,0b11000] # byte registers
         gyro_config_vals = [250.0,500.0,1000.0,2000.0] # degrees/sec
-        gyro_indx = 1
+        gyro_indx = 0
         self.bus.write_byte_data(address, GYRO_CONFIG, int(gyro_config_sel[gyro_indx]))
         time.sleep(0.1)
         #Write to Accel configuration register

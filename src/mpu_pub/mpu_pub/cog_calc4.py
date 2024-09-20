@@ -32,11 +32,11 @@ class IMUFusionEKF:
         self.ekf.P = np.eye(9) * 1  # Initial uncertainty
 
         # Process noise covariance matrix (Q)
-        mul = 1000
-        self.ekf.Q = np.diag([1e-4, 1e-4, 1e-4, 1e-2, 1e-2, 1e-2, 1e-3, 1e-3, 1e-3])*mul  # Noise for position, velocity, orientation
+        self.mul = 10000
+        self.ekf.Q = np.diag([1e-4, 1e-4, 1e-4, 1e-2, 1e-2, 1e-2, 1e-3, 1e-3, 1e-3])*self.mul   # Noise for position, velocity, orientation
 
         # Measurement noise covariance matrix (R)
-        self.ekf.R = np.diag([1e-2, 1e-2, 1e-2])  # Noise for fused accelerations
+        self.ekf.R = np.diag([1e-2, 1e-2, 1e-2]) *self.mul  # Noise for fused accelerations
 
         
 
@@ -158,9 +158,10 @@ class CalCOGFrame(Node):
             'gz': deque(maxlen=self.window_size),
         }
         # Kalman filter for fusing data from both MPUs
-        self.kf = IMUFusionEKF(dt=0.02)
+        self.frec = 100
+        self.kf = IMUFusionEKF(dt=1/self.frec )
         # Madgwick filter initialization
-        self.madgwick_filter = Madgwick(frequency=1/0.02,gain=0.033)  # Adjust sample period as needed
+        self.madgwick_filter = Madgwick(frequency=self.frec ,gain=0.033)  # Adjust sample period as needed
         """
         If your IMU data is noisy, a lower beta value may help reduce jitter, though you will need to balance this with the slower data rate.
         """
@@ -218,8 +219,8 @@ class CalCOGFrame(Node):
         vaAcx = np.mean([ acc_variance['acx'],acc_variance2['acx']] )
         vaAcy = np.mean([ acc_variance['acy'],acc_variance2['acy']] )
         vaAcz = np.mean([ acc_variance['acz'],acc_variance2['acz']] )
-        mult = 2
-        self.kf.ekf.R = np.diag([ vaAcx   , vaAcy,  vaAcz])*mult
+        
+        self.kf.ekf.R = np.diag([ vaAcx   , vaAcy,  vaAcz])*self.kf.mul
 
     def add_measurement_to_buffers(self, imu_data):
         """
@@ -336,7 +337,7 @@ class CalCOGFrame(Node):
         filtered_acx2 = self.low_pass_filter('acx', self.mpu1_data.acx2)
         filtered_acy2 = self.low_pass_filter('acy', self.mpu1_data.acy2)
         filtered_acz2 = self.low_pass_filter('acz', self.mpu1_data.acz2)
-        self.kf.change_dt(dt)
+        #self.kf.change_dt(dt)
         self.prev_time = current_time  # Update previous time
         # Add new measurement data to the buffers
         self.add_measurement_to_buffers(self.mpu1_data)
@@ -398,13 +399,13 @@ class CalCOGFrame(Node):
         z_imu1 = accel_imu1_raw
         z_imu2 = accel_imu2_raw
             # Fuse the accelerations (average)
-        u_fused = alpha*accel_imu1 + (1-alpha)*accel_imu2
+        u_fused = alpha*accel_imu1_raw + (1-alpha)*accel_imu2_raw
         
         # EKF Prediction step with fused acceleration
         self.kf.predict(u_fused)
 
         # EKF Update step with fused measurements and Madgwick orientation Z
-        self.kf.update(z_imu1, z_imu1, [roll, pitch, yaw])
+        self.kf.update(z_imu1, z_imu2, [roll, pitch, yaw])
 
         # Retrieve filtered state (position, velocity)
         pos, vel, orient = self.kf.get_state()

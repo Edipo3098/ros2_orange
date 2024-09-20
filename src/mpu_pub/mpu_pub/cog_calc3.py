@@ -32,11 +32,11 @@ class IMUFusionEKF:
         self.ekf.P = np.eye(12) * 1  # Updated to 12x12 for the new state vector
 
         # Process noise covariance matrix (Q) - also 12x12
-        mul = 10000
-        self.ekf.Q = np.diag([1e-4, 1e-4, 1e-4, 1e-2, 1e-2, 1e-2, 1e-3, 1e-3, 1e-3, 1e-4, 1e-4, 1e-4])*mul
+        self.mul  = 10000
+        self.ekf.Q = np.diag([1e-4, 1e-4, 1e-4, 1e-2, 1e-2, 1e-2, 1e-3, 1e-3, 1e-3, 1e-4, 1e-4, 1e-4])*self.mul 
 
         # Measurement noise covariance matrix (R) - 12x12 for 12 measurements
-        self.ekf.R = np.diag([1e-2] * 12)
+        self.ekf.R = np.diag([1e-2] * self.mul )
 
         
 
@@ -244,7 +244,7 @@ class CalCOGFrame(Node):
             gyro_variance['gx'], gyro_variance['gy'], gyro_variance['gz'],
             acc_variance2['acx'], acc_variance2['acy'], acc_variance2['acz'],
             gyro_variance2['gx'], gyro_variance2['gy'], gyro_variance2['gz']
-        ])
+        ])*self.kf.mul 
 
     def add_measurement_to_buffers(self, imu_data):
         """
@@ -385,7 +385,7 @@ class CalCOGFrame(Node):
         u1_gyro = np.array([self.mpu1_data.gx, self.mpu1_data.gy, self.mpu1_data.gz])*np.pi/180 # Convert to rad/s
         u2_gyro = np.array([self.mpu1_data.gx2, self.mpu1_data.gy2, self.mpu1_data.gz2])*np.pi/180 # Convert to rad/s
 
-        u1 = np.concatenate((u1_acc, u1_gyro))
+        u1 = np.concatenate((accel_imu1_raw, u2_acc))
         u2 = np.concatenate((u2_acc, u2_gyro))
         multiplier = 0.2
         u_fused = multiplier * (u1 )+  (1-multiplier)* u2
