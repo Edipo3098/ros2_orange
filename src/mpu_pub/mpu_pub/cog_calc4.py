@@ -30,9 +30,9 @@ class IMUFusionEKF:
 
         # State covariance matrix (P)
         self.ekf.P = np.eye(9) * 1  # Initial uncertainty
-
+        self.residuals_window = deque(maxlen=100)  # Store last 100 residuals
         # Process noise covariance matrix (Q)
-        self.mul = 10000
+        self.mul = 1
         self.ekf.Q = np.diag([1e-4, 1e-4, 1e-4, 1e-2, 1e-2, 1e-2, 1e-3, 1e-3, 1e-3])*self.mul   # Noise for position, velocity, orientation
 
         # Measurement noise covariance matrix (R)
@@ -90,11 +90,23 @@ class IMUFusionEKF:
         - orientation_madgwick: [roll, pitch, yaw] from the Madgwick filter
         """
         # Fuse the accelerations from both IMUs (average or weighted)
-        accel_fused = 0.5 * (z_imu1[:3] + z_imu2[:3])
+        accel_fused = 0.5 * (z_imu1[:3] + z_imu2[:3])   
+        # Compute predicted measurements from the current state
+        Hx = self.measurement_function(self.ekf.x)
+        # Combine IMU1 and IMU2 measurements into a single vector
+        measurements = np.hstack((accel_fused[:3], orientation_madgwick))
 
         # Update the state vector's orientation directly from Madgwick
         self.ekf.x[6:9] = orientation_madgwick  # Update roll, pitch, yaw from Madgwick
-
+        # Compute residual (innovation)
+        residual = self.compute_residual(measurements, Hx)
+        
+        # Store the residual for adaptive noise estimation
+        self.residuals_window.append(residual)
+        
+        # Periodically update measurement noise covariance R based on residual variance
+        if len(self.residuals_window) > 10:  # Ensure enough residuals for variance calculation
+            self.update_R(self.residuals_window)
          # Perform first update with IMU1 data
         self.ekf.update(z=z_imu1[:3], HJacobian=self.measurement_jacobian, Hx=self.measurement_function)
 
@@ -120,7 +132,25 @@ class IMUFusionEKF:
         Orientation comes from the Madgwick filter.
         """
         return self.ekf.x[:3], self.ekf.x[3:6], self.ekf.x[6:9]  # Position, velocity, orientation
-
+    def compute_residual(self, z, Hx):
+            """
+            Compute the residual (innovation) between the actual measurement z 
+            and the predicted measurement Hx.
+            - z: actual measurement (from sensors)
+            - Hx: predicted measurement (from the measurement function)
+            """
+            return z - Hx
+    def update_R(self, residuals):
+        """
+        Dynamically update the measurement noise covariance R 
+        based on the variance of the residuals.
+        - residuals: list of past residuals to calculate variance
+        """
+        # Calculate the variance of the residuals for each sensor
+        variance = np.var(residuals, axis=0)
+            
+            # Update the measurement noise covariance matrix R
+        self.ekf.R = np.diag(variance) * self.mul  # self.kf.mul is your multiplier
 class CalCOGFrame(Node):
 
     def __init__(self):
@@ -322,6 +352,8 @@ class CalCOGFrame(Node):
         accel_compensated = accel - gravity_sensor_frame
 
         return accel_compensated
+    
+
     def process_fusion(self):
         
 

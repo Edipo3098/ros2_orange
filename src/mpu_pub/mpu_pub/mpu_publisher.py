@@ -66,7 +66,7 @@ calibration_data1 = {
     }
 }
 # Constants for sensitivity values
-ACCEL_SENSITIVITY = 16  # LSB/g for +/- 2g range
+ACCEL_SENSITIVITY = 4  # LSB/g for +/- 2g range
 GYRO_SENSITIVITY = 250  # LSB/dps for +/- 250 dps range
 
 class MinimalPublisher(Node):
@@ -146,7 +146,7 @@ class MinimalPublisher(Node):
         #Write to Accel configuration register
         accel_config_sel = [0b00000,0b01000,0b10000,0b11000] # byte registers
         accel_config_vals = [2.0,4.0,8.0,16.0] # g (g = 9.81 m/s^2)
-        accel_indx = 3
+        accel_indx = 1
         self.bus.write_byte_data(address, ACCEL_CONFIG, int(accel_config_sel[accel_indx]))
         time.sleep(0.1)
         # interrupt register (related to overflow of data [FIFO])
