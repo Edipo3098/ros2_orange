@@ -123,34 +123,40 @@ class MinimalPublisher(Node):
             self.get_logger().info("Warning: Sensor is not configured for full scale (2g accel, 250 dps gyro).")
 
     def configure_sensor(self, address):
-        self.bus.write_byte_data(address,PWR_MGMT_1,0x80)
+        """
+        Configure the MPU9250 sensor for slow dynamics with low DLPF cutoff, 
+        low sample rate, and normal power mode.
+        """
+        # Reset the device and wait for it to stabilize
+        self.bus.write_byte_data(address, PWR_MGMT_1, 0x80)  # Reset the device
         time.sleep(0.1)
-        self.bus.write_byte_data(address,PWR_MGMT_1,0x00)
+
+        # Exit sleep mode and set clock source to PLL with X-axis gyroscope reference
+        self.bus.write_byte_data(address, PWR_MGMT_1, 0x00)
         time.sleep(0.1)
-        # power management and crystal settings
-        self.bus.write_byte_data(address, PWR_MGMT_1, 0x01)
+
+        # Set the DLPF to 20 Hz (DLPF_CFG = 0b100) in the CONFIG register
+        self.bus.write_byte_data(address, CONFIG, 0x04)
         time.sleep(0.1)
-        # alter sample rate (stability)
-        samp_rate_div = 0 # sample rate = 8 kHz/(1+samp_rate_div)
-        self.bus.write_byte_data(address, SMPLRT_DIV, samp_rate_div)
+
+        # Set the sample rate to 100 Hz (SMPLRT_DIV = 9)
+        sample_rate_div = 9  # 100 Hz sample rate
+        self.bus.write_byte_data(address, SMPLRT_DIV, sample_rate_div)
         time.sleep(0.1)
-        #Write to Configuration register
-        self.bus.write_byte_data(address, CONFIG, 0)
+
+        # Set gyroscope sensitivity to ±250°/s
+        gyro_config_sel = 0b00000  # Corresponds to ±250°/s
+        self.bus.write_byte_data(address, GYRO_CONFIG, gyro_config_sel)
         time.sleep(0.1)
-        #Write to Gyro configuration register
-        gyro_config_sel = [0b00000,0b01000,0b10000,0b11000] # byte registers
-        gyro_config_vals = [250.0,500.0,1000.0,2000.0] # degrees/sec
-        gyro_indx = 0
-        self.bus.write_byte_data(address, GYRO_CONFIG, int(gyro_config_sel[gyro_indx]))
+
+        # Set accelerometer sensitivity to ±2g
+        accel_config_sel = 0b00000  # Corresponds to ±2g
+        self.bus.write_byte_data(address, ACCEL_CONFIG, accel_config_sel)
         time.sleep(0.1)
-        #Write to Accel configuration register
-        accel_config_sel = [0b00000,0b01000,0b10000,0b11000] # byte registers
-        accel_config_vals = [2.0,4.0,8.0,16.0] # g (g = 9.81 m/s^2)
-        accel_indx = 0
-        self.bus.write_byte_data(address, ACCEL_CONFIG, int(accel_config_sel[accel_indx]))
-        time.sleep(0.1)
-        # interrupt register (related to overflow of data [FIFO])
-        self.bus.write_byte_data(address,INT_PIN_CFG,0x22)
+
+        # Enable interrupts (optional depending on your use case)
+        #self.bus.write_byte_data(address, INT_PIN_CFG, 0x22)  # Configure interrupt pin
+
 
     def Check_communication(self,address):
         try:

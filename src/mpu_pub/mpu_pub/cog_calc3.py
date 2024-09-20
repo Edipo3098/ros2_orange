@@ -220,7 +220,7 @@ class CalCOGFrame(Node):
             'gz': deque(maxlen=self.window_size),
         }
         # Kalman filter for fusing data from both MPUs
-        self.frecuency = 20
+        self.frecuency = 100
         self.kf = IMUFusionEKF(dt=1/self.frecuency)  # Initialize the EKF with the sample period
         # Madgwick filter initialization
         self.madgwick_filter = Madgwick(frequency=self.frecuency,gain=0.033)  # Adjust sample period as needed
