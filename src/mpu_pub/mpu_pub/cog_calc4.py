@@ -32,7 +32,7 @@ class IMUFusionEKF:
         self.ekf.P = np.eye(9) * 1  # Initial uncertainty
 
         # Process noise covariance matrix (Q)
-        mul = 2
+        mul = 1000
         self.ekf.Q = np.diag([1e-4, 1e-4, 1e-4, 1e-2, 1e-2, 1e-2, 1e-3, 1e-3, 1e-3])*mul  # Noise for position, velocity, orientation
 
         # Measurement noise covariance matrix (R)
@@ -395,10 +395,10 @@ class CalCOGFrame(Node):
         accel_imu1_comp_filt = self.compensate_gravity_with_quaternion(accel_imu1filt, self.quaternion)
         accel_imu2_comp_filt = self.compensate_gravity_with_quaternion(accel_imu2filt, self.quaternion)
         # Fused measurement vector for EKF (acceleration from both IMUs)
-        z_imu1 = accel_imu1filt
-        z_imu2 = accel_imu2filt
+        z_imu1 = accel_imu1_raw
+        z_imu2 = accel_imu2_raw
             # Fuse the accelerations (average)
-        u_fused = alpha*accel_imu1 + (1-alpha)*accel_imu2_raw
+        u_fused = alpha*accel_imu1 + (1-alpha)*accel_imu2
         
         # EKF Prediction step with fused acceleration
         self.kf.predict(u_fused)

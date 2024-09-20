@@ -1,0 +1,296 @@
+<?xml version="1.0"?>
+<robot name="quadruped_arm_robot">
+
+  <!-- Base link -->
+  <link name="base_link"/>
+
+  <!-- COG link -->
+  <link name="COG"/>
+  <joint name="X_joint" type="prismatic">
+    <parent link="base_link"/>
+    <child link="COG"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="-3.0" upper="3.0" effort="100" velocity="1.0"/>
+  </joint>
+
+  <!-- Y_body link -->
+  <link name="Y_body"/>
+  <joint name="Y_joint" type="prismatic">
+    <parent link="COG"/>
+    <child link="Y_body"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-3.0" upper="3.0" effort="100" velocity="1.0"/>
+  </joint>
+
+  <!-- Z_body link -->
+  <link name="Z_body"/>
+  <joint name="Z_joint" type="prismatic">
+    <parent link="Y_body"/>
+    <child link="Z_body"/>
+    <origin xyz="0 0 0.4037" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.0" upper="3.0" effort="100" velocity="1.0"/>
+  </joint>
+
+  <!-- Roll body -->
+  <link name="Roll_body"/>
+  <joint name="Roll_joint" type="revolute">
+    <parent link="Z_body"/>
+    <child link="Roll_body"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="-3.14" upper="3.14" effort="100" velocity="1.0"/>
+  </joint>
+
+  <!-- Pitch body -->
+  <link name="Pitch_body"/>
+  <joint name="Pitch_joint" type="revolute">
+    <parent link="Roll_body"/>
+    <child link="Pitch_body"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-3.14" upper="3.14" effort="100" velocity="1.0"/>
+  </joint>
+
+  <!-- Yaw body -->
+  <link name="Yaw_body"/>
+  <joint name="Yaw_joint" type="revolute">
+    <parent link="Pitch_body"/>
+    <child link="Yaw_body"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.14" upper="3.14" effort="100" velocity="1.0"/>
+  </joint>
+
+  <!-- Front Left Leg -->
+  <link name="frontLeft_hip"/>
+  <joint name="frontLeft_hip_joint" type="revolute">
+    <parent link="Yaw_body"/>
+    <child link="frontLeft_hip"/>
+    <origin xyz="0.6 0.2 0" rpy="1.5708 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.14" upper="3.14" effort="100" velocity="1.0"/>
+  </joint>
+
+  <link name="frontLeft_hip_motor"/>
+  <joint name="frontLeft_hip_motor_joint" type="revolute">
+    <parent link="frontLeft_hip"/>
+    <child link="frontLeft_hip_motor"/>
+    <origin xyz="0 0 0" rpy="0 1.5708 1.5708"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.14" upper="3.14" effort="100" velocity="1.0"/>
+  </joint>
+
+  <link name="frontLeft_knee"/>
+  <joint name="frontLeft_knee_joint" type="revolute">
+    <parent link="frontLeft_hip_motor"/>
+    <child link="frontLeft_knee"/>
+    <origin xyz="-0.05 0 0" rpy="1.5708 0.0000 0.7854"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.57" upper="1.57" effort="100" velocity="1.0"/>
+  </joint>
+
+  <link name="frontLeft_ankle"/>
+  <joint name="frontLeft_ankle_joint" type="revolute">
+    <parent link="frontLeft_knee"/>
+    <child link="frontLeft_ankle"/>
+    <origin xyz="0.25 -0.0000 0" rpy="0 0 -1.5708"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.14" upper="3.14" effort="100" velocity="1.0"/>
+  </joint>
+
+  <link name="frontLeft_foot"/>
+  <joint name="frontLeft_foot_joint" type="fixed">
+    <parent link="frontLeft_ankle"/>
+    <child link="frontLeft_foot"/>
+    <origin xyz="0.25 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Front Right Leg -->
+  <link name="frontRight_hip"/>
+  <joint name="frontRight_hip_joint" type="revolute">
+    <parent link="Yaw_body"/>
+    <child link="frontRight_hip"/>
+    <origin xyz="0.6 -0.2 0" rpy="1.5708 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.14" upper="3.14" effort="100" velocity="1.0"/>
+  </joint>
+
+  <link name="frontRight_hip_motor"/>
+  <joint name="frontRight_hip_motor_joint" type="revolute">
+    <parent link="frontRight_hip"/>
+    <child link="frontRight_hip_motor"/>
+    <origin xyz="0 0 0" rpy="0 -1.5708 -1.5708"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.14" upper="3.14" effort="100" velocity="1.0"/>
+  </joint>
+
+  <link name="frontRight_knee"/>
+  <joint name="frontRight_knee_joint" type="revolute">
+    <parent link="frontRight_hip_motor"/>
+    <child link="frontRight_knee"/>
+    <origin xyz="0.05 0 0" rpy="1.5708 0.0000 0.7854"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.57" upper="1.57" effort="100" velocity="1.0"/>
+  </joint>
+<!-- MODIFIED-->
+  <link name="frontRight_ankle"/>
+  <joint name="frontRight_ankle_joint" type="revolute">
+    <parent link="frontRight_knee"/>
+    <child link="frontRight_ankle"/>
+    <origin xyz="0 0 0.25" rpy="0 0 -1.5708"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.14" upper="3.14" effort="100" velocity="1.0"/>
+  </joint>
+
+  <link name="frontRight_foot"/>
+  <joint name="frontRight_foot_joint" type="fixed">
+    <parent link="frontRight_ankle"/>
+    <child link="frontRight_foot"/>
+    <origin xyz="0.25 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Back Left Leg -->
+  <link name="backLeft_hip"/>
+  <joint name="backLeft_hip_joint" type="revolute">
+    <parent link="Yaw_body"/>
+    <child link="backLeft_hip"/>
+    <origin xyz="-0.6 0.2 0" rpy="1.5708 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.14" upper="3.14" effort="100" velocity="1.0"/>
+  </joint>
+
+  <link name="backLeft_hip_motor"/>
+  <joint name="backLeft_hip_motor_joint" type="revolute">
+    <parent link="backLeft_hip"/>
+    <child link="backLeft_hip_motor"/>
+    <origin xyz="0 0 0" rpy="0 1.5708 1.5708"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.14" upper="3.14" effort="100" velocity="1.0"/>
+  </joint>
+
+  <link name="backLeft_knee"/>
+  <joint name="backLeft_knee_joint" type="revolute">
+    <parent link="backLeft_hip_motor"/>
+    <child link="backLeft_knee"/>
+    <origin xyz="-0.05 0 0" rpy="1.5708 0.0000 0.7854"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.57" upper="1.57" effort="100" velocity="1.0"/>
+  </joint>
+
+  <link name="backLeft_ankle"/>
+  <joint name="backLeft_ankle_joint" type="revolute">
+    <parent link="backLeft_knee"/>
+    <child link="backLeft_ankle"/>
+    <origin xyz="0.25 -0.0000 0" rpy="0 0 -1.5708"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.14" upper="3.14" effort="100" velocity="1.0"/>
+  </joint>
+
+  <link name="backLeft_foot"/>
+  <joint name="backLeft_foot_joint" type="fixed">
+    <parent link="backLeft_ankle"/>
+    <child link="backLeft_foot"/>
+    <origin xyz="0.25 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Back Right Leg -->
+  <link name="backRight_hip"/>
+  <joint name="backRight_hip_joint" type="revolute">
+    <parent link="Yaw_body"/>
+    <child link="backRight_hip"/>
+    <origin xyz="-0.6 -0.2 0" rpy="1.5708 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.14" upper="3.14" effort="100" velocity="1.0"/>
+  </joint>
+
+  <link name="backRight_hip_motor"/>
+  <joint name="backRight_hip_motor_joint" type="revolute">
+    <parent link="backRight_hip"/>
+    <child link="backRight_hip_motor"/>
+    <origin xyz="0 0 0" rpy="0 -1.5708 -1.5708"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.14" upper="3.14" effort="100" velocity="1.0"/>
+  </joint>
+
+  <link name="backRight_knee"/>
+  <joint name="backRight_knee_joint" type="revolute">
+    <parent link="backRight_hip_motor"/>
+    <child link="backRight_knee"/>
+    <origin xyz="0.05 0 0" rpy="1.5708 0.0000 0.7854"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.57" upper="1.57" effort="100" velocity="1.0"/>
+  </joint>
+<!-- MODIFIED-->
+  <link name="backRight_ankle"/>
+  <joint name="backRight_ankle_joint" type="revolute">
+    <parent link="backRight_knee"/>
+    <child link="backRight_ankle"/>
+    <origin xyz="0 0 0.25" rpy="0 0 -1.5708"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.14" upper="3.14" effort="100" velocity="1.0"/>
+  </joint>
+
+  <link name="backRight_foot"/>
+  <joint name="backRight_foot_joint" type="fixed">
+    <parent link="backRight_ankle"/>
+    <child link="backRight_foot"/>
+    <origin xyz="0.25 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Arm Joints -->
+  <link name="M0_big"/>
+  <joint name="articulacion1" type="revolute">
+    <parent link="Yaw_body"/>
+    <child link="M0_big"/>
+    <origin xyz="0 0 0.0710" rpy="1.5708 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.14" upper="3.14" effort="100" velocity="1.0"/>
+  </joint>
+
+  <link name="M1_Adjust_Z"/>
+  <joint name="articulacion2_adjust" type="fixed">
+    <parent link="M0_big"/>
+    <child link="M1_Adjust_Z"/>
+    <origin xyz="0 0 0" rpy="0 0 1.5708"/>
+  </joint>
+
+  <link name="M1_100"/>
+  <joint name="articulacion2" type="revolute">
+    <parent link="M1_Adjust_Z"/>
+    <child link="M1_100"/>
+    <origin xyz="0.3750 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.14" upper="3.14" effort="100" velocity="1.0"/>
+  </joint>
+
+  <link name="M2_100"/>
+  <joint name="articulacion3" type="revolute">
+    <parent link="M1_100"/>
+    <child link="M2_100"/>
+    <origin xyz="0.1000 0 0" rpy="1.5708 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.14" upper="3.14" effort="100" velocity="1.0"/>
+  </joint>
+
+  <link name="M3_50"/>
+  <joint name="articulacion4" type="revolute">
+    <parent link="M2_100"/>
+    <child link="M3_50"/>
+    <origin xyz="0 -0.0000 0.3700" rpy="-1.5708 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.14" upper="3.14" effort="100" velocity="1.0"/>
+  </joint>
+
+  <link name="M4_50"/>
+  <joint name="articulacion5" type="revolute">
+    <parent link="M3_50"/>
+    <child link="M4_50"/>
+    <origin xyz="0.0800 0 0" rpy="0 -0.3749 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.14" upper="3.14" effort="100" velocity="1.0"/>
+  </joint>
+
+</robot>

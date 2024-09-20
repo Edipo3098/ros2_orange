@@ -32,7 +32,8 @@ class IMUFusionEKF:
         self.ekf.P = np.eye(12) * 1  # Updated to 12x12 for the new state vector
 
         # Process noise covariance matrix (Q) - also 12x12
-        self.ekf.Q = np.diag([1e-4, 1e-4, 1e-4, 1e-2, 1e-2, 1e-2, 1e-3, 1e-3, 1e-3, 1e-4, 1e-4, 1e-4])
+        mul = 10000
+        self.ekf.Q = np.diag([1e-4, 1e-4, 1e-4, 1e-2, 1e-2, 1e-2, 1e-3, 1e-3, 1e-3, 1e-4, 1e-4, 1e-4])*mul
 
         # Measurement noise covariance matrix (R) - 12x12 for 12 measurements
         self.ekf.R = np.diag([1e-2] * 12)
@@ -378,8 +379,8 @@ class CalCOGFrame(Node):
 
             # Fuse the accelerations (average)
          # Fuse the accelerations (average of both IMUs)
-        u1_acc = accel_imu1filt
-        u2_acc = accel_imu2filt
+        u1_acc = accel_imu1_raw
+        u2_acc = accel_imu2_raw
 
         u1_gyro = np.array([self.mpu1_data.gx, self.mpu1_data.gy, self.mpu1_data.gz])*np.pi/180 # Convert to rad/s
         u2_gyro = np.array([self.mpu1_data.gx2, self.mpu1_data.gy2, self.mpu1_data.gz2])*np.pi/180 # Convert to rad/s
@@ -393,7 +394,7 @@ class CalCOGFrame(Node):
         self.kf.predict(u_fused)
 
         # EKF Update step with fused measurements and Madgwick orientation
-        self.kf.update(accel_imu1filt, accel_imu2filt, [roll, pitch, yaw])
+        self.kf.update(u1_acc, u2_acc, [roll, pitch, yaw])
 
         # Retrieve the filtered state (position, velocity, orientation)
         pos, vel, orient = self.kf.get_state()
