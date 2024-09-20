@@ -370,6 +370,7 @@ class MinimalPublisher(Node):
                 self.calibrate_mpu(mpu9250_address,10000,'mpu1')
                 self.calibrate_mpu(mpu9250_address_2,10000,'mpu2')
             # Read accelerometer data
+            key = 'mpu1'
             prev = [self.prev_accel_x, self.prev_accel_y, self.prev_accel_z, self.prev_gyro_x, self.prev_gyro_y, self.prev_gyro_z]
             accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z = self.read_sensor_data(mpu9250_address, key, prev)
             # Apply adaptive calibration to adjust offsets in real-time
