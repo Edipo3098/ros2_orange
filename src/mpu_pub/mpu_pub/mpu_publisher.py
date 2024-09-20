@@ -93,11 +93,11 @@ class MinimalPublisher(Node):
         self.check_full_scale(mpu9250_address)
         calibration_key = 'mpu1'
         
-        #self.calibrate_mpu(mpu9250_address,20000,calibration_key)
+        self.calibrate_mpu(mpu9250_address,20000,calibration_key)
 
         calibration_key = 'mpu2'
         self.check_full_scale(mpu9250_address_2)
-        #self.calibrate_mpu(mpu9250_address_2,20000,calibration_key)
+        self.calibrate_mpu(mpu9250_address_2,20000,calibration_key)
         
 
         self.Check_communication(mpu9250_address)
@@ -244,6 +244,7 @@ class MinimalPublisher(Node):
 
         # Accelerometer calibration (slope and offset calculation using linear regression)
         accel_mean = np.mean(accel_data, axis=0)
+        accel_std = np.std (accel_data, axis=0)
         accel_min = np.min(accel_data, axis=0)
         accel_max = np.max(accel_data, axis=0)
 
@@ -254,7 +255,7 @@ class MinimalPublisher(Node):
         gyro_offset = np.mean(gyro_data, axis=0)
 
         # Store calibration parameters
-        calibration_data[key]["accel"]["slope"] = accel_slope
+        calibration_data[key]["accel"]["slope"] =  calibration_data[key]["accel"]["slope"]  - accel_std**2
         calibration_data[key]["accel"]["offset"] = accel_offset
         calibration_data[key]["gyro"]["offset"] = gyro_offset
 
