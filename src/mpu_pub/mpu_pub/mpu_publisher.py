@@ -242,14 +242,14 @@ class MinimalPublisher(Node):
 
             
             if len(accel_data) >= num_samples:
-                accel_data = np.array(accel_data)
-                gyro_data = np.array(gyro_data)
+                accel_data_array = np.array(accel_data)
+                gyro_data_array = np.array(gyro_data)
 
                 # Accelerometer calibration (slope and offset calculation using linear regression)
-                accel_mean = np.mean(accel_data, axis=0)
-                accel_std = np.std (accel_data, axis=0)
-                accel_min = np.min(accel_data, axis=0)
-                accel_max = np.max(accel_data, axis=0)
+                accel_mean = np.mean(accel_data_array, axis=0)
+                accel_std = np.std (accel_data_array, axis=0)
+                accel_min = np.min(accel_data_array, axis=0)
+                accel_max = np.max(accel_data_array, axis=0)
 
                 accel_slope = np.ones(3)  # Slope should generally be near 1 for accelerometer
                 # Compute slope by comparing accelerometer values to expected values (e.g., 1g)
@@ -260,12 +260,12 @@ class MinimalPublisher(Node):
                 #expected_gravity[2] += adjustment_factor * (current_accel_z - np.abs(expected_gravity[2]))
                 expected_gravity = np.array([0, 0, -1])
                 
-                accel_slope = expected_gravity / np.mean(np.abs(accel_data), axis=0)
+                accel_slope = expected_gravity / np.mean(np.abs(accel_data_array), axis=0)
                 accel_offset = accel_mean  # Use the mean as the offset
                 accel_offset = accel_mean  # Use the mean as the offset
 
                 # Gyroscope calibration (offset calculation)
-                gyro_offset = np.mean(gyro_data, axis=0)
+                gyro_offset = np.mean(gyro_data_array, axis=0)
             
                 mul = 1
                 # Store calibration parameters
