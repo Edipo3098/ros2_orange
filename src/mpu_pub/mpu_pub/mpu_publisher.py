@@ -191,7 +191,7 @@ class MinimalPublisher(Node):
         prev_gyro_x, prev_gyro_y, prev_gyro_z = 0, 0, 0
         self.get_logger().info(f"Calibrating MPU at address {hex(address)}...")
         finishCalibration = False
-        expected_gravity = np.array([0, 0 ,-1])  # Assume gravity is in the negative z-axis is in g = 9.81 m/s²
+        expected_gravity = np.array([1, 1 ,1])  # Assume gravity is in the negative z-axis is in g = 9.81 m/s²
         adjustment_factor = 0.01  # Small adjustment factor for adaptive calibration
         while not finishCalibration:
             try:
