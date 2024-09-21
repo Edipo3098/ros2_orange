@@ -238,7 +238,7 @@ class MinimalPublisher(Node):
             gyro_x = (gyro_x/(2.0**15.0))*GYRO_SENSITIVITY
             gyro_y = (gyro_y/(2.0**15.0))*GYRO_SENSITIVITY
             gyro_z = (gyro_z/(2.0**15.0))*GYRO_SENSITIVITY
-            accel_data_test = np.array([accel_x, accel_y, accel_z])
+            
             accel_data.append([accel_x, accel_y, accel_z])
             
             gyro_data.append([gyro_x, gyro_y, gyro_z])
@@ -274,7 +274,7 @@ class MinimalPublisher(Node):
         mul = 1
         # Store calibration parameters
         if key == 'mpu2':
-            mul = 1
+            mul = 0.5
 
         calibration_data[key]["accel"]["slope"] = accel_slope
         calibration_data[key]["accel"]["offset"] = (accel_offset*mul)
@@ -361,10 +361,12 @@ class MinimalPublisher(Node):
             calibration_data[calibration_key]["accel"]["offset"][2] += adjustment_factor_z
 
         # Log the calibration adjustments for debugging
+        """
         self.get_logger().info(f"Adaptive calibration adjustment for {calibration_key}: "
                             f"Accel X offset: {calibration_data[calibration_key]['accel']['offset'][0]}, "
                             f"Accel Y offset: {calibration_data[calibration_key]['accel']['offset'][1]}, "
                             f"Accel Z offset: {calibration_data[calibration_key]['accel']['offset'][2]}")
+        """
 
     def convert_data(self, high_byte, low_byte):
         """Converts high and low bytes into a signed integer"""
@@ -373,7 +375,7 @@ class MinimalPublisher(Node):
             value -= 65536
         return value
     
-    def low_pass_filter(self,current_value, previous_value, alpha=0.3):
+    def low_pass_filter(self,current_value, previous_value, alpha=0.2):
         """Applies a low-pass filter to smooth raw sensor data."""
         return alpha * current_value + (1 - alpha) * previous_value
     def adaptive_calibration(self, sensor_data, calibration_key):
@@ -393,7 +395,7 @@ class MinimalPublisher(Node):
         error_z = expected_accel_z - accel_z
 
         # Dynamically adjust the calibration offset (small adjustment factor to avoid over-adjusting)
-        adjustment_factor = np.array([0.001 , 0.0001 ,0.01])  # Small adjustment factor for adaptive calibration
+        adjustment_factor = np.array([0.01 , 0.01 ,0.01])  # Small adjustment factor for adaptive calibration
 
         if (error_x<0.1):
             adjustment_factor[0]  = 0.0000
