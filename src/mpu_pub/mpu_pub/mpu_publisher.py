@@ -199,12 +199,11 @@ class MinimalPublisher(Node):
                 self.get_logger().info(f'Error in read_sensor_data: {e}')
                 accel_data_error = [0, 0, 0, 0, 0, 0]
                 gyro_data_error = [0, 0, 0, 0, 0, 0]
-                
+
             accel_raw_data = accel_data_error 
             gyro_raw_data = gyro_data_error
        
-            accel_raw_data = self.bus.read_i2c_block_data(address, 0x3B, 6)
-            gyro_raw_data = self.bus.read_i2c_block_data(address, 0x43, 6)
+   
 
             # Process accelerometer data
             accel_x = self.convert_data(accel_raw_data[0], accel_raw_data[1])
@@ -315,8 +314,16 @@ class MinimalPublisher(Node):
     def read_sensor_data(self, address, calibration_key,prev):
         """Reads the raw sensor data from the MPU9250"""
         # Read accelerometer and gyroscope data
-        accel_data = self.bus.read_i2c_block_data(address, 0x3B, 6)
-        gyro_data = self.bus.read_i2c_block_data(address, 0x43, 6)
+        try:
+            accel_data_error = self.bus.read_i2c_block_data(address, 0x3B, 6)
+            gyro_data_error = self.bus.read_i2c_block_data(address, 0x43, 6)
+        except Exception as e:
+            self.get_logger().info(f'Error in read_sensor_data: {e}')
+            accel_data_error = [0, 0, 0, 0, 0, 0]
+            gyro_data_error = [0, 0, 0, 0, 0, 0]
+
+        accel_data = accel_data_error
+        gyro_data = gyro_data_error
 
         # Process accelerometer data
         accel_x = self.convert_data(accel_data[0], accel_data[1])
