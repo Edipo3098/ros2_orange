@@ -275,7 +275,7 @@ class MinimalPublisher(Node):
             value -= 65536
         return value
     
-    def low_pass_filter(self,current_value, previous_value, alpha=0.5):
+    def low_pass_filter(self,current_value, previous_value, alpha=0.2):
         """Applies a low-pass filter to smooth raw sensor data."""
         return alpha * current_value + (1 - alpha) * previous_value
     def adaptive_calibration(self, sensor_data, calibration_key):
