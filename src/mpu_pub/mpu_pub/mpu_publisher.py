@@ -191,6 +191,7 @@ class MinimalPublisher(Node):
         prev_gyro_x, prev_gyro_y, prev_gyro_z = 0, 0, 0
         self.get_logger().info(f"Calibrating MPU at address {hex(address)}...")
         finishCalibration = False
+        firstCalibration = False
         #expected_gravity = np.array([1, 1 ,1])  # Assume gravity is in the negative z-axis is in g = 9.81 m/s²
         adjustment_factor = 0.01  # Small adjustment factor for adaptive calibration
         while not finishCalibration:
@@ -241,9 +242,10 @@ class MinimalPublisher(Node):
             gyro_data.append([gyro_x, gyro_y, gyro_z])
 
             
-            if len(accel_data) >= num_samples:
+            if len(accel_data) >= num_samples and not firstCalibration:
                 accel_data_array = np.array(accel_data)
                 gyro_data_array = np.array(gyro_data)
+                firstCalibration = True
 
                 # Accelerometer calibration (slope and offset calculation using linear regression)
                 accel_mean = np.mean(accel_data_array, axis=0)
@@ -287,10 +289,12 @@ class MinimalPublisher(Node):
                 gyro_x -= calibration_data[key]["gyro"]["offset"][0]
                 gyro_y -= calibration_data[key]["gyro"]["offset"][1]
                 gyro_z -= calibration_data[key]["gyro"]["offset"][2]
-                self.get_logger().info(f"Adapatative calibration")
+
+            else:   
+                
                 self.adaptive_calibration([accel_x, accel_y, accel_z], key)
                 self.get_logger().info(f"Not finish Accel_x: {accel_x}, Accel_y: {accel_y}, Accel_z: {accel_z}")
-                if np.all(np.abs(accel_mean ) < 0.01):
+                if ( accel_x < 0.1 and accel_y < 0.1 and accel_z < 0.1):
                     finishCalibration = True
 
 
