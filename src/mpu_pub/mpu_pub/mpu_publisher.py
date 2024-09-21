@@ -258,7 +258,7 @@ class MinimalPublisher(Node):
                 #current_accel_z = np.mean(np.abs(accel_data[:, 2]))
                 
                 #expected_gravity[2] += adjustment_factor * (current_accel_z - np.abs(expected_gravity[2]))
-                expected_gravity = np.array([0, 0, 0])
+                expected_gravity = np.array([0, 0, -1])
                 
                 accel_slope = expected_gravity / np.mean(np.abs(accel_data), axis=0)
                 accel_offset = accel_mean  # Use the mean as the offset
@@ -287,17 +287,17 @@ class MinimalPublisher(Node):
                 gyro_x -= calibration_data[key]["gyro"]["offset"][0]
                 gyro_y -= calibration_data[key]["gyro"]["offset"][1]
                 gyro_z -= calibration_data[key]["gyro"]["offset"][2]
-
+                self.get_logger().info(f"Adapatative calibration")
                 self.adaptive_calibration([accel_x, accel_y, accel_z], key)
-
-                if accel_x < 0.01 and accel_y < 0.01 and accel_z < 0.01:
+                self.get_logger().info(f"Not finish Accel_x: {accel_x}, Accel_y: {accel_y}, Accel_z: {accel_z}")
+                if np.all(np.abs(accel_mean - expected_gravity) < 0.01):
                     finishCalibration = True
 
 
                 prev_accel_x, prev_accel_y, prev_accel_z = accel_x, accel_y, accel_z
 
             
-            self.get_logger().info(f"Not finish Accel_x: {accel_x}, Accel_y: {accel_y}, Accel_z: {accel_z}")
+            
         self.get_logger().info(f"Accel standard deviation: {accel_std}, Gyro standard deviation: {gyro_std}")
 
         self.get_logger().info(f"Calibration completed for {key}. Accel offsets: {accel_offset}, Gyro offsets: {gyro_offset}")
@@ -322,7 +322,7 @@ class MinimalPublisher(Node):
         accel_x, accel_y, accel_z = sensor_data[:3]
 
         # Expected values for accelerometer in a flat orientation (stationary)
-        expected_accel_x, expected_accel_y, expected_accel_z = 0.0, 0.0, 0.0 # delete gravity  # assuming gravity in z-axis only
+        expected_accel_x, expected_accel_y, expected_accel_z = 0.0, 0.0, -1.0# delete gravity  # assuming gravity in z-axis only
 
         # Calculate the error in measurement
         error_x = expected_accel_x - accel_x
@@ -330,7 +330,7 @@ class MinimalPublisher(Node):
         error_z = expected_accel_z - accel_z
 
         # Dynamically adjust the calibration offset (small adjustment factor to avoid over-adjusting)
-        adjustment_factor = 0.001
+        adjustment_factor = 0.01
         calibration_data[calibration_key]["accel"]["offset"] += adjustment_factor * np.array([error_x, error_y, error_z])
 
         # Log adjustment (optional for debugging)
