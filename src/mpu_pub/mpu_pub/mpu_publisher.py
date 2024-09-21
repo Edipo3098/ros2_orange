@@ -303,10 +303,12 @@ class MinimalPublisher(Node):
                     
 
                     if len(accel_data_filtered) >= num_samples:
-                        self.adaptive_calibration([accel_x, accel_y, accel_z], key)
-                        self.get_logger().info(f"Not finish Accel_x: {np.mean(accel_data_filtered[0])}, Accel_y: {np.mean(accel_data_filtered[1])}, Accel_z: {np.mean(accel_data_filtered[2])}")
-                        if (np.mean(accel_data_filtered) < 0.1).all():
+                        self.adaptive_calibration2([accel_x, accel_y, accel_z], key)
+                        self.get_logger().info(f"Not finish Accel_x: {accel_x}, Accel_y: {accel_y}, Accel_z: {accel_z}")
+                        if (self.check_calibration_convergence([accel_x, accel_y, accel_z])):
                             finishCalibration = True
+
+                        
 
 
                     prev_accel_x, prev_accel_y, prev_accel_z = accel_x, accel_y, accel_z
@@ -316,8 +318,79 @@ class MinimalPublisher(Node):
         self.get_logger().info(f"Accel standard deviation: {accel_std}, Gyro standard deviation: {gyro_std}")
 
         self.get_logger().info(f"Calibration completed for {key}. Accel offsets: {accel_offset}, Gyro offsets: {gyro_offset}")
+    def check_calibration_convergence(self, sensor_data, threshold=0.05):
+        """
+        Check if the sensor data has converged to within a small threshold for all axes.
+        - sensor_data: the current accelerometer data (X, Y, Z)
+        - threshold: the acceptable error margin to consider convergence (default is 0.05)
+        """
+        accel_x, accel_y, accel_z = sensor_data[:3]
 
-    
+        # Expected values for accelerometer in a flat orientation (stationary) are zero
+        expected_accel_x, expected_accel_y, expected_accel_z = 0.0, 0.0, 0.0
+
+        # Calculate the absolute errors
+        error_x = abs(expected_accel_x - accel_x)
+        error_y = abs(expected_accel_y - accel_y)
+        error_z = abs(expected_accel_z - accel_z)
+
+        # Check if all errors are within the acceptable threshold
+        if error_x < threshold and error_y < threshold and error_z < threshold:
+            return True  # Calibration has converged
+        return False  # Still need to adjust calibration
+
+    def adaptive_calibration2(self, sensor_data, calibration_key):
+        """
+        Perform adaptive calibration by continuously adjusting based on sensor data.
+        The expected value for each axis is assumed to be zero.
+        - sensor_data: the current accelerometer data (X, Y, Z)
+        - calibration_key: 'mpu1' or 'mpu2'
+        """
+        
+        # Proceed with calibration adjustments if not converged
+        accel_x, accel_y, accel_z = sensor_data[:3]
+
+        # Expected values for accelerometer in a flat, stationary orientation are zero
+        expected_accel_x, expected_accel_y, expected_accel_z = 0.0, 0.0, 0.0
+
+        # Calculate the error between expected and actual values
+        error_x = expected_accel_x - accel_x
+        error_y = expected_accel_y - accel_y
+        error_z = expected_accel_z - accel_z
+
+        # Dynamically calculate adjustment factor based on error magnitude
+        adjustment_factor_x = np.clip(abs(error_x), 0.001, 0.1)  # X-axis adjustment factor
+        adjustment_factor_y = np.clip(abs(error_y), 0.001, 0.1)  # Y-axis adjustment factor
+        adjustment_factor_z = np.clip(abs(error_z), 0.001, 0.2)  # Z-axis adjustment factor (Z may need larger adjustment)
+
+        # Adjust the offsets based on error direction and magnitude
+        if error_x > 0:
+            # Positive error: measured value is too high, so decrease the offset
+            calibration_data[calibration_key]["accel"]["offset"][0] -= adjustment_factor_x
+        else:
+            # Negative error: measured value is too low, so increase the offset
+            calibration_data[calibration_key]["accel"]["offset"][0] += adjustment_factor_x
+
+        if error_y > 0:
+            # Positive error: measured value is too high, so decrease the offset
+            calibration_data[calibration_key]["accel"]["offset"][1] -= adjustment_factor_y
+        else:
+            # Negative error: measured value is too low, so increase the offset
+            calibration_data[calibration_key]["accel"]["offset"][1] += adjustment_factor_y
+
+        if error_z > 0:
+            # Positive error: measured value is too high, so decrease the offset
+            calibration_data[calibration_key]["accel"]["offset"][2] -= adjustment_factor_z
+        else:
+            # Negative error: measured value is too low, so increase the offset
+            calibration_data[calibration_key]["accel"]["offset"][2] += adjustment_factor_z
+
+        # Log the calibration adjustments for debugging
+        self.get_logger().info(f"Adaptive calibration adjustment for {calibration_key}: "
+                            f"Accel X offset: {calibration_data[calibration_key]['accel']['offset'][0]}, "
+                            f"Accel Y offset: {calibration_data[calibration_key]['accel']['offset'][1]}, "
+                            f"Accel Z offset: {calibration_data[calibration_key]['accel']['offset'][2]}")
+
     def convert_data(self, high_byte, low_byte):
         """Converts high and low bytes into a signed integer"""
         value = (high_byte << 8) | low_byte
