@@ -244,75 +244,48 @@ class MinimalPublisher(Node):
             gyro_data.append([gyro_x, gyro_y, gyro_z])
 
             
-            if len(accel_data) >= num_samples and not firstCalibration:
-                accel_data_array = np.array(accel_data)
-                gyro_data_array = np.array(gyro_data)
-                firstCalibration = True
+    
+        accel_data_array = np.array(accel_data)
+        gyro_data_array = np.array(gyro_data)
+        firstCalibration = True
 
-                # Accelerometer calibration (slope and offset calculation using linear regression)
-                accel_mean = np.mean(accel_data_array, axis=0)
-                accel_std = np.std (accel_data_array, axis=0)
-                accel_min = np.min(accel_data_array, axis=0)
-                accel_max = np.max(accel_data_array, axis=0)
+        # Accelerometer calibration (slope and offset calculation using linear regression)
+        accel_mean = np.mean(accel_data_array, axis=0)
+        accel_std = np.std (accel_data_array, axis=0)
+        accel_min = np.min(accel_data_array, axis=0)
+        accel_max = np.max(accel_data_array, axis=0)
 
-                accel_slope = np.ones(3)  # Slope should generally be near 1 for accelerometer
-                # Compute slope by comparing accelerometer values to expected values (e.g., 1g)
-                # Expected value is 9.81 m/s² when axis is aligned with gravity
-                # Dynamically adjust only the Z-axis expected gravity based on real-time measurements
-                #current_accel_z = np.mean(np.abs(accel_data[:, 2]))
+        accel_slope = np.ones(3)  # Slope should generally be near 1 for accelerometer
+        # Compute slope by comparing accelerometer values to expected values (e.g., 1g)
+        # Expected value is 9.81 m/s² when axis is aligned with gravity
+        # Dynamically adjust only the Z-axis expected gravity based on real-time measurements
+        #current_accel_z = np.mean(np.abs(accel_data[:, 2]))
+        
+        #expected_gravity[2] += adjustment_factor * (current_accel_z - np.abs(expected_gravity[2]))
+        expected_gravity = np.array([1,1,1])
+        
+        accel_slope = expected_gravity / np.mean(np.abs(accel_data_array), axis=0)
+        accel_offset = accel_mean  # Use the mean as the offset
+        accel_offset = accel_mean  # Use the mean as the offset
+
+        # Gyroscope calibration (offset calculation)
+        gyro_offset = np.mean(gyro_data_array, axis=0)
+    
+        mul = 1
+        # Store calibration parameters
+        if key == 'mpu2':
+            mul = 1
+
+        calibration_data[key]["accel"]["slope"] = accel_slope
+        calibration_data[key]["accel"]["offset"] = (accel_offset*mul)
+        calibration_data[key]["gyro"]["offset"] = gyro_offset
+
+        # Log the standard deviation for diagnostic purposes
+        # You can also compute standard deviation and discard high variance data
+        accel_std = np.std(accel_data, axis=0)
+        gyro_std = np.std(gyro_data, axis=0)
                 
-                #expected_gravity[2] += adjustment_factor * (current_accel_z - np.abs(expected_gravity[2]))
-                expected_gravity = np.array([1,1,1])
-                
-                accel_slope = expected_gravity / np.mean(np.abs(accel_data_array), axis=0)
-                accel_offset = accel_mean  # Use the mean as the offset
-                accel_offset = accel_mean  # Use the mean as the offset
 
-                # Gyroscope calibration (offset calculation)
-                gyro_offset = np.mean(gyro_data_array, axis=0)
-            
-                mul = 1
-                # Store calibration parameters
-                if key == 'mpu2':
-                    mul = 1
-
-                calibration_data[key]["accel"]["slope"] = accel_slope
-                calibration_data[key]["accel"]["offset"] = (accel_offset*mul)
-                calibration_data[key]["gyro"]["offset"] = gyro_offset
-
-                # Log the standard deviation for diagnostic purposes
-                # You can also compute standard deviation and discard high variance data
-                accel_std = np.std(accel_data, axis=0)
-                gyro_std = np.std(gyro_data, axis=0)
-                
-
-            else: 
-                accel_data_filtered.append([accel_x, accel_y, accel_z])
-                if firstCalibration:   
-                    accel_x = (accel_x - calibration_data[key]["accel"]["offset"][0]) * calibration_data[key]["accel"]["slope"][0]
-                    accel_y = (accel_y - calibration_data[key]["accel"]["offset"][1]) * calibration_data[key]["accel"]["slope"][1]
-                    accel_z = (accel_z - calibration_data[key]["accel"]["offset"][2]) * calibration_data[key]["accel"]["slope"][2]
-
-                    gyro_x -= calibration_data[key]["gyro"]["offset"][0]
-                    gyro_y -= calibration_data[key]["gyro"]["offset"][1]
-                    gyro_z -= calibration_data[key]["gyro"]["offset"][2]
-                    
-                    # Apply adaptive calibration to adjust offsets in real-time
-                    
-                    
-                    
-                    """
-                    if len(accel_data_filtered) >= num_samples:
-                        self.adaptive_calibration2([accel_x, accel_y, accel_z], key)
-                        self.get_logger().info(f"Not finish Accel_x: {accel_x}, Accel_y: {accel_y}, Accel_z: {accel_z}")
-                        if (self.check_calibration_convergence([accel_x, accel_y, accel_z])):
-                            finishCalibration = True
-
-                        
-
-
-                    prev_accel_x, prev_accel_y, prev_accel_z = accel_x, accel_y, accel_z
-                    """
 
             
             
