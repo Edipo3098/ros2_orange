@@ -304,8 +304,14 @@ class MinimalPublisher(Node):
     def read_sensor_data(self, address, calibration_key,prev):
         """Reads the raw sensor data from the MPU9250"""
         # Read accelerometer and gyroscope data
-        accel_data = self.bus.read_i2c_block_data(address, 0x3B, 6)
-        gyro_data = self.bus.read_i2c_block_data(address, 0x43, 6)
+        try:
+            accel_data_error = self.bus.read_i2c_block_data(address, 0x3B, 6)
+            gyro_data_error = self.bus.read_i2c_block_data(address, 0x43, 6)
+        except Exception as e:
+            self.get_logger().info(f'Error in read_sensor_data: {e}')
+        accel_data = accel_data_error 
+        gyro_data_error = gyro_data
+       
 
         # Process accelerometer data
         accel_x = self.convert_data(accel_data[0], accel_data[1])
