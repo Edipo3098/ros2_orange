@@ -191,7 +191,7 @@ class MinimalPublisher(Node):
         prev_gyro_x, prev_gyro_y, prev_gyro_z = 0, 0, 0
         self.get_logger().info(f"Calibrating MPU at address {hex(address)}...")
         finishCalibration = False
-        expected_gravity = np.array([1, 1 ,1])  # Assume gravity is in the negative z-axis is in g = 9.81 m/s²
+        #expected_gravity = np.array([1, 1 ,1])  # Assume gravity is in the negative z-axis is in g = 9.81 m/s²
         adjustment_factor = 0.01  # Small adjustment factor for adaptive calibration
         while not finishCalibration:
             try:
@@ -235,8 +235,9 @@ class MinimalPublisher(Node):
             gyro_x = (gyro_x/(2.0**15.0))*GYRO_SENSITIVITY
             gyro_y = (gyro_y/(2.0**15.0))*GYRO_SENSITIVITY
             gyro_z = (gyro_z/(2.0**15.0))*GYRO_SENSITIVITY
-
+            accel_data_test = np.array([accel_x, accel_y, accel_z])
             accel_data.append([accel_x, accel_y, accel_z])
+            
             gyro_data.append([gyro_x, gyro_y, gyro_z])
 
             
@@ -254,11 +255,12 @@ class MinimalPublisher(Node):
                 # Compute slope by comparing accelerometer values to expected values (e.g., 1g)
                 # Expected value is 9.81 m/s² when axis is aligned with gravity
                 # Dynamically adjust only the Z-axis expected gravity based on real-time measurements
-                current_accel_z = np.mean(np.abs(accel_data[:, 2]))  # Use the absolute Z-axis mean to adjust gravity
-                expected_gravity[2] += adjustment_factor * (current_accel_z - np.abs(expected_gravity[2]))
-
+                #current_accel_z = np.mean(np.abs(accel_data[:, 2]))
                 
-                accel_slope = expected_gravity / np.mean(np.abs(accel_data), axis=0)
+                #expected_gravity[2] += adjustment_factor * (current_accel_z - np.abs(expected_gravity[2]))
+
+                expected_gravity = -1
+                accel_slope = expected_gravity / np.mean(np.abs(accel_z), axis=0)
                 accel_offset = accel_mean  # Use the mean as the offset
                 accel_offset = accel_mean  # Use the mean as the offset
 
@@ -320,7 +322,7 @@ class MinimalPublisher(Node):
         accel_x, accel_y, accel_z = sensor_data[:3]
 
         # Expected values for accelerometer in a flat orientation (stationary)
-        expected_accel_x, expected_accel_y, expected_accel_z = 0.0, 0.0, 1  # assuming gravity in z-axis only
+        expected_accel_x, expected_accel_y, expected_accel_z = 0.0, 0.0, -1  # assuming gravity in z-axis only
 
         # Calculate the error in measurement
         error_x = expected_accel_x - accel_x
