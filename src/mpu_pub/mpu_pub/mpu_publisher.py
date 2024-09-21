@@ -187,7 +187,7 @@ class MinimalPublisher(Node):
         accel_data = []
         gyro_data = []
         accel_data_filtered = []
-        accel_data_filtered = []
+        
         self.calibrationTime = time.time()
         prev_accel_x, prev_accel_y, prev_accel_z = 0, 0, 0
         prev_gyro_x, prev_gyro_y, prev_gyro_z = 0, 0, 0
@@ -295,10 +295,12 @@ class MinimalPublisher(Node):
                     gyro_x -= calibration_data[key]["gyro"]["offset"][0]
                     gyro_y -= calibration_data[key]["gyro"]["offset"][1]
                     gyro_z -= calibration_data[key]["gyro"]["offset"][2]
+                    # Apply adaptive calibration to adjust offsets in real-time
+                    accel_data_filtered.append([accel_x, accel_y, accel_z])
                     self.adaptive_calibration([accel_x, accel_y, accel_z], key)
                     self.get_logger().info(f"Not finish Accel_x: {accel_x}, Accel_y: {accel_y}, Accel_z: {accel_z}")
-                    if len(accel_data) >= num_samples:
-                        if ( accel_x < 0.1 and accel_y < 0.1 and accel_z < 0.1):
+                    if len(np.mean(accel_data_filtered)) >= num_samples:
+                        if (accel_data_filtered < 0.1).all():
                             finishCalibration = True
 
 
