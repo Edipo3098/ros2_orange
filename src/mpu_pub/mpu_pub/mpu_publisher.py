@@ -66,7 +66,7 @@ calibration_data1 = {
     }
 }
 # Constants for sensitivity values
-ACCEL_SENSITIVITY = 2  # LSB/g for +/- 2g range
+ACCEL_SENSITIVITY = 4  # LSB/g for +/- 2g range
 GYRO_SENSITIVITY = 250  # LSB/dps for +/- 250 dps range
 
 class MinimalPublisher(Node):
@@ -93,11 +93,11 @@ class MinimalPublisher(Node):
         self.check_full_scale(mpu9250_address)
         calibration_key = 'mpu1'
         
-        self.calibrate_mpu(mpu9250_address,20000,calibration_key)
+        self.calibrate_mpu(mpu9250_address,10000,calibration_key)
 
         calibration_key = 'mpu2'
         self.check_full_scale(mpu9250_address_2)
-        self.calibrate_mpu(mpu9250_address_2,20000,calibration_key)
+        self.calibrate_mpu(mpu9250_address_2,10000,calibration_key)
         
 
         self.Check_communication(mpu9250_address)
@@ -149,8 +149,8 @@ class MinimalPublisher(Node):
         self.bus.write_byte_data(address, GYRO_CONFIG, gyro_config_sel)
         time.sleep(0.1)
 
-        # Set accelerometer sensitivity to ±2g
-        accel_config_sel = 0b00000  # Corresponds to ±2g
+        # Set accelerometer sensitivity to ±4g
+        accel_config_sel = 0b01000  # Corresponds to ±4g
         self.bus.write_byte_data(address, ACCEL_CONFIG, accel_config_sel)
         time.sleep(0.1)
 
@@ -285,7 +285,7 @@ class MinimalPublisher(Node):
             value -= 65536
         return value
     
-    def low_pass_filter(self,current_value, previous_value, alpha=0.2):
+    def low_pass_filter(self,current_value, previous_value, alpha=0.4):
         """Applies a low-pass filter to smooth raw sensor data."""
         return alpha * current_value + (1 - alpha) * previous_value
     def adaptive_calibration(self, sensor_data, calibration_key):
