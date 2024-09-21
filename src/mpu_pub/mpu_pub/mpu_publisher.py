@@ -318,7 +318,7 @@ class MinimalPublisher(Node):
         self.get_logger().info(f"Accel standard deviation: {accel_std}, Gyro standard deviation: {gyro_std}")
 
         self.get_logger().info(f"Calibration completed for {key}. Accel offsets: {accel_offset}, Gyro offsets: {gyro_offset}")
-    def check_calibration_convergence(self, sensor_data, threshold=0.05):
+    def check_calibration_convergence(self, sensor_data, threshold=0.001):
         """
         Check if the sensor data has converged to within a small threshold for all axes.
         - sensor_data: the current accelerometer data (X, Y, Z)
@@ -398,7 +398,7 @@ class MinimalPublisher(Node):
             value -= 65536
         return value
     
-    def low_pass_filter(self,current_value, previous_value, alpha=0.2):
+    def low_pass_filter(self,current_value, previous_value, alpha=0.3):
         """Applies a low-pass filter to smooth raw sensor data."""
         return alpha * current_value + (1 - alpha) * previous_value
     def adaptive_calibration(self, sensor_data, calibration_key):
@@ -518,7 +518,7 @@ class MinimalPublisher(Node):
             prev = [self.prev_accel_x, self.prev_accel_y, self.prev_accel_z, self.prev_gyro_x, self.prev_gyro_y, self.prev_gyro_z]
             accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z = self.read_sensor_data(mpu9250_address, key, prev)
             # Apply adaptive calibration to adjust offsets in real-time
-            #self.adaptive_calibration([accel_x, accel_y, accel_z], key)
+            self.adaptive_calibration2([accel_x, accel_y, accel_z], key)
 
             self.prev_accel_x, self.prev_accel_y, self.prev_accel_z = accel_x, accel_y, accel_z
             self.prev_gyro_x, self.prev_gyro_y, self.prev_gyro_z = gyro_x, gyro_y, gyro_z
@@ -532,7 +532,7 @@ class MinimalPublisher(Node):
             accel_x_2, accel_y_2, accel_z_2, gyro_x_2, gyro_y_2, gyro_z_2 = self.read_sensor_data(mpu9250_address_2, key, prev)
 
             # Apply adaptive calibration to MPU2
-            #self.adaptive_calibration([accel_x_2, accel_y_2, accel_z_2], key)
+            self.adaptive_calibration2([accel_x_2, accel_y_2, accel_z_2], key)
 
             # Update previous values for MPU2
             self.prev_accel_x2, self.prev_accel_y2, self.prev_accel_z2 = accel_x_2, accel_y_2, accel_z_2
