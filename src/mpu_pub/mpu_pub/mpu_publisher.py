@@ -304,7 +304,7 @@ class MinimalPublisher(Node):
                     if len(accel_data_filtered) >= num_samples:
                         self.adaptive_calibration([accel_x, accel_y, accel_z], key)
                         self.get_logger().info(f"Not finish Accel_x: {accel_x}, Accel_y: {accel_y}, Accel_z: {accel_z}")
-                        if (accel_data_filtered < 0.1).all():
+                        if (np.mean(accel_data_filtered) < 0.1).all():
                             finishCalibration = True
 
 
