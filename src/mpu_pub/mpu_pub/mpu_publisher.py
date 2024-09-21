@@ -303,7 +303,7 @@ class MinimalPublisher(Node):
 
                     if len(accel_data_filtered) >= num_samples:
                         self.adaptive_calibration([accel_x, accel_y, accel_z], key)
-                        self.get_logger().info(f"Not finish Accel_x: {accel_x}, Accel_y: {accel_y}, Accel_z: {accel_z}")
+                        self.get_logger().info(f"Not finish Accel_x: {np.mean(accel_data_filtered[0])}, Accel_y: {np.mean(accel_data_filtered[1])}, Accel_z: {np.mean(accel_data_filtered[2])}")
                         if (np.mean(accel_data_filtered) < 0.1).all():
                             finishCalibration = True
 
@@ -345,6 +345,13 @@ class MinimalPublisher(Node):
 
         # Dynamically adjust the calibration offset (small adjustment factor to avoid over-adjusting)
         adjustment_factor = np.array([0.001 , 0.0001 ,0.01])  # Small adjustment factor for adaptive calibration
+
+        if (error_x<0.1):
+            adjustment_factor[0]  = 0.0000
+        if (error_y<0.1):
+            adjustment_factor[1]  = 0.0000
+        if (error_z<0.1):
+            adjustment_factor[2]  = 0.0000
         calibration_data[calibration_key]["accel"]["offset"] -= adjustment_factor * np.array([error_x, error_y, error_z])
 
         # Log adjustment (optional for debugging)
