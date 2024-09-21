@@ -301,7 +301,7 @@ class MinimalPublisher(Node):
                     
                     
                     
-
+                    """
                     if len(accel_data_filtered) >= num_samples:
                         self.adaptive_calibration2([accel_x, accel_y, accel_z], key)
                         self.get_logger().info(f"Not finish Accel_x: {accel_x}, Accel_y: {accel_y}, Accel_z: {accel_z}")
@@ -312,6 +312,7 @@ class MinimalPublisher(Node):
 
 
                     prev_accel_x, prev_accel_y, prev_accel_z = accel_x, accel_y, accel_z
+                    """
 
             
             
