@@ -334,8 +334,8 @@ class MinimalPublisher(Node):
         error_z = expected_accel_z - accel_z
 
         # Dynamically calculate adjustment factor based on error magnitude
-        adjustment_factor_x = np.clip(abs(error_x), 0.001, 0.1)  # X-axis adjustment factor
-        adjustment_factor_y = np.clip(abs(error_y), 0.001, 0.1)  # Y-axis adjustment factor
+        adjustment_factor_x = np.clip(abs(error_x), 0.001, 0.2)  # X-axis adjustment factor
+        adjustment_factor_y = np.clip(abs(error_y), 0.001, 0.2)  # Y-axis adjustment factor
         adjustment_factor_z = np.clip(abs(error_z), 0.001, 0.2)  # Z-axis adjustment factor (Z may need larger adjustment)
 
         # Adjust the offsets based on error direction and magnitude
