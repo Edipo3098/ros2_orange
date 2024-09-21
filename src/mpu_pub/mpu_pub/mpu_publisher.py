@@ -287,6 +287,7 @@ class MinimalPublisher(Node):
                 
 
             else: 
+                accel_data_filtered.append([accel_x, accel_y, accel_z])
                 if firstCalibration:   
                     accel_x = (accel_x - calibration_data[key]["accel"]["offset"][0]) * calibration_data[key]["accel"]["slope"][0]
                     accel_y = (accel_y - calibration_data[key]["accel"]["offset"][1]) * calibration_data[key]["accel"]["slope"][1]
@@ -297,7 +298,7 @@ class MinimalPublisher(Node):
                     gyro_z -= calibration_data[key]["gyro"]["offset"][2]
                     
                     # Apply adaptive calibration to adjust offsets in real-time
-                    accel_data_filtered.append([accel_x, accel_y, accel_z])
+                    
                     
                     
 
