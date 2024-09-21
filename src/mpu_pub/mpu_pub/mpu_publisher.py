@@ -196,7 +196,7 @@ class MinimalPublisher(Node):
         firstCalibration = False
         #expected_gravity = np.array([1, 1 ,1])  # Assume gravity is in the negative z-axis is in g = 9.81 m/s²
         adjustment_factor = 0.01  # Small adjustment factor for adaptive calibration
-        while not finishCalibration:
+        for _ in range(num_samples):
             try:
                 accel_data_error = self.bus.read_i2c_block_data(address, 0x3B, 6)
                 gyro_data_error = self.bus.read_i2c_block_data(address, 0x43, 6)
@@ -347,7 +347,8 @@ class MinimalPublisher(Node):
         - sensor_data: the current accelerometer data (X, Y, Z)
         - calibration_key: 'mpu1' or 'mpu2'
         """
-        
+        if self.check_calibration_convergence(sensor_data):
+            return
         # Proceed with calibration adjustments if not converged
         accel_x, accel_y, accel_z = sensor_data[:3]
 
