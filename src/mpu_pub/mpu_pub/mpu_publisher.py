@@ -186,6 +186,8 @@ class MinimalPublisher(Node):
     def calibrate_mpu(self,address, num_samples=10000,key='mpu1'):
         accel_data = []
         gyro_data = []
+        accel_data_filtered = []
+        accel_data_filtered = []
         self.calibrationTime = time.time()
         prev_accel_x, prev_accel_y, prev_accel_z = 0, 0, 0
         prev_gyro_x, prev_gyro_y, prev_gyro_z = 0, 0, 0
@@ -295,8 +297,9 @@ class MinimalPublisher(Node):
                     gyro_z -= calibration_data[key]["gyro"]["offset"][2]
                     self.adaptive_calibration([accel_x, accel_y, accel_z], key)
                     self.get_logger().info(f"Not finish Accel_x: {accel_x}, Accel_y: {accel_y}, Accel_z: {accel_z}")
-                    if ( accel_x < 0.1 and accel_y < 0.1 and accel_z < 0.1):
-                        finishCalibration = True
+                    if len(accel_data) >= num_samples:
+                        if ( accel_x < 0.1 and accel_y < 0.1 and accel_z < 0.1):
+                            finishCalibration = True
 
 
                     prev_accel_x, prev_accel_y, prev_accel_z = accel_x, accel_y, accel_z
