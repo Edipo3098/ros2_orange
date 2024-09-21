@@ -260,7 +260,7 @@ class MinimalPublisher(Node):
                 #current_accel_z = np.mean(np.abs(accel_data[:, 2]))
                 
                 #expected_gravity[2] += adjustment_factor * (current_accel_z - np.abs(expected_gravity[2]))
-                expected_gravity = np.array([0, 0, 0])
+                expected_gravity = np.array([1,1,1])
                 
                 accel_slope = expected_gravity / np.mean(np.abs(accel_data_array), axis=0)
                 accel_offset = accel_mean  # Use the mean as the offset
