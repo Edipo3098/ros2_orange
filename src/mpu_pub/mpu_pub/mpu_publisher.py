@@ -282,23 +282,24 @@ class MinimalPublisher(Node):
                 # You can also compute standard deviation and discard high variance data
                 accel_std = np.std(accel_data, axis=0)
                 gyro_std = np.std(gyro_data, axis=0)
-                accel_x = (accel_x - calibration_data[key]["accel"]["offset"][0]) * calibration_data[key]["accel"]["slope"][0]
-                accel_y = (accel_y - calibration_data[key]["accel"]["offset"][1]) * calibration_data[key]["accel"]["slope"][1]
-                accel_z = (accel_z - calibration_data[key]["accel"]["offset"][2]) * calibration_data[key]["accel"]["slope"][2]
-
-                gyro_x -= calibration_data[key]["gyro"]["offset"][0]
-                gyro_y -= calibration_data[key]["gyro"]["offset"][1]
-                gyro_z -= calibration_data[key]["gyro"]["offset"][2]
-
-            else:   
                 
-                self.adaptive_calibration([accel_x, accel_y, accel_z], key)
-                self.get_logger().info(f"Not finish Accel_x: {accel_x}, Accel_y: {accel_y}, Accel_z: {accel_z}")
-                if ( accel_x < 0.1 and accel_y < 0.1 and accel_z < 0.1):
-                    finishCalibration = True
+
+            else: 
+                if firstCalibration:   
+                    accel_x = (accel_x - calibration_data[key]["accel"]["offset"][0]) * calibration_data[key]["accel"]["slope"][0]
+                    accel_y = (accel_y - calibration_data[key]["accel"]["offset"][1]) * calibration_data[key]["accel"]["slope"][1]
+                    accel_z = (accel_z - calibration_data[key]["accel"]["offset"][2]) * calibration_data[key]["accel"]["slope"][2]
+
+                    gyro_x -= calibration_data[key]["gyro"]["offset"][0]
+                    gyro_y -= calibration_data[key]["gyro"]["offset"][1]
+                    gyro_z -= calibration_data[key]["gyro"]["offset"][2]
+                    self.adaptive_calibration([accel_x, accel_y, accel_z], key)
+                    self.get_logger().info(f"Not finish Accel_x: {accel_x}, Accel_y: {accel_y}, Accel_z: {accel_z}")
+                    if ( accel_x < 0.1 and accel_y < 0.1 and accel_z < 0.1):
+                        finishCalibration = True
 
 
-                prev_accel_x, prev_accel_y, prev_accel_z = accel_x, accel_y, accel_z
+                    prev_accel_x, prev_accel_y, prev_accel_z = accel_x, accel_y, accel_z
 
             
             
