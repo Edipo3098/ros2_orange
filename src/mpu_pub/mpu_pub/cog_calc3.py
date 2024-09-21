@@ -32,7 +32,7 @@ class IMUFusionEKF:
         self.ekf.P = np.eye(12) * 1  # Updated to 12x12 for the new state vector
 
         # Process noise covariance matrix (Q) - also 12x12
-        self.mul  = 10
+        self.mul  = 1
         self.residuals_window = deque(maxlen=100)  # Store last 100 residuals
         self.ekf.Q = np.diag([1e-4, 1e-4, 1e-4, 1e-2, 1e-2, 1e-2, 1e-3, 1e-3, 1e-3, 1e-4, 1e-4, 1e-4])*self.mul 
 
