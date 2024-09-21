@@ -294,7 +294,8 @@ class MinimalPublisher(Node):
 
                 prev_accel_x, prev_accel_y, prev_accel_z = accel_x, accel_y, accel_z
 
-            self.get_logger().info(f"Not finished calibration {key}")
+            
+            self.get_logger().info(f"Not finish Accel_x: {accel_x}, Accel_y: {accel_y}, Accel_z: {accel_z}")
         self.get_logger().info(f"Accel standard deviation: {accel_std}, Gyro standard deviation: {gyro_std}")
 
         self.get_logger().info(f"Calibration completed for {key}. Accel offsets: {accel_offset}, Gyro offsets: {gyro_offset}")
