@@ -434,11 +434,11 @@ class CalCOGFrame(Node):
         # Convert accelerometer readings to m/s² (if not already in m/s²)
         accel_imu1_raw = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz]) 
         accel_imu2_raw = np.array([self.mpu1_data.acx2, self.mpu1_data.acy2, self.mpu1_data.acz2]) 
-        accel_imu1 = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz]) * 9.81
-        accel_imu2 = np.array([self.mpu1_data.acx2, self.mpu1_data.acy2, self.mpu1_data.acz2]) * 9.81
+        accel_imu1 = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz]) 
+        accel_imu2 = np.array([self.mpu1_data.acx2, self.mpu1_data.acy2, self.mpu1_data.acz2]) 
 
-        accel_imu1filt = np.array([filtered_acx, filtered_acy, filtered_acz]) * 9.81
-        accel_imu2filt = np.array([filtered_acx2, filtered_acy2, filtered_acz2]) * 9.81
+        accel_imu1filt = np.array([filtered_acx, filtered_acy, filtered_acz]) 
+        accel_imu2filt = np.array([filtered_acx2, filtered_acy2, filtered_acz2]) 
 
         accel_imu1_comp = self.compensate_gravity_with_quaternion(accel_imu1, self.quaternion)
         accel_imu2_comp = self.compensate_gravity_with_quaternion(accel_imu2, self.quaternion)
