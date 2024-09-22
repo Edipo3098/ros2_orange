@@ -1,0 +1,414 @@
+import rclpy
+from rclpy.node import Node
+from robot_interfaces.msg import Mpu, COGframe
+from time import time
+import numpy as np
+from filterpy.kalman import ExtendedKalmanFilter
+from ahrs.filters import Madgwick  # Use Madgwick from ahrs package
+from collections import deque
+"""
+Fusion sensor increase measuremetes to 6
+Accx Accy AccZ
+The fuses is being implemented in 
+update that update uses both measurements
+G
+
+"""
+
+from filterpy.kalman import UnscentedKalmanFilter as UKF
+from filterpy.kalman import MerweScaledSigmaPoints
+import numpy as np
+
+class IMUFusionUKF:
+    def __init__(self, dt):
+        # Define the UKF parameters
+        self.dt = dt
+        self.points = MerweScaledSigmaPoints(9, alpha=0.1, beta=2.0, kappa=0.0)
+        self.ukf =  UKF(dim_x=9, dim_z=9, dt=self.dt, fx=self.fx, hx=self.hx, points=self.points)
+        # Initial state vector [pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, roll, pitch, yaw]
+        self.ukf.x = np.zeros(9)
+        # Covariances (initial)
+        self.ukf.P = np.eye(9) * 0.1  # State covariance matrix with low initial uncertainty
+
+        self.ukf.Q = np.eye(9) * 0.01  # Process noise covariance matrix
+        # Measurement noise covariance matrix
+        # 3 Accelerometer measurements MPU 1 (x, y, z) 
+        self.ukf.R = np.eye(9) * 0.1   # Measurement noise covariance matrix 3 Accele
+        
+    # Define state transition function for UKF
+    def fx(self, x, dt):
+        # x = [pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, roll, pitch, yaw]
+        # Update position based on velocity and acceleration
+        pos = x[:3] + x[3:6] * dt + 0.5 * x[6:] * dt**2
+        
+        # Update velocity based on acceleration
+        vel = x[3:6] + x[6:] * dt
+        
+        # Orientation (roll, pitch, yaw) remains unchanged as we're not modeling its dynamics here
+        orientation = x[6:]  
+        
+        # Return full state vector [pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, roll, pitch, yaw]
+        return np.hstack((pos, vel, orientation))
+
+
+
+    # Define measurement function for UKF
+    def hx(self, x):
+        # Return the predicted accelerations and orientation (roll, pitch, yaw)
+        acc_imu1_pred = x[3:6]  # From velocity state, representing accelerations
+        acc_imu2_pred = x[3:6]  # Assuming similar accelerations for IMU 2
+        orientation_pred = x[6:]  # roll, pitch, yaw from the state vector
+
+        # Return combined predictions for accelerations and orientation
+        return np.hstack((acc_imu1_pred, acc_imu2_pred, orientation_pred))
+
+
+    
+   
+class CalCOGFrame(Node):
+
+    def __init__(self):
+        super().__init__('ukf_estimator')
+        self.subscription_mpu = self.create_subscription(Mpu, 'mpu_data_1', self.listener_callback, 10)
+        
+        
+        self.publishKalmanFrame = self.create_publisher(COGframe, 'kalman_cog_frame_3', 10)
+        self.publishTrapezFrame = self.create_publisher(COGframe, 'trapez_cog_frame_3', 10)
+
+        self.alpha = 0.2  # Lower alpha = more smoothing, higher alpha = faster response
+         # Initial values for filtered accelerometer data
+        self.filtered_acc = {'acx': 0.0, 'acy': 0.0, 'acz': 0.0}
+        self.quaternion = np.array([1.0, 0.0, 0.0, 0.0])  # Initial quaternion representing no rotation
+        # Initialize the measurement buffers for sliding window (store last N measurements)
+        self.window_size = 100  # Number of recent measurements to consider
+        self.acc_buffers = {
+            'acx': deque(maxlen=self.window_size),
+            'acy': deque(maxlen=self.window_size),
+            'acz': deque(maxlen=self.window_size),
+        }
+        self.gyro_buffers = {
+            'gx': deque(maxlen=self.window_size),
+            'gy': deque(maxlen=self.window_size),
+            'gz': deque(maxlen=self.window_size),
+        }
+        self.acc_buffers2 = {
+            'acx': deque(maxlen=self.window_size),
+            'acy': deque(maxlen=self.window_size),
+            'acz': deque(maxlen=self.window_size),
+        }
+        self.gyro_buffers2 = {
+            'gx': deque(maxlen=self.window_size),
+            'gy': deque(maxlen=self.window_size),
+            'gz': deque(maxlen=self.window_size),
+        }
+        # Kalman filter for fusing data from both MPUs
+        self.frec = 100
+        self.kf = IMUFusionUKF(dt=1/self.frec )
+        # Madgwick filter initialization
+        self.madgwick_filter = Madgwick(frequency=self.frec ,gain=0.003)  # Adjust sample period as needed
+        """
+        If your IMU data is noisy, a lower beta value may help reduce jitter, though you will need to balance this with the slower data rate.
+        """
+        # Buffers to hold the last measurements from each MPU
+        self.mpu1_data = None
+        self.mpu2_data = None
+        self.calibrated = False
+
+        self.prev_time = time()
+
+    def listener_callback(self, msg):
+        self.mpu1_data = msg
+        self.process_fusion()
+        
+    def listener_callback2(self, msg):
+        self.mpu2_data = msg
+        self.process_fusion()
+    def low_pass_filter(self, axis, raw_data):
+            """
+            Apply an exponential moving average (EMA) low-pass filter to accelerometer data.
+            axis: 'acx', 'acy', or 'acz'
+            raw_data: new raw accelerometer reading
+            """
+            # Update the filtered value using EMA formula
+            self.filtered_acc[axis] = self.alpha * raw_data + (1 - self.alpha) * self.filtered_acc[axis]
+            
+            # Return the filtered value
+            return self.filtered_acc[axis]
+    def update_measurement_noise(self):
+        """
+        Calculate new measurement noise covariance matrix R based on sliding window variance.
+        """
+        # Compute variance for accelerometer
+        acc_variance = {
+            axis: np.var(self.acc_buffers[axis]) if len(self.acc_buffers[axis]) > 1 else 1.0
+            for axis in ['acx', 'acy', 'acz']
+        }
+
+        # Compute variance for gyroscope
+        gyro_variance = {
+            axis: np.var(self.gyro_buffers[axis]) if len(self.gyro_buffers[axis]) > 1 else 1.0
+            for axis in ['gx', 'gy', 'gz']
+        }
+         # Compute variance for accelerometer
+        acc_variance2 = {
+            axis: np.var(self.acc_buffers2[axis]) if len(self.acc_buffers2[axis]) > 1 else 1.0
+            for axis in ['acx', 'acy', 'acz']
+        }
+
+        # Compute variance for gyroscope
+        gyro_variance2 = {
+            axis: np.var(self.gyro_buffers2[axis]) if len(self.gyro_buffers2[axis]) > 1 else 1.0
+            for axis in ['gx', 'gy', 'gz']
+        }
+        # Update the measurement noise covariance matrix (R)
+        vaAcx = np.mean([ acc_variance['acx'],acc_variance2['acx']] )
+        vaAcy = np.mean([ acc_variance['acy'],acc_variance2['acy']] )
+        vaAcz = np.mean([ acc_variance['acz'],acc_variance2['acz']] )
+        
+        """
+        self.kf.ekf.R = np.diag([ vaAcx   , vaAcy,  vaAcz])*self.kf.mul
+        """
+    def add_measurement_to_buffers(self, imu_data):
+        """
+        Add new IMU data to the sliding window buffers for noise calculation.
+        """
+        self.acc_buffers['acx'].append(imu_data.acx)
+        self.acc_buffers['acy'].append(imu_data.acy)
+        self.acc_buffers['acz'].append(imu_data.acz)
+        self.gyro_buffers['gx'].append(imu_data.gx)
+        self.gyro_buffers['gy'].append(imu_data.gy)
+        self.gyro_buffers['gz'].append(imu_data.gz)
+
+        self.acc_buffers2['acx'].append(imu_data.acx2)
+        self.acc_buffers2['acz'].append(imu_data.acz2)
+        self.acc_buffers2['acy'].append(imu_data.acy2)
+        self.gyro_buffers2['gx'].append(imu_data.gx2)
+        self.gyro_buffers2['gy'].append(imu_data.gy2)
+        self.gyro_buffers2['gz'].append(imu_data.gz2)
+    
+    def quaternion_to_euler_angles(self, q):
+        """
+        Convert a quaternion into Euler angles (roll, pitch, yaw)
+        q: quaternion as [w, x, y, z]
+        """
+        w, x, y, z = q
+        t0 = +2.0 * (w * x + y * z)
+        t1 = +1.0 - 2.0 * (x * x + y * y)
+        roll = np.arctan2(t0, t1)
+
+        t2 = +2.0 * (w * y - z * x)
+        t2 = np.clip(t2, -1.0, 1.0)
+        pitch = np.arcsin(t2)
+
+        t3 = +2.0 * (w * z + x * y)
+        t4 = +1.0 - 2.0 * (y * y + z * z)
+        yaw = np.arctan2(t3, t4)
+
+        return roll, pitch, yaw
+
+    def compensate_gravity(self,accel, roll, pitch):
+        """
+        Compensate for the gravitational component in the accelerometer reading
+        using the roll and pitch from the Madgwick filter.
+
+        accel: 3D vector of accelerometer data [ax, ay, az] (in m/s²)
+        roll: roll angle in radians
+        pitch: pitch angle in radians
+        """
+        # Gravity vector in the sensor frame
+        g = np.array([0, 0, -9.81])  # Gravity in m/s²
+
+        # Calculate the rotation matrix from the roll and pitch
+        # Note: Yaw isn't needed for gravity compensation
+        R_x = np.array([[1, 0, 0],
+                        [0, np.cos(roll), -np.sin(roll)],
+                        [0, np.sin(roll), np.cos(roll)]])  # Rotation matrix for roll
+        
+        R_y = np.array([[np.cos(pitch), 0, np.sin(pitch)],
+                        [0, 1, 0],
+                        [-np.sin(pitch), 0, np.cos(pitch)]])  # Rotation matrix for pitch
+        
+        # Rotate gravity into the sensor frame
+        g_sensor = R_x @ R_y @ g
+
+        # Subtract the gravity vector from the accelerometer readings
+        accel_compensated = accel - g_sensor
+
+        return accel_compensated
+    def compensate_gravity_with_quaternion(self, accel, q):
+        """
+        Compensate for the gravitational component in the accelerometer reading
+        using the quaternion from the Madgwick filter to avoid singularities.
+        
+        Parameters:
+        - accel: 3D vector of accelerometer data [ax, ay, az] (in m/s²)
+        - q: quaternion as [w, x, y, z]
+
+        Returns:
+        - accel_compensated: gravity-compensated acceleration vector
+        """
+        # Quaternion components
+        w, x, y, z = q
+
+        # Gravity vector in the global frame (assuming Z points upwards)
+        gravity = np.array([0, 0, -9.81])
+
+        # Convert quaternion to rotation matrix to rotate gravity vector
+        # This is the rotation matrix derived from the quaternion
+        R = np.array([
+            [1 - 2*(y**2 + z**2), 2*(x*y - z*w),     2*(x*z + y*w)],
+            [2*(x*y + z*w),     1 - 2*(x**2 + z**2), 2*(y*z - x*w)],
+            [2*(x*z - y*w),     2*(y*z + x*w),     1 - 2*(x**2 + y**2)]
+        ])
+
+        # Rotate the gravity vector into the sensor frame
+        gravity_sensor_frame = R @ gravity
+
+        # Subtract the gravity vector from the accelerometer readings
+        accel_compensated = accel - gravity_sensor_frame
+
+        return accel_compensated
+    
+    def process_fusion(self):
+        
+
+        current_time = time()
+        dt = current_time - self.prev_time
+        if dt < 1e-6:
+            dt = 1e-6  # Set a minimum time step threshold
+         # Apply low-pass filter to the raw accelerometer data
+
+        filtered_acx = self.low_pass_filter('acx', self.mpu1_data.acx)
+        filtered_acy = self.low_pass_filter('acy', self.mpu1_data.acy)
+        filtered_acz = self.low_pass_filter('acz', self.mpu1_data.acz)
+        filtered_acx2 = self.low_pass_filter('acx', self.mpu1_data.acx2)
+        filtered_acy2 = self.low_pass_filter('acy', self.mpu1_data.acy)
+        filtered_acz2 = self.low_pass_filter('acz', self.mpu1_data.acz2)
+        #self.kf.change_dt(dt)
+        self.prev_time = current_time  # Update previous time
+        # Add new measurement data to the buffers
+        self.add_measurement_to_buffers(self.mpu1_data)
+        # Update the measurement noise covariance matrix based on recent data
+        self.update_measurement_noise()
+        # Create the measurement vector with data from both IMUs
+        
+        # In process_fusion:
+        
+        alpha = 0.6  # Weight for IMU1, 1 - alpha for IMU2
+        
+        # Weighted average for gyroscope data in
+        gyroscope_data = np.array([
+            alpha * self.mpu1_data.gx + (1 - alpha) * self.mpu1_data.gx2,
+            alpha * self.mpu1_data.gy + (1 - alpha) * self.mpu1_data.gy2,
+            alpha * self.mpu1_data.gz + (1 - alpha) * self.mpu1_data.gz2
+        ]) # already in rad/s
+
+        # Weighted average for accelerometer data
+        accelerometer_data = np.array([
+            alpha * self.mpu1_data.acx + (1 - alpha) * self.mpu1_data.acx2,
+            alpha * self.mpu1_data.acy + (1 - alpha) * self.mpu1_data.acy,
+            alpha * self.mpu1_data.acz + (1 - alpha) * self.mpu1_data.acz2
+        ])*9.81
+        gyroscope_data_filtered = np.array([
+            alpha * self.mpu1_data.gx + (1 - alpha) * self.mpu1_data.gx2,
+            alpha * self.mpu1_data.gy + (1 - alpha) * self.mpu1_data.gy2,
+            alpha * self.mpu1_data.gz + (1 - alpha) * self.mpu1_data.gz2
+        ]) # already in rad/s
+
+        # Weighted average for accelerometer data
+        accelerometer_data_filtered = np.array([
+            alpha * filtered_acx + (1 - alpha) * filtered_acx2,
+            alpha * filtered_acy + (1 - alpha) * filtered_acy2,
+            alpha * filtered_acz + (1 - alpha) * filtered_acz2
+        ])*9.81   # Convert to m/s²
+        self.quaternion
+        self.quaternion  = self.madgwick_filter.updateIMU(q=self.quaternion,gyr=gyroscope_data_filtered, acc=accelerometer_data_filtered)
+
+       
+        roll, pitch, yaw = self.quaternion_to_euler_angles(self.quaternion)  # in rads
+        # Compensate for gravity using the orientation from the Madgwick filter
+        # Convert accelerometer readings to m/s² (if not already in m/s²)
+        accel_imu1_raw = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz]) 
+        accel_imu2_raw = np.array([self.mpu1_data.acx2, self.mpu1_data.acy, self.mpu1_data.acz2]) 
+        accel_imu1 = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz]) 
+        accel_imu2 = np.array([self.mpu1_data.acx2, self.mpu1_data.acy, self.mpu1_data.acz2]) 
+
+        # ACY2 to much failed
+
+        accel_imu1filt = np.array([filtered_acx, filtered_acy, filtered_acz]) 
+        accel_imu2filt = np.array([filtered_acx2, filtered_acy, filtered_acz2]) 
+
+        accel_imu1_comp = self.compensate_gravity_with_quaternion(accel_imu1, self.quaternion)
+        accel_imu2_comp = self.compensate_gravity_with_quaternion(accel_imu2, self.quaternion)
+
+        accel_imu1_comp_filt = self.compensate_gravity_with_quaternion(accel_imu1filt, self.quaternion)
+        accel_imu2_comp_filt = self.compensate_gravity_with_quaternion(accel_imu2filt, self.quaternion)
+        # Fused measurement vector for EKF (acceleration from both IMUs)
+        z_imu1 = accel_imu1filt
+        z_imu2 = accel_imu2filt
+            # Fuse the accelerations (average)
+        u_fused = alpha*z_imu1 + (1-alpha)*z_imu2
+        
+        # Update the Kalman filter with
+        # Prediction step
+        self.kf.ukf.predict()
+
+        # Update step with acceleration (linear velocity) and angular velocity
+        measurements = np.hstack((z_imu1, z_imu2, [roll, pitch, yaw]))  # Correct usage with parentheses
+
+        self.kf.ukf.update(measurements)
+
+        # Get filtered state (position, velocity, orientation)
+        pos, vel, orient = self.kf.ukf.x[:3], self.kf.ukf.x[3:6], self.kf.ukf.x[6:9]
+
+        
+
+        
+        # Publish the Kalman filter output
+        msg = COGframe()
+        msg.pos_x, msg.pos_y, msg.pos_z = float(pos[0]), float(pos[1]), float(pos[2])
+        msg.roll, msg.pitch, msg.yaw = float(roll), float(pitch), float(yaw)
+        self.publishKalmanFrame.publish(msg)
+        if ( not self.calibrated ):
+            if (accel_imu1_raw[0] < 0.1 and accel_imu1_raw[1] < 0.1 and accel_imu1_raw[2] < 0.1 and accel_imu2_raw[0] < 0.1 and accel_imu2_raw[1] < 0.1 and accel_imu2_raw[2] < 0.1):
+                self.calibrated = True
+                self.calibration_time = time()
+                self.get_logger().info("Calibration  done")
+            
+        else:
+            self.publishKalmanFrame.publish(msg)
+
+        self.get_logger().info(f"MPU 1 raw: {float(accel_imu1_raw[0])}, {float(accel_imu1_raw[1])}, {float(accel_imu1_raw[2])}")
+        self.get_logger().info(f"MPU 2 raw:  {float(accel_imu2_raw[0])}, {float(accel_imu2_raw[1])}, {float(accel_imu2_raw[2])}")
+        self.get_logger().info(f"MPU 1: {float(accel_imu1[0])}, {float(accel_imu1[1])}, {float(accel_imu1[2])}")
+        self.get_logger().info(f"MPU 2:  {float(accel_imu2[0])}, {float(accel_imu2[1])}, {float(accel_imu2[2])}")
+        self.get_logger().info(f"MPU 1 Filtered: {float(accel_imu1filt[0])}, {float(accel_imu1filt[1])},{float(accel_imu1filt[2])}")
+        self.get_logger().info(f"MPU 2 Filtered: {float(accel_imu2filt[0])}, {float(accel_imu2filt[1])},{float(accel_imu2filt[2])}")
+        self.get_logger().info(f"MPU 1  compensate G: {float(accel_imu1_comp[0])}, {float(accel_imu1_comp[1])}, {float(accel_imu1_comp[2])}")
+        self.get_logger().info(f"MPU 2  compensate G: {float(accel_imu2_comp[0])}, {float(accel_imu2_comp[1])}, {float(accel_imu2_comp[2])}")
+        self.get_logger().info(f"G: {float(accel_imu1_comp_filt[0])}, {float(accel_imu1_comp_filt[1])}, {float(accel_imu1_comp_filt[2])}")
+        self.get_logger().info(f"MPU 2  compensate G filt: {float(accel_imu2_comp_filt[0])}, {float(accel_imu2_comp_filt[1])}, {float(accel_imu2_comp_filt[2])}")
+        self.get_logger().info(f"Pos X Y Z (meter): {float(pos[0])}, {float(pos[1])}, {float(pos[2])}")
+
+
+        self.get_logger().info(f"GIRO 1 raw: {float(gyroscope_data[0])}, {float(gyroscope_data[1])}, {float(gyroscope_data[2])}")
+        self.get_logger().info(f"GIRO 1 FILTER:  {float(gyroscope_data_filtered[0])}, {float(gyroscope_data_filtered[1])}, {float(gyroscope_data_filtered[2])}")
+        self.get_logger().info(f"Roll pitch yaw rad: {float(roll)}, {float(pitch)}, {float(yaw)}")
+
+        """
+        self.get_logger().info(f"MPU 1 Filtered: {float(filtered_acx)}, {float(filtered_acy)},{float(filtered_acz)}")
+        self.get_logger().info(f"MPU 2 Filtered: {float(filtered_acx2)}, {float(filtered_acy2)},{float(filtered_acz2)}")
+        self.get_logger().info(f"MPU 1  compensate G: {float(accel_imu1_comp[0])}, {float(accel_imu1_comp[1])}, {float(accel_imu1_comp[2])}")
+        self.get_logger().info(f"MPU 2  compensate G: {float(accel_imu2_comp[0])}, {float(accel_imu2_comp[1])}, {float(accel_imu2_comp[2])}")
+        self.get_logger().info(f"MPU 1  compensate G filt: {float(accel_imu1_comp_filt[0])}, {float(accel_imu1_comp_filt[1])}, {float(accel_imu1_comp_filt[2])}")
+        self.get_logger().info(f"MPU 2  compensate G filt: {float(accel_imu2_comp_filt[0])}, {float(accel_imu2_comp_filt[1])}, {float(accel_imu2_comp_filt[2])}")
+        """
+def main(args=None):
+    rclpy.init(args=args)
+    ukf_estimator = CalCOGFrame()
+    rclpy.spin(ukf_estimator)
+    ukf_estimator.destroy_node()
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()

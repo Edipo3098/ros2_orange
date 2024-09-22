@@ -3,7 +3,8 @@ from rclpy.node import Node
 from robot_interfaces.msg import Mpu, COGframe
 from time import time
 import numpy as np
-from filterpy.kalman import ExtendedKalmanFilter
+from filterpy.monte_carlo import systematic_resample
+import scipy.stats
 from ahrs.filters import Madgwick  # Use Madgwick from ahrs package
 from collections import deque
 """
@@ -14,205 +15,93 @@ update that update uses both measurements
 G
 
 """
-
-
-
-from filterpy.kalman import ExtendedKalmanFilter
 import numpy as np
+import scipy.stats
 
-class IMUFusionEKF:
+class ParticleFilter:
+    def __init__(self, N, dt):
+        self.N = N  # Number of particles
+        self.dt = dt  # Time step
+        # Particle state: [pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, roll, pitch, yaw]
+        self.particles = np.random.uniform(low=-1, high=1, size=(N, 9))
+        self.weights = np.ones(N) / N
 
-    def __init__(self, dt):
-        self.dt = dt
-        # State vector: [pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, roll, pitch, yaw, bias_x, bias_y, bias_z]
-        self.ekf = ExtendedKalmanFilter(dim_x=12, dim_z=9)  # 12 states: 9 original + 3 for gyro biases
-        self.ekf.x = np.zeros(12)  # Initial state: all zeros (you may initialize biases differently)
-
-        # State covariance matrix (P)
-        self.ekf.P = np.eye(12) * 1  # Initial uncertainty for all states, including biases
-
-        # Process noise covariance matrix (Q)
-        self.ekf.Q = np.diag([1e-4, 1e-4, 1e-4,   # Position noise
-                              1e-2, 1e-2, 1e-2,   # Velocity noise
-                              1e-3, 1e-3, 1e-3,   # Orientation noise
-                              1e-5, 1e-5, 1e-5])  # Gyro bias noise (small values since biases change slowly)
-
-        # Measurement noise covariance matrix (R)
-        self.ekf.R = np.diag([1e-2, 1e-2, 1e-2,   # Acceleration measurement noise
-                              1e-2, 1e-2, 1e-2,   # Acceleration noise (second IMU)
-                              1e-2, 1e-2, 1e-2])  # Orientation noise from Madgwick
-
-        # Initial quaternion for Madgwick filter
-        self.quaternion = np.array([1.0, 0.0, 0.0, 0.0])
-
-    def state_transition_function(self, x, u):
-        dt = self.dt
-        # Predict position and velocity from acceleration (as before)
-        pos = x[:3] + x[3:6] * dt + 0.5 * u[:3] * dt**2
-        vel = x[3:6] + u[:3] * dt
-
-        # Keep the orientation and bias the same (orientation updated elsewhere, biases remain unchanged)
-        orientation = x[6:9]  # Roll, pitch, yaw
-        biases = x[9:]  # Gyro biases remain constant during prediction
-
-        return np.hstack((pos, vel, orientation, biases))
-
-
-    def predict(self, u):
+    def predict(self, acceleration, angular_displacement):
         """
-        Use filterpy's built-in EKF prediction function.
-        - u: fused accelerations [acx_fused, acy_fused, acz_fused]
+        Predict particle states based on acceleration and angular displacement (roll, pitch, yaw).
+        :param acceleration: array of shape (3,), containing [acc_x, acc_y, acc_z]
+        :param angular_displacement: array of shape (3,), containing [roll, pitch, yaw]
         """
-        # Use the state transition function to predict new position, velocity, and retain orientation/bias
-        self.ekf.x = self.state_transition_function(self.ekf.x, u)
-        
-        # Update covariance matrix with state transition
-        F = self.calculate_jacobian(self.ekf.x)  # Jacobian matrix for state transition
+        for i in range(self.N):
+            # Update position based on velocity and acceleration
+            self.particles[i, :3] += self.particles[i, 3:6] * self.dt + 0.5 * acceleration * self.dt**2
+            # Update velocity based on acceleration
+            self.particles[i, 3:6] += acceleration * self.dt
+            # Update orientation (roll, pitch, yaw) assuming small changes
+            self.particles[i, 6:9] += angular_displacement  # Update orientation with displacement
 
-        print(f"F: {F.shape}, Q shape: {self.ekf.Q.shape} , P: {self.ekf.P.shape}")
-
-        self.ekf.P = F @ self.ekf.P @ F.T + self.ekf.Q
-
-    def measurement_function(self, x):
-        # Gyroscope bias-corrected measurements
-        acc_imu1 = np.array([x[3], x[4], x[5]])  # Accelerations from velocity
-        acc_imu2 = np.array([x[3], x[4], x[5]])
-
-        # Gyroscope bias states
-        bias_x, bias_y, bias_z = x[9], x[10], x[11]
-
-        # Gyroscope measurements corrected by estimated biases
-        gyro_meas_imu1 = np.array([x[6] - bias_x, x[7] - bias_y, x[8] - bias_z])
-
-        return np.hstack((acc_imu1, acc_imu2, gyro_meas_imu1))
-
-    def measurement_jacobian(self, x):
-        H = np.zeros((9, 12))  # 9 measurements (accelerations + orientation), 12 states
-        # Accelerations w.r.t. velocity
-        H[0, 3] = H[1, 4] = H[2, 5] = 1  # Acceleration for IMU1
-        H[3, 3] = H[4, 4] = H[5, 5] = 1  # Acceleration for IMU2
-
-        # Orientation (gyroscope) w.r.t. itself
-        H[6, 6] = H[7, 7] = H[8, 8] = 1
-
-        # Bias contribution to gyroscope measurements
-        H[6, 9] = H[7, 10] = H[8, 11] = -1  # Subtract bias from gyro measurements
-
-        return H
-
-    def update(self, z_imu1, z_imu2, orientation_madgwick):
-        # Combine accelerations and orientation into a single measurement vector
-        measurements = np.hstack((z_imu1[:3], z_imu2[:3], orientation_madgwick))
-
-        # Predict measurement based on the current state
-        Hx = self.measurement_function(self.ekf.x)
-
-        # Compute the residual (innovation) between the actual and predicted measurements
-        residual = self.compute_residual(measurements, Hx)
-        print(f"Measurements shape: {measurements.shape}, Hx shape: {Hx.shape}")
-
-        # Perform the Kalman update step
-        try:
-            self.ekf.update(z=measurements, HJacobian=self.measurement_jacobian, Hx=self.measurement_function)
-        except np.linalg.LinAlgError:
-            print("Singular matrix error, adding regularization")
-            self.ekf.P += np.eye(12) * 1e-6  # Regularize the covariance matrix
-
-        # Regularize P after the update to avoid singularity issues in future updates
-        self.ekf.P += np.eye(12) * 1e-6
-
-        
-
-    def calculate_jacobian(self, x):
+    def update(self, z, R):
         """
-        Calculate the Jacobian matrix for the state transition function.
+        Update particle weights based on the likelihood of the measurements.
+        :param z: array of measurements (9,) [ax, ay, az, ax2, ay2, az2, roll, pitch, yaw]
+        :param R: measurement noise covariance matrix
         """
-        dt = self.dt
-        F = np.eye(12)
-        F[0, 3] = F[1, 4] = F[2, 5] = dt  # Partial derivatives for position w.r.t. velocity
+        for i in range(self.N):
+            # Particle velocity (used for comparison with acceleration measurements)
+            vel = self.particles[i, 3:6]
+            # Particle orientation (roll, pitch, yaw)
+            orientation = self.particles[i, 6:9]
 
-        return F
-
-    def change_dt(self, dt):
-        self.dt = dt
-
-    def get_state(self):
-        """
-        Return position, velocity, and orientation.
-        Orientation comes from the Madgwick filter.
-        """
-        return self.ekf.x[:3], self.ekf.x[3:6], self.ekf.x[6:9]  # Position, velocity, orientation
-    def compute_residual(self, z, Hx):
-            """
-            Compute the residual (innovation) between the actual measurement z 
-            and the predicted measurement Hx.
-            - z: actual measurement (from sensors)
-            - Hx: predicted measurement (from the measurement function)
+            # Concatenate velocity and orientation to compare with measurements
+            state_pred = np.hstack((vel, vel, orientation))  # Predicted measurement for both IMUs and orientation
             
-            print(f"Measurement z: {z.shape}")
-            print(f"Measurement Hx: {Hx.shape}")
-            """
-            return z - Hx
-    def update_R(self, residuals,alpha=0.1):
-        """
-        Dynamically update the measurement noise covariance R 
-        based on the variance of the residuals.
-        - residuals: list of past residuals to calculate variance
-        """
-        # Calculate the variance of the residuals for each sensor
-        variance = np.var(residuals, axis=0)
-            
-            # Update the measurement noise covariance matrix R
-        # Smooth the update using Exponential Moving Average (EMA)
-        self.ekf.R = (1 - alpha) * self.ekf.R + alpha * np.diag(variance) * self.mul
+            # Calculate the likelihood of the actual measurements given the particle's state
+            likelihood = scipy.stats.multivariate_normal.pdf(z, mean=state_pred, cov=R)
+            self.weights[i] *= likelihood
 
+        self.weights += 1.e-300  # Avoid division by zero
+        self.weights /= np.sum(self.weights)  # Normalize the weights
 
-    def update_Q(self, state_predictions,beta = 0.1):
+    def resample(self):
         """
-        Update the process noise covariance matrix Q based on the variance of prediction errors.
-        - state_predictions: list of past prediction errors (state differences)
+        Resample particles according to their weights using systematic resampling.
         """
-        variance = np.var(state_predictions, axis=0)
-        #self.ekf.Q = np.diag(variance) * self.mul  # Adjust the process noise accordingly
-        # Calculate the variance of the prediction error for each state variable
-        #prediction_error_variance = np.var(state_prediction_error, axis=0)
-        variance = np.var(state_predictions, axis=0)
-        print(f"Variance: {variance}")
-        if variance.ndim > 1:
-            variance = variance.flatten()
-        # Smooth the update of Q
-        self.ekf.Q = ((1 - beta) * self.ekf.Q + beta * np.diag(12*variance) )* self.mul
-    def update_noise_covariances(self, accel_data, gyro_data):
+        indices = self.systematic_resample(self.weights)
+        self.particles = self.particles[indices]
+        self.weights.fill(1.0 / self.N)
+
+    def estimate(self):
         """
-        Dynamically adjust the process noise covariance (Q) and measurement noise covariance (R) 
-        based on the variance of accelerometer and gyroscope data.
+        Estimate the final state (position, velocity, orientation) by averaging over the particles.
+        :return: array of estimated state (9,) [pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, roll, pitch, yaw]
         """
-        # Ensure the data is in array form (even if it's a scalar)
-        accel_data = np.atleast_1d(accel_data)
-        gyro_data = np.atleast_1d(gyro_data)
+        return np.average(self.particles, weights=self.weights, axis=0)
 
-        # Calculate variance safely
-        accel_variance = np.var(accel_data, axis=0) if accel_data.ndim > 1 else np.var([accel_data])
-        gyro_variance = np.var(gyro_data, axis=0) if gyro_data.ndim > 1 else np.var([gyro_data])
-
-        # Make sure we handle the variance as arrays of the correct length (3 for x, y, z)
-        if gyro_variance.size < 3:
-            gyro_variance = np.full(3, np.mean(gyro_variance))  # Fill with mean if variance is scalar
-        
-        if accel_variance.size < 3:
-            accel_variance = np.full(3, np.mean(accel_variance))  # Fill with mean if variance is scalar
-
-        # Update process noise covariance Q dynamically (positions, velocities, and orientation noise)
-        self.ekf.Q = np.diag([1e-4, 1e-4, 1e-4, gyro_variance[0], gyro_variance[1], gyro_variance[2], 1e-3, 1e-3, 1e-3,1e-3, 1e-3, 1e-3])
-
-        # Update measurement noise covariance R dynamically (acceleration noise)
-        self.ekf.R = np.diag([accel_variance[0], accel_variance[1], accel_variance[2], 1e-2, 1e-2, 1e-2, 1e-2, 1e-2, 1e-2])
+    @staticmethod
+    def systematic_resample(weights):
+        """
+        Perform systematic resampling on the particles.
+        :param weights: array of particle weights
+        :return: array of indices to resample from the original particle set
+        """
+        N = len(weights)
+        positions = (np.arange(N) + np.random.uniform()) / N
+        indices = np.zeros(N, dtype=int)
+        cumulative_sum = np.cumsum(weights)
+        i, j = 0, 0
+        while i < N:
+            if positions[i] < cumulative_sum[j]:
+                indices[i] = j
+                i += 1
+            else:
+                j += 1
+        return indices
 
 
 class CalCOGFrame(Node):
 
     def __init__(self):
-        super().__init__('cog_calc4')
+        super().__init__('particle_filter')
         self.subscription_mpu = self.create_subscription(Mpu, 'mpu_data_1', self.listener_callback, 10)
         
         
@@ -247,7 +136,10 @@ class CalCOGFrame(Node):
         }
         # Kalman filter for fusing data from both MPUs
         self.frec = 100
-        self.kf = IMUFusionEKF(dt=1/self.frec )
+        self.N = 1000  # Number of particles
+        self.dt = 1/self.frec  # Time step
+        self.pf = ParticleFilter(N=self.N, dt=self.dt)
+        
         # Madgwick filter initialization
         self.madgwick_filter = Madgwick(frequency=self.frec ,gain=0.003)  # Adjust sample period as needed
         """
@@ -491,17 +383,27 @@ class CalCOGFrame(Node):
         z_imu1 = accel_imu1filt
         z_imu2 = accel_imu2filt
             # Fuse the accelerations (average)
-        u_fused = alpha*z_imu1 + (1-alpha)*z_imu2
+        acceleration = alpha*z_imu1 + (1-alpha)*z_imu2
         
-        # EKF Prediction step with fused acceleration
-        self.kf.update_noise_covariances(accelerometer_data_filtered, gyroscope_data_filtered)
-        self.kf.predict(u_fused)
+        # Update step with acceleration (linear velocity) and angular velocity
+        measurements = np.hstack((acceleration, [roll, pitch, yaw] ))  # [vel_x, vel_y, vel_z, roll, pitch, yaw]
+        # Perform prediction
+        self.pf.predict(acceleration,np.array([roll, pitch, yaw]))
 
-        # EKF Update step with fused measurements and Madgwick orientation Z
-        self.kf.update(z_imu1, z_imu2, [roll, pitch, yaw])
+        # Update step with measurements
+        z = np.hstack((accel_imu1filt, accel_imu2filt, [roll, pitch, yaw]))  # Correct the usage of np.hstack
+        R = np.eye(9) * 0.1  # Example measurement noise covariance matrix
 
-        # Retrieve filtered state (position, velocity)
-        pos, vel, orient = self.kf.get_state()
+        self.pf.update(z, R)
+
+        # Resample particles
+        self.pf.resample()
+        # Estimate position, velocity, orientation
+        estimate = self.pf.estimate()
+        pos, vel, orient = estimate[:3], estimate[3:6], estimate[6:9]
+        
+
+        
 
         
         # Publish the Kalman filter output
@@ -545,9 +447,9 @@ class CalCOGFrame(Node):
         """
 def main(args=None):
     rclpy.init(args=args)
-    cog_calculate = CalCOGFrame()
-    rclpy.spin(cog_calculate)
-    cog_calculate.destroy_node()
+    particle_filter = CalCOGFrame()
+    rclpy.spin(particle_filter)
+    particle_filter.destroy_node()
     rclpy.shutdown()
 
 if __name__ == '__main__':

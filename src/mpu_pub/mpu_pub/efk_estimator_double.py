@@ -214,7 +214,7 @@ class IMUFusionEKF:
 class CalCOGFrame(Node):
 
     def __init__(self):
-        super().__init__('cog_calc3')
+        super().__init__('efk_estimator_double')
         self.subscription_mpu = self.create_subscription(Mpu, 'mpu_data_1', self.listener_callback, 10)
         
         
@@ -493,9 +493,9 @@ class CalCOGFrame(Node):
         """
 def main(args=None):
     rclpy.init(args=args)
-    cog_calculate = CalCOGFrame()
-    rclpy.spin(cog_calculate)
-    cog_calculate.destroy_node()
+    efk_estimator_double = CalCOGFrame()
+    rclpy.spin(efk_estimator_double)
+    efk_estimator_double.destroy_node()
     rclpy.shutdown()
 
 if __name__ == '__main__':
