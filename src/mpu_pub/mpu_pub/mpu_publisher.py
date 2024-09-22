@@ -494,6 +494,7 @@ class MinimalPublisher(Node):
             key = 'mpu1'
             prev = [self.prev_accel_x, self.prev_accel_y, self.prev_accel_z, self.prev_gyro_x, self.prev_gyro_y, self.prev_gyro_z]
             accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z = self.read_sensor_data(mpu9250_address, key, prev)
+            raw_accelx, raw_accely, raw_accelz, raw_gyrox, raw_gyroy, raw_gyroz = accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z
             # Apply adaptive calibration to adjust offsets in real-time
             self.adaptive_calibration([accel_x, accel_y, accel_z], key)
 
@@ -517,12 +518,12 @@ class MinimalPublisher(Node):
 
 
 
-
+            self.get_logger().info(f"RAW Accel_x: {raw_accelx}, RAW Accel_y: {raw_accely}, raw Accel_z: {raw_accelz}")
             self.get_logger().info(f"Accel_x: {accel_x}, Accel_y: {accel_y}, Accel_z: {accel_z}")
-            self.get_logger().info(f"Accel_x_2: {accel_x_2}, Accel_y_2: {accel_y_2}, Accel_z_2: {accel_z_2}")
+            #self.get_logger().info(f"Accel_x_2: {accel_x_2}, Accel_y_2: {accel_y_2}, Accel_z_2: {accel_z_2}")
 
-            self.get_logger().info(f"Gyro_x: {gyro_x}, Gyro_y: {gyro_y}, Gyro_z: {gyro_z}")
-            self.get_logger().info(f"Gyro_x_2: {gyro_x_2}, Gyro_y_2: {gyro_y_2}, Gyro_z_2: {gyro_z_2}")
+            #self.get_logger().info(f"Gyro_x: {gyro_x}, Gyro_y: {gyro_y}, Gyro_z: {gyro_z}")
+            #self.get_logger().info(f"Gyro_x_2: {gyro_x_2}, Gyro_y_2: {gyro_y_2}, Gyro_z_2: {gyro_z_2}")
 
             
 
