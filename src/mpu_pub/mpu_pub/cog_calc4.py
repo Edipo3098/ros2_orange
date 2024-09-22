@@ -438,7 +438,7 @@ class CalCOGFrame(Node):
         filtered_acy = self.low_pass_filter('acy', self.mpu1_data.acy)
         filtered_acz = self.low_pass_filter('acz', self.mpu1_data.acz)
         filtered_acx2 = self.low_pass_filter('acx', self.mpu1_data.acx2)
-        filtered_acy2 = self.low_pass_filter('acy', self.mpu1_data.acy2)
+        filtered_acy2 = self.low_pass_filter('acy', self.mpu1_data.acy)
         filtered_acz2 = self.low_pass_filter('acz', self.mpu1_data.acz2)
         #self.kf.change_dt(dt)
         self.prev_time = current_time  # Update previous time
@@ -462,7 +462,7 @@ class CalCOGFrame(Node):
         # Weighted average for accelerometer data
         accelerometer_data = np.array([
             alpha * self.mpu1_data.acx + (1 - alpha) * self.mpu1_data.acx2,
-            alpha * self.mpu1_data.acy + (1 - alpha) * self.mpu1_data.acy2,
+            alpha * self.mpu1_data.acy + (1 - alpha) * self.mpu1_data.acy,
             alpha * self.mpu1_data.acz + (1 - alpha) * self.mpu1_data.acz2
         ])*9.81
         gyroscope_data_filtered = np.array([
@@ -485,12 +485,14 @@ class CalCOGFrame(Node):
         # Compensate for gravity using the orientation from the Madgwick filter
         # Convert accelerometer readings to m/s² (if not already in m/s²)
         accel_imu1_raw = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz]) 
-        accel_imu2_raw = np.array([self.mpu1_data.acx2, self.mpu1_data.acy2, self.mpu1_data.acz2]) 
+        accel_imu2_raw = np.array([self.mpu1_data.acx2, self.mpu1_data.acy, self.mpu1_data.acz2]) 
         accel_imu1 = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz]) 
-        accel_imu2 = np.array([self.mpu1_data.acx2, self.mpu1_data.acy2, self.mpu1_data.acz2]) 
+        accel_imu2 = np.array([self.mpu1_data.acx2, self.mpu1_data.acy, self.mpu1_data.acz2]) 
+
+        # ACY2 to much failed
 
         accel_imu1filt = np.array([filtered_acx, filtered_acy, filtered_acz]) 
-        accel_imu2filt = np.array([filtered_acx2, filtered_acy2, filtered_acz2]) 
+        accel_imu2filt = np.array([filtered_acx2, filtered_acy, filtered_acz2]) 
 
         accel_imu1_comp = self.compensate_gravity_with_quaternion(accel_imu1, self.quaternion)
         accel_imu2_comp = self.compensate_gravity_with_quaternion(accel_imu2, self.quaternion)

@@ -85,6 +85,16 @@ class KalmanFilter:
         self.P *= (1 - K)  # Update estimate covariance
 
         return self.x
+    def adjust_parameters_for_static_gait(self, phase="stance"):
+        if phase == "stance":
+            # During stance phase (leg on ground), set lower process noise (less motion expected)
+            self.Q = 0.00005
+            self.R = 0.0005  # More weight on sensor data (more reliable in stance)
+        elif phase == "swing":
+            # During swing phase (leg in air), allow for more process noise (leg is moving)
+            self.Q = 0.001
+            self.R = 0.01  # Slightly less weight on sensor data (leg movement introduces noise)
+
 
 class MinimalPublisher(Node):
 
@@ -95,17 +105,17 @@ class MinimalPublisher(Node):
         self.kf_accel_x = KalmanFilter(Q = 0.0001, R = 0.001)
         self.kf_accel_y = KalmanFilter(Q = 0.0001, R = 0.001)
         self.kf_accel_z = KalmanFilter(Q = 0.0001, R = 0.001)
-        self.kf_gyro_x = KalmanFilter(Q = 0.0005, R = 0.01)
-        self.kf_gyro_y = KalmanFilter(Q = 0.0005, R = 0.01)
-        self.kf_gyro_z = KalmanFilter(Q = 0.0005, R = 0.01)
+        self.kf_gyro_x = KalmanFilter(Q = 0.0001, R = 0.001)
+        self.kf_gyro_y = KalmanFilter(Q = 0.0001, R = 0.01)
+        self.kf_gyro_z = KalmanFilter(Q = 0.0001, R = 0.01)
 
         # Kalman Filters for second MPU
         self.kf_accel_x2 = KalmanFilter(Q = 0.0001, R = 0.001)
         self.kf_accel_y2 = KalmanFilter(Q = 0.0001, R = 0.001)
         self.kf_accel_z2 = KalmanFilter(Q = 0.0001, R = 0.001)
-        self.kf_gyro_x2 = KalmanFilter(Q = 0.0005, R = 0.01)
-        self.kf_gyro_y2 = KalmanFilter(Q = 0.0005, R = 0.01)
-        self.kf_gyro_z2 = KalmanFilter(Q = 0.0005, R = 0.01)
+        self.kf_gyro_x2 = KalmanFilter(Q = 0.0001, R = 0.001)
+        self.kf_gyro_y2 = KalmanFilter(Q = 0.0001, R = 0.001)
+        self.kf_gyro_z2 = KalmanFilter(Q = 0.0001, R = 0.001)
 
   
 
