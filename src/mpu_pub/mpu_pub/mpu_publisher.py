@@ -404,7 +404,8 @@ class MinimalPublisher(Node):
             adjustment_factor[1]  = 0.0000
         if (error_z<0.1):
             adjustment_factor[2]  = 0.0000
-        calibration_data[calibration_key]["accel"]["offset"] += adjustment_factor * np.array([error_x, error_y, error_z])
+        calibration_data[calibration_key]["accel"]["offset"][0]+= adjustment_factor * np.array([error_x])
+        calibration_data[calibration_key]["accel"]["offset"][1]+= adjustment_factor * np.array([error_y])
 
         # Log adjustment (optional for debugging)
         self.get_logger().info(f"Adaptive calibration adjustment: {calibration_data[calibration_key]['accel']['offset']}")
