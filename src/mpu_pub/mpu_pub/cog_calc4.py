@@ -353,7 +353,7 @@ class CalCOGFrame(Node):
         w, x, y, z = q
 
         # Gravity vector in the global frame (assuming Z points upwards)
-        gravity = np.array([0, 0, 0])
+        gravity = np.array([0, 0, -9.81])
 
         # Convert quaternion to rotation matrix to rotate gravity vector
         # This is the rotation matrix derived from the quaternion
