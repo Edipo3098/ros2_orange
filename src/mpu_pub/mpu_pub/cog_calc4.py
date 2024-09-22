@@ -32,7 +32,7 @@ class IMUFusionEKF:
         self.ekf.P = np.eye(9) * 1  # Initial uncertainty
         self.residuals_window = deque(maxlen=100)  # Store last 100 residuals
         # Process noise covariance matrix (Q)
-        self.mul = 1
+        self.mul = 1000
         self.ekf.Q = np.diag([1e-4, 1e-4, 1e-4, 1e-2, 1e-2, 1e-2, 1e-3, 1e-3, 1e-3])*self.mul   # Noise for position, velocity, orientation
 
         # Measurement noise covariance matrix (R)
@@ -67,6 +67,12 @@ class IMUFusionEKF:
         # Update covariance matrix with state transition
         F = self.calculate_jacobian(self.ekf.x)  # Jacobian matrix for state transition
         self.ekf.P = F @ self.ekf.P @ F.T + self.ekf.Q
+        # Compute state prediction error for dynamic Q update
+        # Assuming you have a way to get the actual state (optional, or use the model-predicted state)
+        
+        # Update Q dynamically based on state prediction error
+        #elf.update_Q(self.ekf.x)
+
     def measurement_function(self, x):
         """
         Measurement function that maps the state to the expected measurement.
@@ -111,9 +117,11 @@ class IMUFusionEKF:
 
         # Compute the residual (innovation) between the actual and predicted measurement
         residual = self.compute_residual(measurements, Hx)
-
+        
         # Store the residual for adaptive noise estimation
         self.residuals_window.append(residual)
+        # Update R dynamically based on residuals
+        self.update_R(list(self.residuals_window))
 
         # Perform the EKF update step
         try:
@@ -152,11 +160,12 @@ class IMUFusionEKF:
             and the predicted measurement Hx.
             - z: actual measurement (from sensors)
             - Hx: predicted measurement (from the measurement function)
-            """
+            
             print(f"Measurement z: {z.shape}")
             print(f"Measurement Hx: {Hx.shape}")
+            """
             return z - Hx
-    def update_R(self, residuals):
+    def update_R(self, residuals,alpha=0.1):
         """
         Dynamically update the measurement noise covariance R 
         based on the variance of the residuals.
@@ -166,7 +175,26 @@ class IMUFusionEKF:
         variance = np.var(residuals, axis=0)
             
             # Update the measurement noise covariance matrix R
-        self.ekf.R = np.diag(variance) * self.mul  # self.kf.mul is your multiplier
+        # Smooth the update using Exponential Moving Average (EMA)
+        self.ekf.R = (1 - alpha) * self.ekf.R + alpha * np.diag(variance) * self.mul
+
+
+    def update_Q(self, state_predictions,beta = 0.1):
+        """
+        Update the process noise covariance matrix Q based on the variance of prediction errors.
+        - state_predictions: list of past prediction errors (state differences)
+        """
+        variance = np.var(state_predictions, axis=0)
+        #self.ekf.Q = np.diag(variance) * self.mul  # Adjust the process noise accordingly
+        # Calculate the variance of the prediction error for each state variable
+        #prediction_error_variance = np.var(state_prediction_error, axis=0)
+        variance = np.var(state_predictions, axis=0)
+        print(f"Variance: {variance}")
+        if variance.ndim > 1:
+            variance = variance.flatten()
+        # Smooth the update of Q
+        self.ekf.Q = ((1 - beta) * self.ekf.Q + beta * np.diag(12*variance) )* self.mul
+
 class CalCOGFrame(Node):
 
     def __init__(self):
@@ -318,7 +346,7 @@ class CalCOGFrame(Node):
         pitch: pitch angle in radians
         """
         # Gravity vector in the sensor frame
-        g = np.array([0, 0, 0])  # Gravity in m/s²
+        g = np.array([0, 0, -9.81])  # Gravity in m/s²
 
         # Calculate the rotation matrix from the roll and pitch
         # Note: Yaw isn't needed for gravity compensation
@@ -397,7 +425,7 @@ class CalCOGFrame(Node):
         
         # In process_fusion:
         
-        alpha = 0.95  # Weight for IMU1, 1 - alpha for IMU2
+        alpha = 0.6  # Weight for IMU1, 1 - alpha for IMU2
         
         # Weighted average for gyroscope data in
         gyroscope_data = np.array([
@@ -411,8 +439,7 @@ class CalCOGFrame(Node):
             alpha * self.mpu1_data.acx + (1 - alpha) * self.mpu1_data.acx2,
             alpha * self.mpu1_data.acy + (1 - alpha) * self.mpu1_data.acy2,
             alpha * self.mpu1_data.acz + (1 - alpha) * self.mpu1_data.acz2
-        ])   # Convert to G
-
+        ])*9.81
         gyroscope_data_filtered = np.array([
             alpha * self.mpu1_data.gx + (1 - alpha) * self.mpu1_data.gx2,
             alpha * self.mpu1_data.gy + (1 - alpha) * self.mpu1_data.gy2,
@@ -424,9 +451,9 @@ class CalCOGFrame(Node):
             alpha * filtered_acx + (1 - alpha) * filtered_acx2,
             alpha * filtered_acy + (1 - alpha) * filtered_acy2,
             alpha * filtered_acz + (1 - alpha) * filtered_acz2
-        ])   # Convert to G
+        ])*9.81   # Convert to m/s²
         self.quaternion
-        self.quaternion  = self.madgwick_filter.updateIMU(q=self.quaternion,gyr=gyroscope_data, acc=accelerometer_data)
+        self.quaternion  = self.madgwick_filter.updateIMU(q=self.quaternion,gyr=gyroscope_data_filtered, acc=accelerometer_data_filtered)
 
        
         roll, pitch, yaw = self.quaternion_to_euler_angles(self.quaternion)  # in rads
@@ -446,10 +473,10 @@ class CalCOGFrame(Node):
         accel_imu1_comp_filt = self.compensate_gravity_with_quaternion(accel_imu1filt, self.quaternion)
         accel_imu2_comp_filt = self.compensate_gravity_with_quaternion(accel_imu2filt, self.quaternion)
         # Fused measurement vector for EKF (acceleration from both IMUs)
-        z_imu1 = accel_imu1_raw
-        z_imu2 = accel_imu2_raw
+        z_imu1 = accel_imu1filt
+        z_imu2 = accel_imu2filt
             # Fuse the accelerations (average)
-        u_fused = alpha*accel_imu1_raw + (1-alpha)*accel_imu2_raw
+        u_fused = alpha*z_imu1 + (1-alpha)*z_imu2
         
         # EKF Prediction step with fused acceleration
         self.kf.predict(u_fused)
@@ -471,10 +498,7 @@ class CalCOGFrame(Node):
                 self.calibrated = True
                 self.calibration_time = time()
                 self.get_logger().info("Calibration  done")
-            else:
-                self.calibrated = False
-                self.calibration_time = time()
-                self.get_logger().info("Calibration not done")
+            
         else:
             self.publishKalmanFrame.publish(msg)
 
