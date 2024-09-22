@@ -433,7 +433,7 @@ class MinimalPublisher(Node):
     def dynamic_alpha_calculation(self, current_value, previous_value):
         # Example: Calculate alpha based on the difference between values
         delta = abs(current_value - previous_value)
-        return min(1.2, max(0.1, delta / 100))  # Adjust range as needed
+        return min(0.9, max(0.1, delta / 100))  # Adjust range as needed
     def adaptive_calibration(self, sensor_data, calibration_key):
         """
         Perform adaptive calibration by continuously adjusting based on sensor data.
