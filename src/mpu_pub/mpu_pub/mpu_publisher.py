@@ -384,7 +384,7 @@ class MinimalPublisher(Node):
         adjustment_factor_z = np.clip(abs(error_z), 0.0001, 0.02)  # Z-axis adjustment factor (Z may need larger adjustment)
 
         # Adjust the offsets based on error direction and magnitude
-        
+        """
         if error_x >=  0.05:
             # Positive error: measured value is too high, so decrease the offset
             calibration_data[calibration_key]["accel"]["offset"][0] += adjustment_factor_x
@@ -400,7 +400,7 @@ class MinimalPublisher(Node):
             if error_y <= -0.05:
                 # Negative error: measured value is too low, so increase the offset
                 calibration_data[calibration_key]["accel"]["offset"][1] -= adjustment_factor_y
-        
+        """
         if error_z >=  0.05:
             # Positive error: measured value is too high, so decrease the offset
             calibration_data[calibration_key]["accel"]["offset"][2] += adjustment_factor_z
