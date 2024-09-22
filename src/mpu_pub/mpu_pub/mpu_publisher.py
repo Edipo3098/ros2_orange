@@ -85,16 +85,6 @@ class KalmanFilter:
         self.P *= (1 - K)  # Update estimate covariance
 
         return self.x
-    def adjust_parameters_for_static_gait(self, phase="stance"):
-        if phase == "stance":
-            # During stance phase (leg on ground), set lower process noise (less motion expected)
-            self.Q = 0.00005
-            self.R = 0.0005  # More weight on sensor data (more reliable in stance)
-        elif phase == "swing":
-            # During swing phase (leg in air), allow for more process noise (leg is moving)
-            self.Q = 0.001
-            self.R = 0.01  # Slightly less weight on sensor data (leg movement introduces noise)
-
 
 class MinimalPublisher(Node):
 
@@ -102,20 +92,20 @@ class MinimalPublisher(Node):
         super().__init__('mpu_publisher')
         self.publisher_ = self.create_publisher(Mpu, 'mpu_data_1', 10)
         # Kalman Filters for each axis of accelerometer and gyroscope
-        self.kf_accel_x = KalmanFilter(Q = 0.0001, R = 0.001)
-        self.kf_accel_y = KalmanFilter(Q = 0.0001, R = 0.001)
-        self.kf_accel_z = KalmanFilter(Q = 0.0001, R = 0.001)
-        self.kf_gyro_x = KalmanFilter(Q = 0.0005, R = 0.01)
-        self.kf_gyro_y = KalmanFilter(Q = 0.0005, R = 0.01)
-        self.kf_gyro_z = KalmanFilter(Q = 0.0005, R = 0.01)
+        self.kf_accel_x = KalmanFilter()
+        self.kf_accel_y = KalmanFilter()
+        self.kf_accel_z = KalmanFilter()
+        self.kf_gyro_x = KalmanFilter()
+        self.kf_gyro_y = KalmanFilter()
+        self.kf_gyro_z = KalmanFilter()
 
         # Kalman Filters for second MPU
-        self.kf_accel_x2 = KalmanFilter(Q = 0.0001, R = 0.001)
-        self.kf_accel_y2 = KalmanFilter(Q = 0.0001, R = 0.001)
-        self.kf_accel_z2 = KalmanFilter(Q = 0.0001, R = 0.001)
-        self.kf_gyro_x2 = KalmanFilter(Q = 0.0005, R = 0.01)
-        self.kf_gyro_y2 = KalmanFilter(Q = 0.0005, R = 0.01)
-        self.kf_gyro_z2 = KalmanFilter(Q = 0.0005, R = 0.01)
+        self.kf_accel_x2 = KalmanFilter()
+        self.kf_accel_y2 = KalmanFilter()
+        self.kf_accel_z2 = KalmanFilter()
+        self.kf_gyro_x2 = KalmanFilter()
+        self.kf_gyro_y2 = KalmanFilter()
+        self.kf_gyro_z2 = KalmanFilter()
 
   
 
@@ -443,7 +433,7 @@ class MinimalPublisher(Node):
     def dynamic_alpha_calculation(self, current_value, previous_value):
         # Example: Calculate alpha based on the difference between values
         delta = abs(current_value - previous_value)
-        return min(0.9, max(0.1, delta / 100))  # Adjust range as needed
+        return min(1.2, max(0.1, delta / 100))  # Adjust range as needed
     def adaptive_calibration(self, sensor_data, calibration_key):
         """
         Perform adaptive calibration by continuously adjusting based on sensor data.
@@ -470,7 +460,7 @@ class MinimalPublisher(Node):
         if (error_z<0.1):
             adjustment_factor[2]  = 0.0000
         calibration_data[calibration_key]["accel"]["offset"][0]+= adjustment_factor[0] * (error_x)
-        calibration_data[calibration_key]["accel"]["offset"][1]+= adjustment_factor[1] * (error_y)
+        #calibration_data[calibration_key]["accel"]["offset"][1]+= adjustment_factor[1] * (error_y)
         
         
         # Define a threshold for error below which no adjustment should be made
@@ -589,7 +579,7 @@ class MinimalPublisher(Node):
             key = 'mpu1'
             prev = [self.prev_accel_x, self.prev_accel_y, self.prev_accel_z, self.prev_gyro_x, self.prev_gyro_y, self.prev_gyro_z]
             accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z = self.read_sensor_data(mpu9250_address, key, prev)
-            raw_accelx, raw_accely, raw_accelz, raw_gyrox, raw_gyroy, raw_gyroz = accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z
+            
             # Apply adaptive calibration to adjust offsets in real-time
             self.adaptive_calibration([accel_x, accel_y, accel_z], key)
             self.adaptive_calibration2([accel_x, accel_y, accel_z], key) # Second calibration method to Z axis
@@ -615,7 +605,7 @@ class MinimalPublisher(Node):
 
 
 
-            self.get_logger().info(f"RAW Accel_x: {raw_accelx}, RAW Accel_y: {raw_accely}, raw Accel_z: {raw_accelz}")
+            
             
             self.get_logger().info(f"Accel_x: {accel_x}, Accel_y: {accel_y}, Accel_z: {accel_z}")
             self.get_logger().info(f"Accel_x_2: {accel_x_2}, Accel_y_2: {accel_y_2}, Accel_z_2: {accel_z_2}")
@@ -639,7 +629,7 @@ class MinimalPublisher(Node):
            
             
             msg.acx2 = float(accel_x_2)
-            msg.acy2 = float(accel_y_2)
+            msg.acy2 = float(accel_y)
             msg.acz2 = float(accel_z_2)
             msg.gx2 = float(gyro_x_2)
             msg.gy2 = float(gyro_y_2)
