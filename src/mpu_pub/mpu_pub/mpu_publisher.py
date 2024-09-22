@@ -339,6 +339,7 @@ class MinimalPublisher(Node):
         adjustment_factor_z = np.clip(abs(error_z), 0.001, 0.2)  # Z-axis adjustment factor (Z may need larger adjustment)
 
         # Adjust the offsets based on error direction and magnitude
+        """
         if error_x > 0:
             # Positive error: measured value is too high, so decrease the offset
             calibration_data[calibration_key]["accel"]["offset"][0] -= adjustment_factor_x
@@ -352,7 +353,7 @@ class MinimalPublisher(Node):
         else:
             # Negative error: measured value is too low, so increase the offset
             calibration_data[calibration_key]["accel"]["offset"][1] += adjustment_factor_y
-
+        """
         if error_z > 0:
             # Positive error: measured value is too high, so decrease the offset
             calibration_data[calibration_key]["accel"]["offset"][2] -= adjustment_factor_z
@@ -497,6 +498,7 @@ class MinimalPublisher(Node):
             raw_accelx, raw_accely, raw_accelz, raw_gyrox, raw_gyroy, raw_gyroz = accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z
             # Apply adaptive calibration to adjust offsets in real-time
             self.adaptive_calibration([accel_x, accel_y, accel_z], key)
+            self.adaptive_calibration2([accel_x, accel_y, accel_z], key) # Second calibration method to Z axis
 
             self.prev_accel_x, self.prev_accel_y, self.prev_accel_z = accel_x, accel_y, accel_z
             self.prev_gyro_x, self.prev_gyro_y, self.prev_gyro_z = gyro_x, gyro_y, gyro_z
@@ -511,6 +513,7 @@ class MinimalPublisher(Node):
 
             # Apply adaptive calibration to MPU2
             self.adaptive_calibration([accel_x_2, accel_y_2, accel_z_2], key)
+            self.adaptive_calibration2([accel_x_2, accel_y_2, accel_z_2], key) # Second calibration method to Z axis
 
             # Update previous values for MPU2
             self.prev_accel_x2, self.prev_accel_y2, self.prev_accel_z2 = accel_x_2, accel_y_2, accel_z_2
