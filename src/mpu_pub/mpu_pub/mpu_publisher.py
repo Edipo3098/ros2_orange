@@ -361,7 +361,7 @@ class MinimalPublisher(Node):
             # Negative error: measured value is too low, so increase the offset
             calibration_data[calibration_key]["accel"]["offset"][2] += adjustment_factor_z
 
-        self.get_logger().info(f"Adaptive calibration adjustment 1: {calibration_data[calibration_key]['accel']['offset']}")
+        self.get_logger().info(f"Adaptive calibration adjustment 2: {calibration_data[calibration_key]['accel']['offset']}")
         # Log the calibration adjustments for debugging
         """
         self.get_logger().info(f"Adaptive calibration adjustment for {calibration_key}: "
