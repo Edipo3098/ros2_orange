@@ -387,7 +387,7 @@ class MinimalPublisher(Node):
         accel_x, accel_y, accel_z = sensor_data[:3]
 
         # Expected values for accelerometer in a flat orientation (stationary)
-        expected_accel_x, expected_accel_y, expected_accel_z = 0.0, 0.0, 0.0# delete gravity  # assuming gravity in z-axis only
+        expected_accel_x, expected_accel_y, expected_accel_z = 0.0, 0.0, -1# delete gravity  # assuming gravity in z-axis only
 
         # Calculate the error in measurement
         error_x = expected_accel_x - accel_x
@@ -495,7 +495,7 @@ class MinimalPublisher(Node):
             prev = [self.prev_accel_x, self.prev_accel_y, self.prev_accel_z, self.prev_gyro_x, self.prev_gyro_y, self.prev_gyro_z]
             accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z = self.read_sensor_data(mpu9250_address, key, prev)
             # Apply adaptive calibration to adjust offsets in real-time
-            self.adaptive_calibration2([accel_x, accel_y, accel_z], key)
+            self.adaptive_calibration([accel_x, accel_y, accel_z], key)
 
             self.prev_accel_x, self.prev_accel_y, self.prev_accel_z = accel_x, accel_y, accel_z
             self.prev_gyro_x, self.prev_gyro_y, self.prev_gyro_z = gyro_x, gyro_y, gyro_z
@@ -509,7 +509,7 @@ class MinimalPublisher(Node):
             accel_x_2, accel_y_2, accel_z_2, gyro_x_2, gyro_y_2, gyro_z_2 = self.read_sensor_data(mpu9250_address_2, key, prev)
 
             # Apply adaptive calibration to MPU2
-            self.adaptive_calibration2([accel_x_2, accel_y_2, accel_z_2], key)
+            self.adaptive_calibration([accel_x_2, accel_y_2, accel_z_2], key)
 
             # Update previous values for MPU2
             self.prev_accel_x2, self.prev_accel_y2, self.prev_accel_z2 = accel_x_2, accel_y_2, accel_z_2
