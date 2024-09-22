@@ -92,17 +92,17 @@ class MinimalPublisher(Node):
         super().__init__('mpu_publisher')
         self.publisher_ = self.create_publisher(Mpu, 'mpu_data_1', 10)
         # Kalman Filters for each axis of accelerometer and gyroscope
-        self.kf_accel_x = KalmanFilter()
-        self.kf_accel_y = KalmanFilter()
-        self.kf_accel_z = KalmanFilter()
+        self.kf_accel_x = KalmanFilter(Q = 0.0001, R = 0.001)
+        self.kf_accel_y = KalmanFilter(Q = 0.0001, R = 0.001)
+        self.kf_accel_z = KalmanFilter(Q = 0.0001, R = 0.001)
         self.kf_gyro_x = KalmanFilter()
         self.kf_gyro_y = KalmanFilter()
         self.kf_gyro_z = KalmanFilter()
 
         # Kalman Filters for second MPU
-        self.kf_accel_x2 = KalmanFilter()
-        self.kf_accel_y2 = KalmanFilter()
-        self.kf_accel_z2 = KalmanFilter()
+        self.kf_accel_x2 = KalmanFilter(Q = 0.0001, R = 0.001)
+        self.kf_accel_y2 = KalmanFilter(Q = 0.0001, R = 0.001)
+        self.kf_accel_z2 = KalmanFilter(Q = 0.0001, R = 0.001)
         self.kf_gyro_x2 = KalmanFilter()
         self.kf_gyro_y2 = KalmanFilter()
         self.kf_gyro_z2 = KalmanFilter()
@@ -606,7 +606,9 @@ class MinimalPublisher(Node):
 
 
             self.get_logger().info(f"RAW Accel_x: {raw_accelx}, RAW Accel_y: {raw_accely}, raw Accel_z: {raw_accelz}")
+            
             self.get_logger().info(f"Accel_x: {accel_x}, Accel_y: {accel_y}, Accel_z: {accel_z}")
+            self.get_logger().info(f"Accel_x_2: {accel_x_2}, Accel_y_2: {accel_y_2}, Accel_z_2: {accel_z_2}")
             #self.get_logger().info(f"Accel_x_2: {accel_x_2}, Accel_y_2: {accel_y_2}, Accel_z_2: {accel_z_2}")
 
             #self.get_logger().info(f"Gyro_x: {gyro_x}, Gyro_y: {gyro_y}, Gyro_z: {gyro_z}")
