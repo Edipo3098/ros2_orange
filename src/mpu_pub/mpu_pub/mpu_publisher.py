@@ -260,19 +260,27 @@ class MinimalPublisher(Node):
             gyro_x = self.low_pass_filter(gyro_x, prev_gyro_x)
             gyro_y = self.low_pass_filter(gyro_y, prev_gyro_y)
             gyro_z = self.low_pass_filter(gyro_z, prev_gyro_z)
+
+            accel_x_filtered = self.kf_accel_x.update(accel_x)
+            accel_y_filtered = self.kf_accel_y.update(accel_y)
+            accel_z_filtered = self.kf_accel_z.update(accel_z)
+
+            gyro_x_filtered = self.kf_gyro_x.update(gyro_x)
+            gyro_y_filtered = self.kf_gyro_y.update(gyro_y)
+            gyro_z_filtered = self.kf_gyro_z.update(gyro_z)
             
             # Update previous values for next iteration
-            prev_accel_x, prev_accel_y, prev_accel_z = accel_x, accel_y, accel_z
-            prev_gyro_x, prev_gyro_y, prev_gyro_z = gyro_x, gyro_y, gyro_z
+            prev_accel_x, prev_accel_y, prev_accel_z = accel_x_filtered, accel_y_filtered, accel_z_filtered
+            prev_gyro_x, prev_gyro_y, prev_gyro_z = gyro_x_filtered, gyro_y_filtered, gyro_z_filtered
 
             #convert to acceleration in g and gyro dps
-            accel_x = (accel_x/(2.0**15.0))*ACCEL_SENSITIVITY
-            accel_y = (accel_y/(2.0**15.0))*ACCEL_SENSITIVITY
-            accel_z = (accel_z/(2.0**15.0))*ACCEL_SENSITIVITY
+            accel_x = (accel_x_filtered/(2.0**15.0))*ACCEL_SENSITIVITY
+            accel_y = (accel_y_filtered/(2.0**15.0))*ACCEL_SENSITIVITY
+            accel_z = (accel_z_filtered/(2.0**15.0))*ACCEL_SENSITIVITY
 
-            gyro_x = (gyro_x/(2.0**15.0))*GYRO_SENSITIVITY
-            gyro_y = (gyro_y/(2.0**15.0))*GYRO_SENSITIVITY
-            gyro_z = (gyro_z/(2.0**15.0))*GYRO_SENSITIVITY
+            gyro_x = (gyro_x_filtered/(2.0**15.0))*GYRO_SENSITIVITY
+            gyro_y = (gyro_z_filtered/(2.0**15.0))*GYRO_SENSITIVITY
+            gyro_z = (gyro_z_filtered/(2.0**15.0))*GYRO_SENSITIVITY
             
             accel_data.append([accel_x, accel_y, accel_z])
             
@@ -494,6 +502,15 @@ class MinimalPublisher(Node):
         gyro_z = self.convert_data(gyro_data[4], gyro_data[5])
 
         # Apply Kalman filter to smooth data
+
+        accel_x = self.low_pass_filter(accel_x, prev[0])
+        accel_y = self.low_pass_filter(accel_y, prev[1])
+        accel_z = self.low_pass_filter(accel_z, prev[2])
+
+        gyro_x = self.low_pass_filter(gyro_x, prev[3])
+        gyro_y = self.low_pass_filter(gyro_y, prev[4])
+        gyro_z = self.low_pass_filter(gyro_z, prev[5])
+
         accel_x_filtered = self.kf_accel_x.update(accel_x)
         accel_y_filtered = self.kf_accel_y.update(accel_y)
         accel_z_filtered = self.kf_accel_z.update(accel_z)
@@ -503,13 +520,7 @@ class MinimalPublisher(Node):
         gyro_z_filtered = self.kf_gyro_z.update(gyro_z)
         """
         # Apply low-pass filter to raw values
-        accel_x = self.low_pass_filter(accel_x, prev[0])
-        accel_y = self.low_pass_filter(accel_y, prev[1])
-        accel_z = self.low_pass_filter(accel_z, prev[2])
-
-        gyro_x = self.low_pass_filter(gyro_x, prev[3])
-        gyro_y = self.low_pass_filter(gyro_y, prev[4])
-        gyro_z = self.low_pass_filter(gyro_z, prev[5])
+        
         """
         # Apply low-pass filter to raw values
         #accel_x = self.low_pass_filter(accel_x, prev[0])
