@@ -495,9 +495,11 @@ class MinimalPublisher(Node):
         msg = Mpu()
         try:
             self.current_time = time.time()
+            """
             if self.current_time - self.calibrationTime > 600:
                 self.calibrate_mpu(mpu9250_address,20000,'mpu1')
                 self.calibrate_mpu(mpu9250_address_2,20000,'mpu2')
+            """
             # Read accelerometer data
             key = 'mpu1'
             prev = [self.prev_accel_x, self.prev_accel_y, self.prev_accel_z, self.prev_gyro_x, self.prev_gyro_y, self.prev_gyro_z]
