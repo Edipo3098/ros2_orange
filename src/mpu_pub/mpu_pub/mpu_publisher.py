@@ -95,17 +95,17 @@ class MinimalPublisher(Node):
         self.kf_accel_x = KalmanFilter(Q = 0.0001, R = 0.001)
         self.kf_accel_y = KalmanFilter(Q = 0.0001, R = 0.001)
         self.kf_accel_z = KalmanFilter(Q = 0.0001, R = 0.001)
-        self.kf_gyro_x = KalmanFilter()
-        self.kf_gyro_y = KalmanFilter()
-        self.kf_gyro_z = KalmanFilter()
+        self.kf_gyro_x = KalmanFilter(Q = 0.0005, R = 0.01)
+        self.kf_gyro_y = KalmanFilter(Q = 0.0005, R = 0.01)
+        self.kf_gyro_z = KalmanFilter(Q = 0.0005, R = 0.01)
 
         # Kalman Filters for second MPU
         self.kf_accel_x2 = KalmanFilter(Q = 0.0001, R = 0.001)
         self.kf_accel_y2 = KalmanFilter(Q = 0.0001, R = 0.001)
         self.kf_accel_z2 = KalmanFilter(Q = 0.0001, R = 0.001)
-        self.kf_gyro_x2 = KalmanFilter()
-        self.kf_gyro_y2 = KalmanFilter()
-        self.kf_gyro_z2 = KalmanFilter()
+        self.kf_gyro_x2 = KalmanFilter(Q = 0.0005, R = 0.01)
+        self.kf_gyro_y2 = KalmanFilter(Q = 0.0005, R = 0.01)
+        self.kf_gyro_z2 = KalmanFilter(Q = 0.0005, R = 0.01)
 
   
 
