@@ -341,21 +341,23 @@ class MinimalPublisher(Node):
         adjustment_factor_z = np.clip(abs(error_z), 0.001, 0.2)  # Z-axis adjustment factor (Z may need larger adjustment)
 
         # Adjust the offsets based on error direction and magnitude
-        """
-        if error_x > 0:
+        
+        if error_x >=  0.05:
             # Positive error: measured value is too high, so decrease the offset
-            calibration_data[calibration_key]["accel"]["offset"][0] -= adjustment_factor_x
-        else:
-            # Negative error: measured value is too low, so increase the offset
             calibration_data[calibration_key]["accel"]["offset"][0] += adjustment_factor_x
+        else:
+            if error_x <= -0.05:
+                # Negative error: measured value is too low, so increase the offset
+                calibration_data[calibration_key]["accel"]["offset"][0] -= adjustment_factor_x
 
-        if error_y > 0:
+        if error_x >=  0.05:
             # Positive error: measured value is too high, so decrease the offset
             calibration_data[calibration_key]["accel"]["offset"][1] -= adjustment_factor_y
         else:
-            # Negative error: measured value is too low, so increase the offset
-            calibration_data[calibration_key]["accel"]["offset"][1] += adjustment_factor_y
-        """
+            if error_y <= -0.05:
+                # Negative error: measured value is too low, so increase the offset
+                calibration_data[calibration_key]["accel"]["offset"][1] += adjustment_factor_y
+        
         if error_z >=  0.05:
             # Positive error: measured value is too high, so decrease the offset
             calibration_data[calibration_key]["accel"]["offset"][2] += adjustment_factor_z
@@ -364,7 +366,7 @@ class MinimalPublisher(Node):
                 # Negative error: measured value is too low, so increase the offset
                 calibration_data[calibration_key]["accel"]["offset"][2] -= adjustment_factor_z
 
-        self.get_logger().info(f"Adaptive calibration adjustment 2: {error_z}")
+        #self.get_logger().info(f"Adaptive calibration adjustment 2: {error_z}")
         # Log the calibration adjustments for debugging
         """
         self.get_logger().info(f"Adaptive calibration adjustment for {calibration_key}: "
