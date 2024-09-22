@@ -121,7 +121,7 @@ class IMUFusionEKF:
         # Store the residual for adaptive noise estimation
         self.residuals_window.append(residual)
         # Update R dynamically based on residuals
-        self.update_R(list(self.residuals_window))
+        #self.update_R(list(self.residuals_window))
 
         # Perform the EKF update step
         try:
@@ -194,6 +194,32 @@ class IMUFusionEKF:
             variance = variance.flatten()
         # Smooth the update of Q
         self.ekf.Q = ((1 - beta) * self.ekf.Q + beta * np.diag(12*variance) )* self.mul
+    def update_noise_covariances(self, accel_data, gyro_data):
+        """
+        Dynamically adjust the process noise covariance (Q) and measurement noise covariance (R) 
+        based on the variance of accelerometer and gyroscope data.
+        """
+        # Ensure the data is in array form (even if it's a scalar)
+        accel_data = np.atleast_1d(accel_data)
+        gyro_data = np.atleast_1d(gyro_data)
+
+        # Calculate variance safely
+        accel_variance = np.var(accel_data, axis=0) if accel_data.ndim > 1 else np.var([accel_data])
+        gyro_variance = np.var(gyro_data, axis=0) if gyro_data.ndim > 1 else np.var([gyro_data])
+
+        # Make sure we handle the variance as arrays of the correct length (3 for x, y, z)
+        if gyro_variance.size < 3:
+            gyro_variance = np.full(3, np.mean(gyro_variance))  # Fill with mean if variance is scalar
+        
+        if accel_variance.size < 3:
+            accel_variance = np.full(3, np.mean(accel_variance))  # Fill with mean if variance is scalar
+
+        # Update process noise covariance Q dynamically (positions, velocities, and orientation noise)
+        self.ekf.Q = np.diag([1e-4, 1e-4, 1e-4, gyro_variance[0], gyro_variance[1], gyro_variance[2], 1e-3, 1e-3, 1e-3])
+
+        # Update measurement noise covariance R dynamically (acceleration noise)
+        self.ekf.R = np.diag([accel_variance[0], accel_variance[1], accel_variance[2], 1e-2, 1e-2, 1e-2, 1e-2, 1e-2, 1e-2])
+
 
 class CalCOGFrame(Node):
 
@@ -399,7 +425,6 @@ class CalCOGFrame(Node):
 
         return accel_compensated
     
-
     def process_fusion(self):
         
 
@@ -479,6 +504,7 @@ class CalCOGFrame(Node):
         u_fused = alpha*z_imu1 + (1-alpha)*z_imu2
         
         # EKF Prediction step with fused acceleration
+        self.kf.update_noise_covariances(accelerometer_data_filtered, gyroscope_data_filtered)
         self.kf.predict(u_fused)
 
         # EKF Update step with fused measurements and Madgwick orientation Z

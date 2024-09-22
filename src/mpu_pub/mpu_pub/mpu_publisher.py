@@ -55,26 +55,74 @@ calibration_data = {
         "gyro": {"offset": [0.9417724609375, 1.201019287109375, -1.0709762573242188]}
     }
 }
-calibration_data1 = {
-    "mpu1": {
-        "accel": {"slope": [1.00287361, 0.99886526, 1.00341099], "offset": [0-.00174287, -0.00552432, 0.03603273]},
-        "gyro": {"offset": [0.41042327880859375, 1.2082672119140625, 0.06053924560546875]}
-    },
-    "mpu2": {
-        "accel": {"slope": [1.00038423, 1.00699974, 1.00256861 ], "offset": [0.02106848, 0.00323046,  0.05491282]},
-        "gyro": {"offset": [0.9417724609375, 1.201019287109375, -1.0709762573242188]}
-    }
-}
+
 # Constants for sensitivity values
 ACCEL_SENSITIVITY = 2  # LSB/g for +/- 2g range
 GYRO_SENSITIVITY = 250  # LSB/dps for +/- 250 dps range
+import numpy as np
+from collections import deque
+
+# Keep a rolling window of data to calculate variance
+class CalibrationData:
+    def __init__(self, window_size=50):
+        self.accel_x_window = deque(maxlen=window_size)
+        self.accel_y_window = deque(maxlen=window_size)
+        self.accel_z_window = deque(maxlen=window_size)
+
+    def update(self, accel_x, accel_y, accel_z):
+        self.accel_x_window.append(accel_x)
+        self.accel_y_window.append(accel_y)
+        self.accel_z_window.append(accel_z)
+
+    def get_variance(self):
+        var_x = np.var(self.accel_x_window) if len(self.accel_x_window) > 1 else 0
+        var_y = np.var(self.accel_y_window) if len(self.accel_y_window) > 1 else 0
+        var_z = np.var(self.accel_z_window) if len(self.accel_z_window) > 1 else 0
+        return var_x, var_y, var_z
+
+class KalmanFilter:
+    def __init__(self, Q=0.001, R=0.1):
+        # Process noise covariance (Q) and measurement noise covariance (R)
+        self.Q = Q
+        self.R = R
+        self.x = 0.0  # State estimate
+        self.P = 1.0  # Estimate covariance
+
+    def update(self, measurement):
+        # Prediction step
+        self.P += self.Q
+
+        # Measurement update step
+        K = self.P / (self.P + self.R)  # Kalman Gain
+        self.x += K * (measurement - self.x)  # Update estimate with measurement
+        self.P *= (1 - K)  # Update estimate covariance
+
+        return self.x
 
 class MinimalPublisher(Node):
 
     def __init__(self):
         super().__init__('mpu_publisher')
         self.publisher_ = self.create_publisher(Mpu, 'mpu_data_1', 10)
-        
+        # Kalman Filters for each axis of accelerometer and gyroscope
+        self.kf_accel_x = KalmanFilter()
+        self.kf_accel_y = KalmanFilter()
+        self.kf_accel_z = KalmanFilter()
+        self.kf_gyro_x = KalmanFilter()
+        self.kf_gyro_y = KalmanFilter()
+        self.kf_gyro_z = KalmanFilter()
+
+        # Kalman Filters for second MPU
+        self.kf_accel_x2 = KalmanFilter()
+        self.kf_accel_y2 = KalmanFilter()
+        self.kf_accel_z2 = KalmanFilter()
+        self.kf_gyro_x2 = KalmanFilter()
+        self.kf_gyro_y2 = KalmanFilter()
+        self.kf_gyro_z2 = KalmanFilter()
+
+        # Calibration data to track variance
+        self.calibration_data = CalibrationData()
+        self.calibration_data2 = CalibrationData()
 
         # Publisher for Imu (standard message)
         self.imu_publisher_ = self.create_publisher(Imu, 'imu_data', 10)
@@ -217,6 +265,8 @@ class MinimalPublisher(Node):
             gyro_x = self.convert_data(gyro_raw_data[0], gyro_raw_data[1])
             gyro_y = self.convert_data(gyro_raw_data[2], gyro_raw_data[3])
             gyro_z = self.convert_data(gyro_raw_data[4], gyro_raw_data[5])
+
+            
 
             accel_x = self.low_pass_filter(accel_x, prev_accel_x)
             accel_y = self.low_pass_filter(accel_y, prev_accel_y)
@@ -438,6 +488,7 @@ class MinimalPublisher(Node):
             accel_data_error = [0, 0, 0, 0, 0, 0]
             gyro_data_error = [0, 0, 0, 0, 0, 0]
 
+        
         accel_data = accel_data_error
         gyro_data = gyro_data_error
 
@@ -451,6 +502,15 @@ class MinimalPublisher(Node):
         gyro_y = self.convert_data(gyro_data[2], gyro_data[3])
         gyro_z = self.convert_data(gyro_data[4], gyro_data[5])
 
+        # Apply Kalman filter to smooth data
+        accel_x_filtered = self.kf_accel_x.update(accel_x)
+        accel_y_filtered = self.kf_accel_y.update(accel_y)
+        accel_z_filtered = self.kf_accel_z.update(accel_z)
+
+        gyro_x_filtered = self.kf_gyro_x.update(gyro_x)
+        gyro_y_filtered = self.kf_gyro_y.update(gyro_y)
+        gyro_z_filtered = self.kf_gyro_z.update(gyro_z)
+        """
         # Apply low-pass filter to raw values
         accel_x = self.low_pass_filter(accel_x, prev[0])
         accel_y = self.low_pass_filter(accel_y, prev[1])
@@ -459,6 +519,7 @@ class MinimalPublisher(Node):
         gyro_x = self.low_pass_filter(gyro_x, prev[3])
         gyro_y = self.low_pass_filter(gyro_y, prev[4])
         gyro_z = self.low_pass_filter(gyro_z, prev[5])
+        """
         # Apply low-pass filter to raw values
         #accel_x = self.low_pass_filter(accel_x, prev[0])
         #accel_y = self.low_pass_filter(accel_y, prev[1])
@@ -472,13 +533,13 @@ class MinimalPublisher(Node):
         # Convert to correct units
             # Convert to correct units
         #convert to acceleration in g and gyro dps
-        accel_x = (accel_x/(2.0**15.0))*ACCEL_SENSITIVITY
-        accel_y = (accel_y/(2.0**15.0))*ACCEL_SENSITIVITY
-        accel_z = (accel_z/(2.0**15.0))*ACCEL_SENSITIVITY
+        accel_x = (accel_x_filtered/(2.0**15.0))*ACCEL_SENSITIVITY
+        accel_y = (accel_y_filtered/(2.0**15.0))*ACCEL_SENSITIVITY
+        accel_z = (accel_z_filtered/(2.0**15.0))*ACCEL_SENSITIVITY
 
-        gyro_x = (gyro_x/(2.0**15.0))*GYRO_SENSITIVITY
-        gyro_y = (gyro_y/(2.0**15.0))*GYRO_SENSITIVITY
-        gyro_z = (gyro_z/(2.0**15.0))*GYRO_SENSITIVITY
+        gyro_x = (gyro_x_filtered/(2.0**15.0))*GYRO_SENSITIVITY
+        gyro_y = (gyro_y_filtered/(2.0**15.0))*GYRO_SENSITIVITY
+        gyro_z = (gyro_z_filtered/(2.0**15.0))*GYRO_SENSITIVITY
         # Apply calibration
         """
         accel_x = (accel_x - calibration_data[calibration_key]["accel"]["offset"][0])    + calibration_data[calibration_key]["accel"]["slope"][0]
