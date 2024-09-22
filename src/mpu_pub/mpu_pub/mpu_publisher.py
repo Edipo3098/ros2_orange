@@ -274,7 +274,7 @@ class MinimalPublisher(Node):
         mul = 1
         # Store calibration parameters
         if key == 'mpu2':
-            mul = 0.5
+            mul = 1
 
         calibration_data[key]["accel"]["slope"] = accel_slope
         calibration_data[key]["accel"]["offset"] = (accel_offset*mul)
@@ -319,9 +319,11 @@ class MinimalPublisher(Node):
         The expected value for each axis is assumed to be zero.
         - sensor_data: the current accelerometer data (X, Y, Z)
         - calibration_key: 'mpu1' or 'mpu2'
-        """
+        
         if self.check_calibration_convergence(sensor_data):
             return
+
+        """
         # Proceed with calibration adjustments if not converged
         accel_x, accel_y, accel_z = sensor_data[:3]
 
@@ -354,12 +356,13 @@ class MinimalPublisher(Node):
             # Negative error: measured value is too low, so increase the offset
             calibration_data[calibration_key]["accel"]["offset"][1] += adjustment_factor_y
         """
-        if error_z > 0:
+        if error_z >=  0.05:
             # Positive error: measured value is too high, so decrease the offset
             calibration_data[calibration_key]["accel"]["offset"][2] -= adjustment_factor_z
         else:
-            # Negative error: measured value is too low, so increase the offset
-            calibration_data[calibration_key]["accel"]["offset"][2] += adjustment_factor_z
+            if error_z <= -0.05:
+                # Negative error: measured value is too low, so increase the offset
+                calibration_data[calibration_key]["accel"]["offset"][2] += adjustment_factor_z
 
         self.get_logger().info(f"Adaptive calibration adjustment 2: {calibration_data[calibration_key]['accel']['offset']}")
         # Log the calibration adjustments for debugging
