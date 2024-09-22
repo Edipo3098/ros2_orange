@@ -318,7 +318,7 @@ class CalCOGFrame(Node):
         pitch: pitch angle in radians
         """
         # Gravity vector in the sensor frame
-        g = np.array([0, 0, 9.81])  # Gravity in m/s²
+        g = np.array([0, 0, 0])  # Gravity in m/s²
 
         # Calculate the rotation matrix from the roll and pitch
         # Note: Yaw isn't needed for gravity compensation
@@ -353,7 +353,7 @@ class CalCOGFrame(Node):
         w, x, y, z = q
 
         # Gravity vector in the global frame (assuming Z points upwards)
-        gravity = np.array([0, 0, 9.81])
+        gravity = np.array([0, 0, 0])
 
         # Convert quaternion to rotation matrix to rotate gravity vector
         # This is the rotation matrix derived from the quaternion

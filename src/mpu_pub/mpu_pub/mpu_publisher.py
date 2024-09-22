@@ -66,7 +66,7 @@ calibration_data1 = {
     }
 }
 # Constants for sensitivity values
-ACCEL_SENSITIVITY = 4  # LSB/g for +/- 2g range
+ACCEL_SENSITIVITY = 2  # LSB/g for +/- 2g range
 GYRO_SENSITIVITY = 250  # LSB/dps for +/- 250 dps range
 
 class MinimalPublisher(Node):
@@ -93,11 +93,11 @@ class MinimalPublisher(Node):
         self.check_full_scale(mpu9250_address)
         calibration_key = 'mpu1'
         
-        self.calibrate_mpu(mpu9250_address,10000,calibration_key)
+        self.calibrate_mpu(mpu9250_address,20000,calibration_key)
 
         calibration_key = 'mpu2'
         self.check_full_scale(mpu9250_address_2)
-        self.calibrate_mpu(mpu9250_address_2,10000,calibration_key)
+        self.calibrate_mpu(mpu9250_address_2,20000,calibration_key)
         
 
         self.Check_communication(mpu9250_address)
@@ -149,8 +149,8 @@ class MinimalPublisher(Node):
         self.bus.write_byte_data(address, GYRO_CONFIG, gyro_config_sel)
         time.sleep(0.1)
 
-        # Set accelerometer sensitivity to ±4g
-        accel_config_sel = 0b01000  # Corresponds to ±4g
+        # Set accelerometer sensitivity to ±2g
+        accel_config_sel = 0b00000  # Corresponds to ±2g
         self.bus.write_byte_data(address, ACCEL_CONFIG, accel_config_sel)
         time.sleep(0.1)
 
@@ -262,7 +262,7 @@ class MinimalPublisher(Node):
         #current_accel_z = np.mean(np.abs(accel_data[:, 2]))
         
         #expected_gravity[2] += adjustment_factor * (current_accel_z - np.abs(expected_gravity[2]))
-        expected_gravity = np.array([1,1,1])
+        expected_gravity = np.array([-1,-1,-1])
         
         accel_slope = expected_gravity / np.mean(np.abs(accel_data_array), axis=0)
         accel_offset = accel_mean  # Use the mean as the offset
@@ -488,8 +488,8 @@ class MinimalPublisher(Node):
         try:
             self.current_time = time.time()
             if self.current_time - self.calibrationTime > 600:
-                self.calibrate_mpu(mpu9250_address,10000,'mpu1')
-                self.calibrate_mpu(mpu9250_address_2,10000,'mpu2')
+                self.calibrate_mpu(mpu9250_address,20000,'mpu1')
+                self.calibrate_mpu(mpu9250_address_2,20000,'mpu2')
             # Read accelerometer data
             key = 'mpu1'
             prev = [self.prev_accel_x, self.prev_accel_y, self.prev_accel_z, self.prev_gyro_x, self.prev_gyro_y, self.prev_gyro_z]
