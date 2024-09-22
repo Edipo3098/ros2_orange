@@ -350,7 +350,7 @@ class MinimalPublisher(Node):
                 # Negative error: measured value is too low, so increase the offset
                 calibration_data[calibration_key]["accel"]["offset"][0] -= adjustment_factor_x
 
-        if error_x >=  0.05:
+        if error_y >=  0.05:
             # Positive error: measured value is too high, so decrease the offset
             calibration_data[calibration_key]["accel"]["offset"][1] += adjustment_factor_y
         else:
