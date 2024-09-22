@@ -55,6 +55,10 @@ calibration_data = {
         "gyro": {"offset": [0.9417724609375, 1.201019287109375, -1.0709762573242188]}
     }
 }
+MPU_CONFIG = {
+    "ACCEL_SENSITIVITY": 2,  # LSB/g for +/- 2g
+    "GYRO_SENSITIVITY": 250  # LSB/dps for +/- 250 dps
+}
 
 # Constants for sensitivity values
 ACCEL_SENSITIVITY = 2  # LSB/g for +/- 2g range
@@ -62,23 +66,6 @@ GYRO_SENSITIVITY = 250  # LSB/dps for +/- 250 dps range
 import numpy as np
 from collections import deque
 
-# Keep a rolling window of data to calculate variance
-class CalibrationData:
-    def __init__(self, window_size=50):
-        self.accel_x_window = deque(maxlen=window_size)
-        self.accel_y_window = deque(maxlen=window_size)
-        self.accel_z_window = deque(maxlen=window_size)
-
-    def update(self, accel_x, accel_y, accel_z):
-        self.accel_x_window.append(accel_x)
-        self.accel_y_window.append(accel_y)
-        self.accel_z_window.append(accel_z)
-
-    def get_variance(self):
-        var_x = np.var(self.accel_x_window) if len(self.accel_x_window) > 1 else 0
-        var_y = np.var(self.accel_y_window) if len(self.accel_y_window) > 1 else 0
-        var_z = np.var(self.accel_z_window) if len(self.accel_z_window) > 1 else 0
-        return var_x, var_y, var_z
 
 class KalmanFilter:
     def __init__(self, Q=0.001, R=0.1):
@@ -120,9 +107,7 @@ class MinimalPublisher(Node):
         self.kf_gyro_y2 = KalmanFilter()
         self.kf_gyro_z2 = KalmanFilter()
 
-        # Calibration data to track variance
-        self.calibration_data = CalibrationData()
-        self.calibration_data2 = CalibrationData()
+  
 
         # Publisher for Imu (standard message)
         self.imu_publisher_ = self.create_publisher(Imu, 'imu_data', 10)
@@ -432,9 +417,15 @@ class MinimalPublisher(Node):
             value -= 65536
         return value
     
-    def low_pass_filter(self,current_value, previous_value, alpha=0.4):
-        """Applies a low-pass filter to smooth raw sensor data."""
+    def low_pass_filter(self, current_value, previous_value, alpha=None):
+        if alpha is None:
+            alpha = self.dynamic_alpha_calculation(current_value, previous_value)
         return alpha * current_value + (1 - alpha) * previous_value
+    
+    def dynamic_alpha_calculation(self, current_value, previous_value):
+        # Example: Calculate alpha based on the difference between values
+        delta = abs(current_value - previous_value)
+        return min(0.9, max(0.1, delta / 100))  # Adjust range as needed
     def adaptive_calibration(self, sensor_data, calibration_key):
         """
         Perform adaptive calibration by continuously adjusting based on sensor data.
