@@ -387,7 +387,7 @@ class MinimalPublisher(Node):
         accel_x, accel_y, accel_z = sensor_data[:3]
 
         # Expected values for accelerometer in a flat orientation (stationary)
-        expected_accel_x, expected_accel_y, expected_accel_z = 0.0, 0.0, -1# delete gravity  # assuming gravity in z-axis only
+        expected_accel_x, expected_accel_y, expected_accel_z = 0.0, 0.0, 0.0# delete gravity  # assuming gravity in z-axis only
 
         # Calculate the error in measurement
         error_x = expected_accel_x - accel_x
@@ -403,7 +403,7 @@ class MinimalPublisher(Node):
             adjustment_factor[1]  = 0.0000
         if (error_z<0.1):
             adjustment_factor[2]  = 0.0000
-        calibration_data[calibration_key]["accel"]["offset"] -= adjustment_factor * np.array([error_x, error_y, error_z])
+        calibration_data[calibration_key]["accel"]["offset"] += adjustment_factor * np.array([error_x, error_y, error_z])
 
         # Log adjustment (optional for debugging)
         self.get_logger().info(f"Adaptive calibration adjustment: {calibration_data[calibration_key]['accel']['offset']}")
