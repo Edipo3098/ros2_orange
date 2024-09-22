@@ -452,7 +452,7 @@ class MinimalPublisher(Node):
 
         # Dynamically adjust the calibration offset (small adjustment factor to avoid over-adjusting)
         adjustment_factor = np.array([0.01 , 0.01 ,0.01])  # Small adjustment factor for adaptive calibration
-        """
+        
         if (error_x<0.1):
             adjustment_factor[0]  = 0.0000
         if (error_y<0.1):
@@ -461,11 +461,11 @@ class MinimalPublisher(Node):
             adjustment_factor[2]  = 0.0000
         calibration_data[calibration_key]["accel"]["offset"][0]+= adjustment_factor[0] * (error_x)
         calibration_data[calibration_key]["accel"]["offset"][1]+= adjustment_factor[1] * (error_y)
-        Previous code worked
-        """
+        
+        
         # Define a threshold for error below which no adjustment should be made
         threshold = 0.05
-
+        """
         # Only adjust calibration offset if the error exceeds the threshold
         if abs(error_x) > threshold:
             calibration_data[calibration_key]["accel"]["offset"][0] += 0.01 * error_x
@@ -474,6 +474,7 @@ class MinimalPublisher(Node):
         if abs(error_z) > threshold:
             calibration_data[calibration_key]["accel"]["offset"][2] += 0.01 * error_z
         # Log adjustment (optional for debugging)
+        """
         self.get_logger().info(f"Adaptive calibration adjustment 1: {calibration_data[calibration_key]['accel']['offset']}")
 
     def read_sensor_data(self, address, calibration_key,prev):
