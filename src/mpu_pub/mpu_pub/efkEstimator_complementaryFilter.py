@@ -32,13 +32,14 @@ class IMUFusionEKF:
         self.ekf.P = np.eye(9) * 1  # Initial uncertainty
         self.residuals_window = deque(maxlen=100)  # Store last 100 residuals
         # Process noise covariance matrix (Q)
-        self.mul = 1000
-        self.mulR = 1000
-        self.mulQ = 1000
-        self.ekf.Q = np.diag([1e-4, 1e-4, 1e-4, 1e-2, 1e-2, 1e-2, 1e-3, 1e-3, 1e-3])*self.mulR   # Noise for position, velocity, orientation
+        self.mulQ = 100
+        self.mulR = 1000000
+        self.ekf.Q = np.diag([1e-4, 1e-4, 1e-4, 1e-2, 1e-2, 1e-2, 1e-3, 1e-3, 1e-3])*self.mulQ   # Noise for position, velocity, orientation
 
         # Measurement noise covariance matrix (R)
-        self.ekf.R = np.diag([1e-2, 1e-2, 1e-2,1e-2, 1e-2, 1e-2,1e-2, 1e-2, 1e-2]) *self.mulQ  # Noise for fused accelerations
+        self.ekf.R = np.diag([1e-2, 1e-2, 1e-2,1e-2, 1e-2, 1e-2,1e-2, 1e-2, 1e-2]) *self.mulR   # Noise for fused accelerations
+        self.complementary_alpha = 0.98  # Giving more weight to gyroscope data
+
 
         
 
@@ -196,6 +197,7 @@ class IMUFusionEKF:
             variance = variance.flatten()
         # Smooth the update of Q
         self.ekf.Q = ((1 - beta) * self.ekf.Q + beta * np.diag(12*variance) )* self.mul
+    
     def update_noise_covariances(self, accel_data, accel_data2, gyro_data, predicted_state):
         """
         Dynamically adjust the process noise covariance (Q) and measurement noise covariance (R) 
@@ -226,11 +228,49 @@ class IMUFusionEKF:
         self.ekf.R = np.diag([accel_variance[0], accel_variance[1], accel_variance[2],
                             accel_variance2[0], accel_variance2[1], accel_variance2[2],
                             gyro_variance[0], gyro_variance[1], gyro_variance[2]])*self.mulR
+        
+        
+
+
+    def complementary_filter(self, accel1, accel2, gyro1, gyro2, dt, prev_orientation):
+        """
+        Implements a complementary filter for two MPUs to fuse accelerometer and gyroscope data.
+        :param accel1: Accelerometer data from MPU1 [acc_x1, acc_y1, acc_z1]
+        :param accel2: Accelerometer data from MPU2 [acc_x2, acc_y2, acc_z2]
+        :param gyro1: Gyroscope data from MPU1 [gyro_x1, gyro_y1, gyro_z1]
+        :param gyro2: Gyroscope data from MPU2 [gyro_x2, gyro_y2, gyro_z2]
+        :param dt: time step
+        :param prev_orientation: previous orientation [roll, pitch, yaw]
+        :return: fused [roll, pitch, yaw]
+        """
+        # Fuse accelerometer and gyroscope data from both MPUs (e.g., using a weighted average)
+        alpha = 0.5  # Assuming equal weight for both MPUs
+
+        accel_fused = alpha * accel1 + (1 - alpha) * accel2
+        gyro_fused = alpha * gyro1 + (1 - alpha) * gyro2
+
+        # Gyroscope integration for short-term orientation (high-pass)
+        roll_gyro = prev_orientation[0] + gyro_fused[0] * dt
+        pitch_gyro = prev_orientation[1] + gyro_fused[1] * dt
+        yaw_gyro = prev_orientation[2] + gyro_fused[2] * dt
+
+        # Accelerometer for long-term orientation (low-pass)
+        roll_acc = np.arctan2(accel_fused[1], np.sqrt(accel_fused[0] ** 2 + accel_fused[2] ** 2))
+        pitch_acc = np.arctan2(-accel_fused[0], np.sqrt(accel_fused[1] ** 2 + accel_fused[2] ** 2))
+        yaw_acc = prev_orientation[2]  # Cannot determine yaw from accelerometer
+
+        # Complementary filter to combine the two estimates
+        roll = self.complementary_alpha * roll_gyro + (1 - self.complementary_alpha) * roll_acc
+        pitch = self.complementary_alpha * pitch_gyro + (1 - self.complementary_alpha) * pitch_acc
+        yaw = yaw_gyro  # Yaw primarily from gyroscope
+
+        return np.array([roll, pitch, yaw])
+
 
 class CalCOGFrame(Node):
 
     def __init__(self):
-        super().__init__('efk_estimator')
+        super().__init__('efkEstimator_complementaryFilter')
         self.subscription_mpu = self.create_subscription(Mpu, 'mpu_data_1', self.listener_callback, 10)
         
         
@@ -269,6 +309,11 @@ class CalCOGFrame(Node):
             'pitch' : deque(maxlen=self.window_size),
             'yaw' : deque(maxlen=self.window_size),
         }
+
+        self.acc_variance = {'acx': 1.0, 'acy': 1.0, 'acz': 1.0}
+        self.gyro_variance = {'roll': 1.0, 'pitch': 1.0, 'yaw': 1.0}
+        self.acc_variance2 = {'acx': 1.0, 'acy': 1.0, 'acz': 1.0}
+        self.state_variance = {'posX': 1.0, 'posY': 1.0, 'posZ': 1.0,'velX': 1.0,'velY': 1.0,'velZ': 1.0,'roll': 1.0,'pitch': 1.0,'yaw': 1.0}
         # Kalman filter for fusing data from both MPUs
         self.frec = 100
         self.kf = IMUFusionEKF(dt=1/self.frec )
@@ -355,7 +400,6 @@ class CalCOGFrame(Node):
         self.statePredictions['pitch'].append(statesEstimatos[7])
         self.statePredictions['yaw'].append(statesEstimatos[8])
         
-    
     def quaternion_to_euler_angles(self, q):
         """
         Convert a quaternion into Euler angles (roll, pitch, yaw)
@@ -439,7 +483,7 @@ class CalCOGFrame(Node):
 
         return accel_compensated
     
-   
+    
 
     def process_fusion(self):
         
@@ -510,21 +554,30 @@ class CalCOGFrame(Node):
 
         accel_imu1_comp_filt = self.compensate_gravity_with_quaternion(accel_imu1filt, self.quaternion)
         accel_imu2_comp_filt = self.compensate_gravity_with_quaternion(accel_imu2filt, self.quaternion)
+
+
+        gyro_imu1 = np.array([self.mpu1_data.gx, self.mpu1_data.gy, self.mpu1_data.gz])
+        gyro_imu2 = np.array([self.mpu1_data.gx2, self.mpu1_data.gy2, self.mpu1_data.gz2])
+
+        # Use complementary filter to calculate orientation
+        orientation = self.kf.complementary_filter(accel_imu1, accel_imu2, gyro_imu1, gyro_imu2, dt, self.quaternion)
         # Fused measurement vector for EKF (acceleration from both IMUs)
         z_imu1 = accel_imu1filt
         z_imu2 = accel_imu2filt
             # Fuse the accelerations (average)
         u_fused = alpha*z_imu1 + (1-alpha)*z_imu2
-        
-        # EKF Prediction step with fused acceleration
-        # Add new measurement data to the buffers
-        self.add_measurement_to_buffers(self.mpu1_data,[roll, pitch, yaw],self.kf.ekf.x)
-        self.update_measurement_noise()
-        #self.kf.update_noise_covariances(self.acc_variance, self.acc_variance2, self.gyro_variance, self.state_variance)
-        self.kf.predict(u_fused)
 
-        # EKF Update step with fused measurements and Madgwick orientation Z
-        self.kf.update(z_imu1, z_imu2, [roll, pitch, yaw])
+
+        # Add new measurement data to the buffers
+        self.add_measurement_to_buffers(self.mpu1_data,orientation,self.kf.ekf.x)
+        # Update the measurement noise covariance matrix based on recent data
+        self.update_measurement_noise()
+        self.kf.update_noise_covariances(self.acc_variance, self.acc_variance2, self.gyro_variance, self.state_variance)
+        # EKF Prediction step with fused acceleration
+        self.kf.predict(u_fused)
+        
+       
+        self.kf.update(z_imu1, z_imu2, orientation)
 
         # Retrieve filtered state (position, velocity)
         pos, vel, orient = self.kf.get_state()
@@ -533,7 +586,7 @@ class CalCOGFrame(Node):
         # Publish the Kalman filter output
         msg = COGframe()
         msg.pos_x, msg.pos_y, msg.pos_z = float(pos[0]), float(pos[1]), float(pos[2])
-        msg.roll, msg.pitch, msg.yaw = float(roll), float(pitch), float(yaw)
+        msg.roll, msg.pitch, msg.yaw = float(orientation[0]), float(orientation[1]), float(orientation[2])
         self.publishKalmanFrame.publish(msg)
         if ( not self.calibrated ):
             if (accel_imu1_raw[0] < 0.1 and accel_imu1_raw[1] < 0.1 and accel_imu1_raw[2] < 0.1 and accel_imu2_raw[0] < 0.1 and accel_imu2_raw[1] < 0.1 and accel_imu2_raw[2] < 0.1):
@@ -544,9 +597,11 @@ class CalCOGFrame(Node):
         else:
             self.publishKalmanFrame.publish(msg)
 
-        self.get_logger().info(f"MPU 1 raw: {float(accel_imu1_raw[0])}, {float(accel_imu1_raw[1])}, {float(accel_imu1_raw[2])}")
-        self.get_logger().info(f"MPU 2 raw:  {float(accel_imu2_raw[0])}, {float(accel_imu2_raw[1])}, {float(accel_imu2_raw[2])}")
-        self.get_logger().info(f"Pos X Y Z: {float(pos[0])}, {float(pos[1])}, {float(pos[2])}")
+        self.get_logger().info(f"Pos X Y Z (meter): {float(pos[0])}, {float(pos[1])}, {float(pos[2])}")
+        self.get_logger().info(f"Roll pitch yaw madwick: {float(roll)}, {float(pitch)}, {float(yaw)}")
+        self.get_logger().info(f"PRoll pitch yaw  comp filter: {float(orientation[0])}, {float(orientation[1])}, {float(orientation[2])}")
+        self.get_logger().info(f"Roll pitch yaw  kalman: {float(orient[0])}, {float(orient[1])}, {float(orient[2])}")
+        
 
         """
         self.get_logger().info(f"MPU 1 Filtered: {float(filtered_acx)}, {float(filtered_acy)},{float(filtered_acz)}")
@@ -558,9 +613,9 @@ class CalCOGFrame(Node):
         """
 def main(args=None):
     rclpy.init(args=args)
-    efkEstimator = CalCOGFrame()
-    rclpy.spin(efkEstimator)
-    efkEstimator.destroy_node()
+    efkEstimator_compfilter = CalCOGFrame()
+    rclpy.spin(efkEstimator_compfilter)
+    efkEstimator_compfilter.destroy_node()
     rclpy.shutdown()
 
 if __name__ == '__main__':

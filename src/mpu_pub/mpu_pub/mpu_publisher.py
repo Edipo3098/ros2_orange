@@ -68,7 +68,7 @@ from collections import deque
 
 
 class KalmanFilter:
-    def __init__(self, Q=0.001, R=0.1):
+    def __init__(self, Q=0.0001, R=0.01):
         # Process noise covariance (Q) and measurement noise covariance (R)
         self.Q = Q
         self.R = R

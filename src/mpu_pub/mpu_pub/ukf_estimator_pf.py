@@ -3,18 +3,11 @@ from rclpy.node import Node
 from robot_interfaces.msg import Mpu, COGframe
 from time import time
 import numpy as np
-from filterpy.monte_carlo import systematic_resample
-import scipy.stats
+from filterpy.kalman import ExtendedKalmanFilter
 from ahrs.filters import Madgwick  # Use Madgwick from ahrs package
 from collections import deque
-"""
-Fusion sensor increase measuremetes to 6
-Accx Accy AccZ
-The fuses is being implemented in 
-update that update uses both measurements
-G
-
-"""
+from filterpy.kalman import UnscentedKalmanFilter as UKF
+from filterpy.kalman import MerweScaledSigmaPoints
 import numpy as np
 import scipy.stats
 
@@ -27,18 +20,10 @@ class ParticleFilter:
         self.weights = np.ones(N) / N
 
     def predict(self, acceleration, angular_displacement):
-        """
-        Predict particle states based on acceleration and angular displacement (roll, pitch, yaw).
-        :param acceleration: array of shape (3,), containing [acc_x, acc_y, acc_z]
-        :param angular_displacement: array of shape (3,), containing [roll, pitch, yaw]
-        """
         for i in range(self.N):
-            # Update position based on velocity and acceleration
             self.particles[i, :3] += self.particles[i, 3:6] * self.dt + 0.5 * acceleration * self.dt**2
-            # Update velocity based on acceleration
             self.particles[i, 3:6] += acceleration * self.dt
-            # Update orientation (roll, pitch, yaw) assuming small changes
-            self.particles[i, 6:9] += angular_displacement  # Update orientation with displacement
+            self.particles[i, 6:9] += angular_displacement  # Update orientation
 
     def update(self, z, R):
         """
@@ -60,34 +45,22 @@ class ParticleFilter:
             self.weights[i] *= likelihood
 
         self.weights += 1.e-300  # Avoid division by zero
-        self.weights /= np.sum(self.weights)  # Normalize the weights
 
     def resample(self):
-        """
-        Resample particles according to their weights using systematic resampling.
-        """
         indices = self.systematic_resample(self.weights)
         self.particles = self.particles[indices]
         self.weights.fill(1.0 / self.N)
 
     def estimate(self):
-        """
-        Estimate the final state (position, velocity, orientation) by averaging over the particles.
-        :return: array of estimated state (9,) [pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, roll, pitch, yaw]
-        """
         return np.average(self.particles, weights=self.weights, axis=0)
 
     @staticmethod
     def systematic_resample(weights):
-        """
-        Perform systematic resampling on the particles.
-        :param weights: array of particle weights
-        :return: array of indices to resample from the original particle set
-        """
         N = len(weights)
         positions = (np.arange(N) + np.random.uniform()) / N
         indices = np.zeros(N, dtype=int)
         cumulative_sum = np.cumsum(weights)
+        cumulative_sum[-1] = 1.0  # Ensure the last cumulative sum is exactly 1.0 to prevent out-of-bounds errors
         i, j = 0, 0
         while i < N:
             if positions[i] < cumulative_sum[j]:
@@ -97,11 +70,92 @@ class ParticleFilter:
                 j += 1
         return indices
 
+class IMUFusionUKF:
+    def __init__(self, dt):
+        # Define the UKF parameters
+        self.dt = dt
+        self.points = MerweScaledSigmaPoints(9, alpha=0.1, beta=2.0, kappa=0.0)
+        self.ukf =  UKF(dim_x=9, dim_z=9, dt=self.dt, fx=self.fx, hx=self.hx, points=self.points)
+        # Initial state vector [pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, roll, pitch, yaw]
+        self.ukf.x = np.zeros(9)
+        # Covariances (initial)
+        self.ukf.P = np.eye(9) * 0.1  # State covariance matrix with low initial uncertainty
 
+        self.ukf.Q = np.eye(9) * 0.01  # Process noise covariance matrix
+        # Measurement noise covariance matrix
+        # 3 Accelerometer measurements MPU 1 (x, y, z) 
+        self.ukf.R = np.eye(9) * 0.1   # Measurement noise covariance matrix 3 Accele
+
+        self.complementary_alpha = 0.98
+        
+    # Define state transition function for UKF
+    def fx(self, x, dt):
+        # x = [pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, roll, pitch, yaw]
+        # Update position based on velocity and acceleration
+        pos = x[:3] + x[3:6] * dt + 0.5 * x[6:] * dt**2
+        
+        # Update velocity based on acceleration
+        vel = x[3:6] + x[6:] * dt
+        
+        # Orientation (roll, pitch, yaw) remains unchanged as we're not modeling its dynamics here
+        orientation = x[6:]  
+        
+        # Return full state vector [pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, roll, pitch, yaw]
+        return np.hstack((pos, vel, orientation))
+
+
+
+    # Define measurement function for UKF
+    def hx(self, x):
+        # Return the predicted accelerations and orientation (roll, pitch, yaw)
+        acc_imu1_pred = x[3:6]  # From velocity state, representing accelerations
+        acc_imu2_pred = x[3:6]  # Assuming similar accelerations for IMU 2
+        orientation_pred = x[6:]  # roll, pitch, yaw from the state vector
+
+        # Return combined predictions for accelerations and orientation
+        return np.hstack((acc_imu1_pred, acc_imu2_pred, orientation_pred))
+    
+    def complementary_filter(self, accel1, accel2, gyro1, gyro2, dt, prev_orientation):
+        """
+        Implements a complementary filter for two MPUs to fuse accelerometer and gyroscope data.
+        :param accel1: Accelerometer data from MPU1 [acc_x1, acc_y1, acc_z1]
+        :param accel2: Accelerometer data from MPU2 [acc_x2, acc_y2, acc_z2]
+        :param gyro1: Gyroscope data from MPU1 [gyro_x1, gyro_y1, gyro_z1]
+        :param gyro2: Gyroscope data from MPU2 [gyro_x2, gyro_y2, gyro_z2]
+        :param dt: time step
+        :param prev_orientation: previous orientation [roll, pitch, yaw]
+        :return: fused [roll, pitch, yaw]
+        """
+        # Fuse accelerometer and gyroscope data from both MPUs (e.g., using a weighted average)
+        alpha = 0.5  # Assuming equal weight for both MPUs
+
+        accel_fused = alpha * accel1 + (1 - alpha) * accel2
+        gyro_fused = alpha * gyro1 + (1 - alpha) * gyro2
+
+        # Gyroscope integration for short-term orientation (high-pass)
+        roll_gyro = prev_orientation[0] + gyro_fused[0] * dt
+        pitch_gyro = prev_orientation[1] + gyro_fused[1] * dt
+        yaw_gyro = prev_orientation[2] + gyro_fused[2] * dt
+
+        # Accelerometer for long-term orientation (low-pass)
+        roll_acc = np.arctan2(accel_fused[1], np.sqrt(accel_fused[0] ** 2 + accel_fused[2] ** 2))
+        pitch_acc = np.arctan2(-accel_fused[0], np.sqrt(accel_fused[1] ** 2 + accel_fused[2] ** 2))
+        yaw_acc = prev_orientation[2]  # Cannot determine yaw from accelerometer
+
+        # Complementary filter to combine the two estimates
+        roll = self.complementary_alpha * roll_gyro + (1 - self.complementary_alpha) * roll_acc
+        pitch = self.complementary_alpha * pitch_gyro + (1 - self.complementary_alpha) * pitch_acc
+        yaw = yaw_gyro  # Yaw primarily from gyroscope
+
+        return np.array([roll, pitch, yaw])
+
+
+    
+   
 class CalCOGFrame(Node):
 
     def __init__(self):
-        super().__init__('particle_filter')
+        super().__init__('ukf_estimator_pf')
         self.subscription_mpu = self.create_subscription(Mpu, 'mpu_data_1', self.listener_callback, 10)
         
         
@@ -134,12 +188,14 @@ class CalCOGFrame(Node):
             'gy': deque(maxlen=self.window_size),
             'gz': deque(maxlen=self.window_size),
         }
-        # Particle filter for fusing data from both MPUs
+        # Kalman filter for fusing data from both MPUs
         self.frec = 100
+        self.kf = IMUFusionUKF(dt=1/self.frec )
+
+        
         self.N = 1000  # Number of particles
         self.dt = 1/self.frec  # Time step
         self.pf = ParticleFilter(N=self.N, dt=self.dt)
-        
         # Madgwick filter initialization
         self.madgwick_filter = Madgwick(frequency=self.frec ,gain=0.003)  # Adjust sample period as needed
         """
@@ -362,48 +418,60 @@ class CalCOGFrame(Node):
 
        
         roll, pitch, yaw = self.quaternion_to_euler_angles(self.quaternion)  # in rads
+
+        
         # Compensate for gravity using the orientation from the Madgwick filter
         # Convert accelerometer readings to m/s² (if not already in m/s²)
-        accel_imu1_raw = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz]) 
-        accel_imu2_raw = np.array([self.mpu1_data.acx2, self.mpu1_data.acy, self.mpu1_data.acz2]) 
+        
         accel_imu1 = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz]) 
         accel_imu2 = np.array([self.mpu1_data.acx2, self.mpu1_data.acy, self.mpu1_data.acz2]) 
-
         # ACY2 to much failed
-
         accel_imu1filt = np.array([filtered_acx, filtered_acy, filtered_acz]) 
         accel_imu2filt = np.array([filtered_acx2, filtered_acy, filtered_acz2]) 
-
         accel_imu1_comp = self.compensate_gravity_with_quaternion(accel_imu1, self.quaternion)
         accel_imu2_comp = self.compensate_gravity_with_quaternion(accel_imu2, self.quaternion)
-
         accel_imu1_comp_filt = self.compensate_gravity_with_quaternion(accel_imu1filt, self.quaternion)
         accel_imu2_comp_filt = self.compensate_gravity_with_quaternion(accel_imu2filt, self.quaternion)
+
+        gyro_imu1 = np.array([self.mpu1_data.gx, self.mpu1_data.gy, self.mpu1_data.gz])
+        gyro_imu2 = np.array([self.mpu1_data.gx2, self.mpu1_data.gy2, self.mpu1_data.gz2])
+        # Fused IMU data (weighted average)
+        alpha = 0.6
+        accel_fused = alpha * accel_imu1 + (1 - alpha) * accel_imu2
+        gyro_fused = alpha * gyro_imu1 + (1 - alpha) * gyro_imu2
+
+        # Complementary filter for orientation
+        orientation = self.kf.complementary_filter(accel_imu1, accel_imu2, gyro_imu1, gyro_imu2, dt, self.quaternion)
+
+        # Prediction step in UKF
         # Fused measurement vector for EKF (acceleration from both IMUs)
         z_imu1 = accel_imu1filt
         z_imu2 = accel_imu2filt
-            # Fuse the accelerations (average)
-        acceleration = alpha*z_imu1 + (1-alpha)*z_imu2
         
-        # Update step with acceleration (linear velocity) and angular velocity
-        measurements = np.hstack((acceleration, [roll, pitch, yaw] ))  # [vel_x, vel_y, vel_z, roll, pitch, yaw]
-        # Perform prediction
-        self.pf.predict(acceleration,np.array([roll, pitch, yaw]))
-
-        # Update step with measurements
-        z = np.hstack((accel_imu1filt, accel_imu2filt, [roll, pitch, yaw]))  # Correct the usage of np.hstack
-        R = np.eye(9) * 0.1  # Example measurement noise covariance matrix
-
-        self.pf.update(z, R)
-
-        # Resample particles
+        # Update the Kalman filter with
+        # Prediction step
+        self.kf.ukf.predict()
+        # Particle Filter Prediction (for nonlinearities)
+        self.pf.predict(accel_fused,orientation)
+        # Particle Filter Update
+        measurements = np.hstack((accel_imu1filt, accel_imu2filt, orientation))  # Correct the usage of np.hstack
+        R = np.eye(9) * 0.1  # Measurement noise
+        
+        self.pf.update(measurements, R)
         self.pf.resample()
-        # Estimate position, velocity, orientation
-        estimate = self.pf.estimate()
-        pos, vel, orient = estimate[:3], estimate[3:6], estimate[6:9]
         
 
-        
+        # Get Particle Filter estimates (position, velocity, orientation)
+        pf_estimate = self.pf.estimate()
+         # Ensure measurement vector for UKF has the correct shape (9,)
+        # Concatenating position estimate and orientation from Particle Filter
+        fused_measurements = np.hstack((accel_imu1filt,accel_imu2filt, pf_estimate[6:9]))
+
+        # Use UKF for main state estimation (position, velocity) and orientation
+        self.kf.ukf.update(fused_measurements)
+        pos, vel, orient = self.kf.ukf.x[:3], self.kf.ukf.x[3:6], self.kf.ukf.x[6:9]
+
+        # Publish results
 
         
         # Publish the Kalman filter output
@@ -412,7 +480,7 @@ class CalCOGFrame(Node):
         msg.roll, msg.pitch, msg.yaw = float(roll), float(pitch), float(yaw)
         self.publishKalmanFrame.publish(msg)
         if ( not self.calibrated ):
-            if (accel_imu1_raw[0] < 0.1 and accel_imu1_raw[1] < 0.1 and accel_imu1_raw[2] < 0.1 and accel_imu2_raw[0] < 0.1 and accel_imu2_raw[1] < 0.1 and accel_imu2_raw[2] < 0.1):
+            if (accel_imu1[0] < 0.1 and accel_imu1[1] < 0.1 and accel_imu1[2] < 0.1 and accel_imu2[0] < 0.1 and accel_imu2[1] < 0.1 and accel_imu2[2] < 0.1):
                 self.calibrated = True
                 self.calibration_time = time()
                 self.get_logger().info("Calibration  done")
@@ -420,36 +488,16 @@ class CalCOGFrame(Node):
         else:
             self.publishKalmanFrame.publish(msg)
 
-        self.get_logger().info(f"MPU 1 raw: {float(accel_imu1_raw[0])}, {float(accel_imu1_raw[1])}, {float(accel_imu1_raw[2])}")
-        self.get_logger().info(f"MPU 2 raw:  {float(accel_imu2_raw[0])}, {float(accel_imu2_raw[1])}, {float(accel_imu2_raw[2])}")
-        self.get_logger().info(f"MPU 1: {float(accel_imu1[0])}, {float(accel_imu1[1])}, {float(accel_imu1[2])}")
-        self.get_logger().info(f"MPU 2:  {float(accel_imu2[0])}, {float(accel_imu2[1])}, {float(accel_imu2[2])}")
-        self.get_logger().info(f"MPU 1 Filtered: {float(accel_imu1filt[0])}, {float(accel_imu1filt[1])},{float(accel_imu1filt[2])}")
-        self.get_logger().info(f"MPU 2 Filtered: {float(accel_imu2filt[0])}, {float(accel_imu2filt[1])},{float(accel_imu2filt[2])}")
-        self.get_logger().info(f"MPU 1  compensate G: {float(accel_imu1_comp[0])}, {float(accel_imu1_comp[1])}, {float(accel_imu1_comp[2])}")
-        self.get_logger().info(f"MPU 2  compensate G: {float(accel_imu2_comp[0])}, {float(accel_imu2_comp[1])}, {float(accel_imu2_comp[2])}")
-        self.get_logger().info(f"G: {float(accel_imu1_comp_filt[0])}, {float(accel_imu1_comp_filt[1])}, {float(accel_imu1_comp_filt[2])}")
-        self.get_logger().info(f"MPU 2  compensate G filt: {float(accel_imu2_comp_filt[0])}, {float(accel_imu2_comp_filt[1])}, {float(accel_imu2_comp_filt[2])}")
+        
         self.get_logger().info(f"Pos X Y Z (meter): {float(pos[0])}, {float(pos[1])}, {float(pos[2])}")
-
-
-        self.get_logger().info(f"GIRO 1 raw: {float(gyroscope_data[0])}, {float(gyroscope_data[1])}, {float(gyroscope_data[2])}")
-        self.get_logger().info(f"GIRO 1 FILTER:  {float(gyroscope_data_filtered[0])}, {float(gyroscope_data_filtered[1])}, {float(gyroscope_data_filtered[2])}")
         self.get_logger().info(f"Roll pitch yaw rad: {float(roll)}, {float(pitch)}, {float(yaw)}")
 
-        """
-        self.get_logger().info(f"MPU 1 Filtered: {float(filtered_acx)}, {float(filtered_acy)},{float(filtered_acz)}")
-        self.get_logger().info(f"MPU 2 Filtered: {float(filtered_acx2)}, {float(filtered_acy2)},{float(filtered_acz2)}")
-        self.get_logger().info(f"MPU 1  compensate G: {float(accel_imu1_comp[0])}, {float(accel_imu1_comp[1])}, {float(accel_imu1_comp[2])}")
-        self.get_logger().info(f"MPU 2  compensate G: {float(accel_imu2_comp[0])}, {float(accel_imu2_comp[1])}, {float(accel_imu2_comp[2])}")
-        self.get_logger().info(f"MPU 1  compensate G filt: {float(accel_imu1_comp_filt[0])}, {float(accel_imu1_comp_filt[1])}, {float(accel_imu1_comp_filt[2])}")
-        self.get_logger().info(f"MPU 2  compensate G filt: {float(accel_imu2_comp_filt[0])}, {float(accel_imu2_comp_filt[1])}, {float(accel_imu2_comp_filt[2])}")
-        """
+        
 def main(args=None):
     rclpy.init(args=args)
-    particle_filter = CalCOGFrame()
-    rclpy.spin(particle_filter)
-    particle_filter.destroy_node()
+    ukf_estimator_pf = CalCOGFrame()
+    rclpy.spin(ukf_estimator_pf)
+    ukf_estimator_pf.destroy_node()
     rclpy.shutdown()
 
 if __name__ == '__main__':

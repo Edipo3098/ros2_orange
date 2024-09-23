@@ -326,6 +326,8 @@ class CalCOGFrame(Node):
 
        
         roll, pitch, yaw = self.quaternion_to_euler_angles(self.quaternion)  # in rads
+
+        
         # Compensate for gravity using the orientation from the Madgwick filter
         # Convert accelerometer readings to m/s² (if not already in m/s²)
         accel_imu1_raw = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz]) 
@@ -343,6 +345,8 @@ class CalCOGFrame(Node):
 
         accel_imu1_comp_filt = self.compensate_gravity_with_quaternion(accel_imu1filt, self.quaternion)
         accel_imu2_comp_filt = self.compensate_gravity_with_quaternion(accel_imu2filt, self.quaternion)
+
+        
         # Fused measurement vector for EKF (acceleration from both IMUs)
         z_imu1 = accel_imu1filt
         z_imu2 = accel_imu2filt
@@ -354,8 +358,7 @@ class CalCOGFrame(Node):
         self.kf.ukf.predict()
 
         # Update step with acceleration (linear velocity) and angular velocity
-        measurements = np.hstack((z_imu1, z_imu2, [roll, pitch, yaw]))  # Correct usage with parentheses
-
+        measurements = np.hstack((z_imu1, z_imu2, [roll, pitch, yaw]))  # [vel_x, vel_y, vel_z, roll, pitch, yaw]
         self.kf.ukf.update(measurements)
 
         # Get filtered state (position, velocity, orientation)
@@ -378,6 +381,11 @@ class CalCOGFrame(Node):
         else:
             self.publishKalmanFrame.publish(msg)
 
+        
+        self.get_logger().info(f"Pos X Y Z (meter): {float(pos[0])}, {float(pos[1])}, {float(pos[2])}")
+        self.get_logger().info(f"Roll pitch yaw rad: {float(roll)}, {float(pitch)}, {float(yaw)}")
+
+        """
         self.get_logger().info(f"MPU 1 raw: {float(accel_imu1_raw[0])}, {float(accel_imu1_raw[1])}, {float(accel_imu1_raw[2])}")
         self.get_logger().info(f"MPU 2 raw:  {float(accel_imu2_raw[0])}, {float(accel_imu2_raw[1])}, {float(accel_imu2_raw[2])}")
         self.get_logger().info(f"MPU 1: {float(accel_imu1[0])}, {float(accel_imu1[1])}, {float(accel_imu1[2])}")
@@ -388,14 +396,10 @@ class CalCOGFrame(Node):
         self.get_logger().info(f"MPU 2  compensate G: {float(accel_imu2_comp[0])}, {float(accel_imu2_comp[1])}, {float(accel_imu2_comp[2])}")
         self.get_logger().info(f"G: {float(accel_imu1_comp_filt[0])}, {float(accel_imu1_comp_filt[1])}, {float(accel_imu1_comp_filt[2])}")
         self.get_logger().info(f"MPU 2  compensate G filt: {float(accel_imu2_comp_filt[0])}, {float(accel_imu2_comp_filt[1])}, {float(accel_imu2_comp_filt[2])}")
-        self.get_logger().info(f"Pos X Y Z (meter): {float(pos[0])}, {float(pos[1])}, {float(pos[2])}")
-
 
         self.get_logger().info(f"GIRO 1 raw: {float(gyroscope_data[0])}, {float(gyroscope_data[1])}, {float(gyroscope_data[2])}")
         self.get_logger().info(f"GIRO 1 FILTER:  {float(gyroscope_data_filtered[0])}, {float(gyroscope_data_filtered[1])}, {float(gyroscope_data_filtered[2])}")
-        self.get_logger().info(f"Roll pitch yaw rad: {float(roll)}, {float(pitch)}, {float(yaw)}")
-
-        """
+       
         self.get_logger().info(f"MPU 1 Filtered: {float(filtered_acx)}, {float(filtered_acy)},{float(filtered_acz)}")
         self.get_logger().info(f"MPU 2 Filtered: {float(filtered_acx2)}, {float(filtered_acy2)},{float(filtered_acz2)}")
         self.get_logger().info(f"MPU 1  compensate G: {float(accel_imu1_comp[0])}, {float(accel_imu1_comp[1])}, {float(accel_imu1_comp[2])}")

@@ -32,6 +32,8 @@ setup(
             'efk_estimator = mpu_pub.efk_estimator:main',
             'ukf_estimator = mpu_pub.ukf_estimator:main',
             'particle_filter = mpu_pub.particle_filter:main',
+            'efkEstimator_complementaryFilter = mpu_pub.efkEstimator_complementaryFilter:main',
+            'ukf_estimator_pf = mpu_pub.ukf_estimator_pf:main',
         ],
     },
 )
