@@ -32,8 +32,9 @@ class IMUFusionEKF:
         self.ekf.P = np.eye(9) * 1  # Initial uncertainty
         self.residuals_window = deque(maxlen=100)  # Store last 100 residuals
         # Process noise covariance matrix (Q)
-        self.mulQ = 100
-        self.mulR = 1000000
+        self.mul = 1000
+        self.mulR = 1000
+        self.mulQ = 1000
         self.ekf.Q = np.diag([1e-4, 1e-4, 1e-4, 1e-2, 1e-2, 1e-2, 1e-3, 1e-3, 1e-3])*self.mulQ   # Noise for position, velocity, orientation
 
         # Measurement noise covariance matrix (R)
@@ -569,10 +570,7 @@ class CalCOGFrame(Node):
 
 
         # Add new measurement data to the buffers
-        self.add_measurement_to_buffers(self.mpu1_data,orientation,self.kf.ekf.x)
-        # Update the measurement noise covariance matrix based on recent data
-        self.update_measurement_noise()
-        self.kf.update_noise_covariances(self.acc_variance, self.acc_variance2, self.gyro_variance, self.state_variance)
+        
         # EKF Prediction step with fused acceleration
         self.kf.predict(u_fused)
         
@@ -582,7 +580,10 @@ class CalCOGFrame(Node):
         # Retrieve filtered state (position, velocity)
         pos, vel, orient = self.kf.get_state()
 
-        
+        self.add_measurement_to_buffers(self.mpu1_data,orientation,self.kf.ekf.x)
+        # Update the measurement noise covariance matrix based on recent data
+        self.update_measurement_noise()
+        self.kf.update_noise_covariances(self.acc_variance, self.acc_variance2, self.gyro_variance, self.state_variance)
         # Publish the Kalman filter output
         msg = COGframe()
         msg.pos_x, msg.pos_y, msg.pos_z = float(pos[0]), float(pos[1]), float(pos[2])

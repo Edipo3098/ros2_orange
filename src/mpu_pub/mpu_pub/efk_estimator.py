@@ -518,9 +518,8 @@ class CalCOGFrame(Node):
         
         # EKF Prediction step with fused acceleration
         # Add new measurement data to the buffers
-        self.add_measurement_to_buffers(self.mpu1_data,[roll, pitch, yaw],self.kf.ekf.x)
-        self.update_measurement_noise()
-        #self.kf.update_noise_covariances(self.acc_variance, self.acc_variance2, self.gyro_variance, self.state_variance)
+
+        
         self.kf.predict(u_fused)
 
         # EKF Update step with fused measurements and Madgwick orientation Z
@@ -528,7 +527,9 @@ class CalCOGFrame(Node):
 
         # Retrieve filtered state (position, velocity)
         pos, vel, orient = self.kf.get_state()
-
+        self.add_measurement_to_buffers(self.mpu1_data,[roll, pitch, yaw],self.kf.ekf.x)
+        self.update_measurement_noise()
+        self.kf.update_noise_covariances(self.acc_variance, self.acc_variance2, self.gyro_variance, self.state_variance)
         
         # Publish the Kalman filter output
         msg = COGframe()

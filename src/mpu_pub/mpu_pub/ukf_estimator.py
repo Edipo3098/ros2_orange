@@ -34,6 +34,9 @@ class IMUFusionUKF:
         # Measurement noise covariance matrix
         # 3 Accelerometer measurements MPU 1 (x, y, z) 
         self.ukf.R = np.eye(9) * 0.1   # Measurement noise covariance matrix 3 Accele
+        self.mul = 1000
+        self.mulR = 1000
+        self.mulQ = 1000
         
     # Define state transition function for UKF
     def fx(self, x, dt):
@@ -61,6 +64,37 @@ class IMUFusionUKF:
 
         # Return combined predictions for accelerations and orientation
         return np.hstack((acc_imu1_pred, acc_imu2_pred, orientation_pred))
+    
+    def update_noise_covariances(self, accel_data, accel_data2, gyro_data, predicted_state):
+        """
+        Dynamically adjust the process noise covariance (Q) and measurement noise covariance (R) 
+        based on the variance of accelerometer, gyroscope data, and the predicted state (position, velocity, orientation).
+        
+        predicted_state: The predicted state vector [p_x, p_y, p_z, v_x, v_y, v_z, roll, pitch, yaw].
+        """
+        # Convert to a numpy array
+        
+        accel_variance = np.array(list(accel_data.values()))
+        accel_variance2 = np.array(list(accel_data2.values()))
+        gyro_variance =np.array(list(gyro_data.values()))
+        
+        stateVariance = np.array(list(predicted_state.values()))
+        # Variance from the predicted state (position, velocity, orientation)
+        position_variance = stateVariance[0:3]
+        velocity_variance =  stateVariance[3:6]
+        orientation_variance = stateVariance[6:9]
+        
+
+        # Update process noise covariance Q dynamically based on state prediction variances
+        self.ukf.Q = np.diag([position_variance[0], position_variance[1], position_variance[2],
+                            velocity_variance[0], velocity_variance[1], velocity_variance[2],
+                            orientation_variance[0], orientation_variance[1], orientation_variance[2]])*self.mulQ
+        
+
+        # Update measurement noise covariance R dynamically based on accelerometer and gyroscope variances
+        self.ukf.R = np.diag([accel_variance[0], accel_variance[1], accel_variance[2],
+                            accel_variance2[0], accel_variance2[1], accel_variance2[2],
+                            gyro_variance[0], gyro_variance[1], gyro_variance[2]])*self.mulR
 
 
     
@@ -87,19 +121,25 @@ class CalCOGFrame(Node):
             'acz': deque(maxlen=self.window_size),
         }
         self.gyro_buffers = {
-            'gx': deque(maxlen=self.window_size),
-            'gy': deque(maxlen=self.window_size),
-            'gz': deque(maxlen=self.window_size),
+            'roll': deque(maxlen=self.window_size),
+            'pitch': deque(maxlen=self.window_size),
+            'yaw': deque(maxlen=self.window_size),
         }
         self.acc_buffers2 = {
             'acx': deque(maxlen=self.window_size),
             'acy': deque(maxlen=self.window_size),
             'acz': deque(maxlen=self.window_size),
         }
-        self.gyro_buffers2 = {
-            'gx': deque(maxlen=self.window_size),
-            'gy': deque(maxlen=self.window_size),
-            'gz': deque(maxlen=self.window_size),
+        self.statePredictions = {
+            'posX' : deque(maxlen=self.window_size),
+            'posY' : deque(maxlen=self.window_size),
+            'posZ' : deque(maxlen=self.window_size),
+            'velX' : deque(maxlen=self.window_size),
+            'velY' : deque(maxlen=self.window_size),
+            'velZ' : deque(maxlen=self.window_size),
+            'roll' : deque(maxlen=self.window_size),
+            'pitch' : deque(maxlen=self.window_size),
+            'yaw' : deque(maxlen=self.window_size),
         }
         # Kalman filter for fusing data from both MPUs
         self.frec = 100
@@ -139,52 +179,53 @@ class CalCOGFrame(Node):
         Calculate new measurement noise covariance matrix R based on sliding window variance.
         """
         # Compute variance for accelerometer
-        acc_variance = {
+        self.acc_variance = {
             axis: np.var(self.acc_buffers[axis]) if len(self.acc_buffers[axis]) > 1 else 1.0
             for axis in ['acx', 'acy', 'acz']
         }
 
         # Compute variance for gyroscope
-        gyro_variance = {
+        self.gyro_variance = {
             axis: np.var(self.gyro_buffers[axis]) if len(self.gyro_buffers[axis]) > 1 else 1.0
-            for axis in ['gx', 'gy', 'gz']
+            for axis in ['roll', 'pitch', 'yaw']
         }
          # Compute variance for accelerometer
-        acc_variance2 = {
+        self.acc_variance2 = {
             axis: np.var(self.acc_buffers2[axis]) if len(self.acc_buffers2[axis]) > 1 else 1.0
             for axis in ['acx', 'acy', 'acz']
         }
 
-        # Compute variance for gyroscope
-        gyro_variance2 = {
-            axis: np.var(self.gyro_buffers2[axis]) if len(self.gyro_buffers2[axis]) > 1 else 1.0
-            for axis in ['gx', 'gy', 'gz']
+        self.state_variance = {
+            axis: np.var(self.statePredictions[axis]) if len(self.statePredictions[axis]) > 1 else 1.0
+            for axis in ['posX', 'posY', 'posZ','velX','velY','velZ','roll','pitch','yaw']
         }
-        # Update the measurement noise covariance matrix (R)
-        vaAcx = np.mean([ acc_variance['acx'],acc_variance2['acx']] )
-        vaAcy = np.mean([ acc_variance['acy'],acc_variance2['acy']] )
-        vaAcz = np.mean([ acc_variance['acz'],acc_variance2['acz']] )
         
-        """
-        self.kf.ekf.R = np.diag([ vaAcx   , vaAcy,  vaAcz])*self.kf.mul
-        """
-    def add_measurement_to_buffers(self, imu_data):
+ 
+    def add_measurement_to_buffers(self, imu_data,orientation,statesEstimatos):
         """
         Add new IMU data to the sliding window buffers for noise calculation.
         """
         self.acc_buffers['acx'].append(imu_data.acx)
         self.acc_buffers['acy'].append(imu_data.acy)
         self.acc_buffers['acz'].append(imu_data.acz)
-        self.gyro_buffers['gx'].append(imu_data.gx)
-        self.gyro_buffers['gy'].append(imu_data.gy)
-        self.gyro_buffers['gz'].append(imu_data.gz)
+        self.gyro_buffers['roll'].append(orientation[0])
+        self.gyro_buffers['pitch'].append(orientation[1])
+        self.gyro_buffers['yaw'].append(orientation[2])
 
         self.acc_buffers2['acx'].append(imu_data.acx2)
         self.acc_buffers2['acz'].append(imu_data.acz2)
         self.acc_buffers2['acy'].append(imu_data.acy2)
-        self.gyro_buffers2['gx'].append(imu_data.gx2)
-        self.gyro_buffers2['gy'].append(imu_data.gy2)
-        self.gyro_buffers2['gz'].append(imu_data.gz2)
+
+
+        self.statePredictions['posX'].append(statesEstimatos[0])
+        self.statePredictions['posY'].append(statesEstimatos[1])
+        self.statePredictions['posZ'].append(statesEstimatos[2])
+        self.statePredictions['velX'].append(statesEstimatos[3])
+        self.statePredictions['velY'].append(statesEstimatos[4])
+        self.statePredictions['velZ'].append(statesEstimatos[5])
+        self.statePredictions['roll'].append(statesEstimatos[6])
+        self.statePredictions['pitch'].append(statesEstimatos[7])
+        self.statePredictions['yaw'].append(statesEstimatos[8])
     
     def quaternion_to_euler_angles(self, q):
         """
@@ -287,9 +328,7 @@ class CalCOGFrame(Node):
         #self.kf.change_dt(dt)
         self.prev_time = current_time  # Update previous time
         # Add new measurement data to the buffers
-        self.add_measurement_to_buffers(self.mpu1_data)
-        # Update the measurement noise covariance matrix based on recent data
-        self.update_measurement_noise()
+        
         # Create the measurement vector with data from both IMUs
         
         # In process_fusion:
@@ -365,7 +404,9 @@ class CalCOGFrame(Node):
         pos, vel, orient = self.kf.ukf.x[:3], self.kf.ukf.x[3:6], self.kf.ukf.x[6:9]
 
         
-
+        self.add_measurement_to_buffers(self.mpu1_data,[roll, pitch, yaw],self.kf.ukf.x)
+        self.update_measurement_noise()
+        self.kf.update_noise_covariances(self.acc_variance, self.acc_variance2, self.gyro_variance, self.state_variance)
         
         # Publish the Kalman filter output
         msg = COGframe()
