@@ -40,7 +40,7 @@ class IMUFusionEKF:
         # Measurement noise covariance matrix (R)
         self.ekf.R = np.diag([1e-2, 1e-2, 1e-2,1e-2, 1e-2, 1e-2,1e-2, 1e-2, 1e-2]) *self.mulR   # Noise for fused accelerations
         self.complementary_alpha = 0.98  # Giving more weight to gyroscope data
-
+        self.prevOrientation = np.array([0.0, 0.0, 0.0])  # Initial orientation
 
         
 
@@ -332,6 +332,8 @@ class CalCOGFrame(Node):
 
     def listener_callback(self, msg):
         self.mpu1_data = msg
+        self.mpu1_data.acy = self.mpu1_data.acy*0.01
+        self.mpu1_data.acy2 = self.mpu1_data.acy2*0.01
         self.process_fusion()
         
     def listener_callback2(self, msg):
@@ -561,7 +563,8 @@ class CalCOGFrame(Node):
         gyro_imu2 = np.array([self.mpu1_data.gx2, self.mpu1_data.gy2, self.mpu1_data.gz2])
 
         # Use complementary filter to calculate orientation
-        orientation = self.kf.complementary_filter(accel_imu1, accel_imu2, gyro_imu1, gyro_imu2, dt, self.quaternion)
+        orientation = self.kf.complementary_filter(accel_imu1, accel_imu2, gyro_imu1, gyro_imu2, dt, self.prevOrientation)
+        self.prevOrientation = orientation
         # Fused measurement vector for EKF (acceleration from both IMUs)
         z_imu1 = accel_imu1filt
         z_imu2 = accel_imu2filt
@@ -575,7 +578,7 @@ class CalCOGFrame(Node):
         self.kf.predict(u_fused)
         
        
-        self.kf.update(z_imu1, z_imu2, orientation)
+        self.kf.update(accel_imu1_comp_filt, accel_imu2_comp_filt, orientation)
 
         # Retrieve filtered state (position, velocity)
         pos, vel, orient = self.kf.get_state()
@@ -587,7 +590,7 @@ class CalCOGFrame(Node):
         # Publish the Kalman filter output
         msg = COGframe()
         msg.pos_x, msg.pos_y, msg.pos_z = float(pos[0]), float(pos[1]), float(pos[2])
-        msg.roll, msg.pitch, msg.yaw = float(orientation[0]), float(orientation[1]), float(orientation[2])
+        msg.roll, msg.pitch, msg.yaw = float(orient[0]), float(orient[1]), float(orient[2])
         self.publishKalmanFrame.publish(msg)
         if ( not self.calibrated ):
             if (accel_imu1_raw[0] < 0.1 and accel_imu1_raw[1] < 0.1 and accel_imu1_raw[2] < 0.1 and accel_imu2_raw[0] < 0.1 and accel_imu2_raw[1] < 0.1 and accel_imu2_raw[2] < 0.1):
@@ -599,8 +602,6 @@ class CalCOGFrame(Node):
             self.publishKalmanFrame.publish(msg)
 
         self.get_logger().info(f"Pos X Y Z (meter): {float(pos[0])}, {float(pos[1])}, {float(pos[2])}")
-        self.get_logger().info(f"Roll pitch yaw madwick: {float(roll)}, {float(pitch)}, {float(yaw)}")
-        self.get_logger().info(f"PRoll pitch yaw  comp filter: {float(orientation[0])}, {float(orientation[1])}, {float(orientation[2])}")
         self.get_logger().info(f"Roll pitch yaw  kalman: {float(orient[0])}, {float(orient[1])}, {float(orient[2])}")
         
 

@@ -88,8 +88,8 @@ class IMUFusionUKF:
 
         self.complementary_alpha = 0.98
         self.mul = 1000
-        self.mulR = 1000
-        self.mulQ = 1000
+        self.mulR = 0.001
+        self.mulQ = 0.001
         
     # Define state transition function for UKF
     def fx(self, x, dt):
@@ -247,9 +247,12 @@ class CalCOGFrame(Node):
         self.calibrated = False
 
         self.prev_time = time()
+        self.prevOrientation  = np.array([0.0, 0.0, 0.0])
 
     def listener_callback(self, msg):
         self.mpu1_data = msg
+        self.mpu1_data.acy = self.mpu1_data.acy*0.01
+        self.mpu1_data.acy2 = self.mpu1_data.acy2*0.01
         self.process_fusion()
         
     def listener_callback2(self, msg):
@@ -368,6 +371,22 @@ class CalCOGFrame(Node):
         accel_compensated = accel - g_sensor
 
         return accel_compensated
+    import numpy as np
+
+    def euler_to_quaternion(self,roll, pitch, yaw):
+        """
+        Convert Euler angles (roll, pitch, yaw) to a quaternion (w, x, y, z).
+        roll, pitch, yaw are in radians.
+        """
+        qx = np.sin(roll / 2) * np.cos(pitch / 2) * np.cos(yaw / 2) - np.cos(roll / 2) * np.sin(pitch / 2) * np.sin(yaw / 2)
+        qy = np.cos(roll / 2) * np.sin(pitch / 2) * np.cos(yaw / 2) + np.sin(roll / 2) * np.cos(pitch / 2) * np.sin(yaw / 2)
+        qz = np.cos(roll / 2) * np.cos(pitch / 2) * np.sin(yaw / 2) - np.sin(roll / 2) * np.sin(pitch / 2) * np.cos(yaw / 2)
+        qw = np.cos(roll / 2) * np.cos(pitch / 2) * np.cos(yaw / 2) + np.sin(roll / 2) * np.sin(pitch / 2) * np.sin(yaw / 2)
+
+        return np.array([qw, qx, qy, qz])
+
+    
+
     def compensate_gravity_with_quaternion(self, accel, q):
         """
         Compensate for the gravitational component in the accelerometer reading
@@ -453,11 +472,11 @@ class CalCOGFrame(Node):
             alpha * filtered_acz + (1 - alpha) * filtered_acz2
         ])*9.81   # Convert to m/s²
         self.quaternion
-        self.quaternion  = self.madgwick_filter.updateIMU(q=self.quaternion,gyr=gyroscope_data_filtered, acc=accelerometer_data_filtered)
+        #self.quaternion  = self.madgwick_filter.updateIMU(q=self.quaternion,gyr=gyroscope_data_filtered, acc=accelerometer_data_filtered)
 
        
-        roll, pitch, yaw = self.quaternion_to_euler_angles(self.quaternion)  # in rads
-
+        #roll, pitch, yaw = self.quaternion_to_euler_angles(self.quaternion)  # in rads
+        
         
         # Compensate for gravity using the orientation from the Madgwick filter
         # Convert accelerometer readings to m/s² (if not already in m/s²)
@@ -467,8 +486,7 @@ class CalCOGFrame(Node):
         # ACY2 to much failed
         accel_imu1filt = np.array([filtered_acx, filtered_acy, filtered_acz]) 
         accel_imu2filt = np.array([filtered_acx2, filtered_acy, filtered_acz2]) 
-        accel_imu1_comp = self.compensate_gravity_with_quaternion(accel_imu1, self.quaternion)
-        accel_imu2_comp = self.compensate_gravity_with_quaternion(accel_imu2, self.quaternion)
+        
         accel_imu1_comp_filt = self.compensate_gravity_with_quaternion(accel_imu1filt, self.quaternion)
         accel_imu2_comp_filt = self.compensate_gravity_with_quaternion(accel_imu2filt, self.quaternion)
 
@@ -476,16 +494,19 @@ class CalCOGFrame(Node):
         gyro_imu2 = np.array([self.mpu1_data.gx2, self.mpu1_data.gy2, self.mpu1_data.gz2])
         # Fused IMU data (weighted average)
         alpha = 0.6
-        accel_fused = alpha * accel_imu1 + (1 - alpha) * accel_imu2
+        
+        # Fused measurement vector for EKF (acceleration from both IMUs)
+        z_imu1 = accel_imu1_comp_filt
+        z_imu2 = accel_imu2_comp_filt
+        accel_fused = alpha * z_imu1 + (1 - alpha) * z_imu2
         gyro_fused = alpha * gyro_imu1 + (1 - alpha) * gyro_imu2
-
         # Complementary filter for orientation
-        orientation = self.kf.complementary_filter(accel_imu1, accel_imu2, gyro_imu1, gyro_imu2, dt, self.quaternion)
+        orientation = self.kf.complementary_filter(z_imu1, z_imu2, gyro_imu1, gyro_imu2, dt, self.prevOrientation )
+        self.prevOrientation = orientation
+        self.quaternion = self.euler_to_quaternion(orientation[0], orientation[1], orientation[2])
 
         # Prediction step in UKF
-        # Fused measurement vector for EKF (acceleration from both IMUs)
-        z_imu1 = accel_imu1filt
-        z_imu2 = accel_imu2filt
+        
         
         # Update the Kalman filter with
         # Prediction step
@@ -493,7 +514,7 @@ class CalCOGFrame(Node):
         # Particle Filter Prediction (for nonlinearities)
         self.pf.predict(accel_fused,orientation)
         # Particle Filter Update
-        measurements = np.hstack((accel_imu1filt, accel_imu2filt, orientation))  # Correct the usage of np.hstack
+        measurements = np.hstack((z_imu1, z_imu2, orientation))  # Correct the usage of np.hstack
         R = np.eye(9) * 0.1  # Measurement noise
         
         self.pf.update(measurements, R)
@@ -510,7 +531,7 @@ class CalCOGFrame(Node):
         self.kf.ukf.update(fused_measurements)
         pos, vel, orient = self.kf.ukf.x[:3], self.kf.ukf.x[3:6], self.kf.ukf.x[6:9]
 
-        self.add_measurement_to_buffers(self.mpu1_data,[roll, pitch, yaw],self.kf.ukf.x)
+        self.add_measurement_to_buffers(self.mpu1_data,orientation,self.kf.ukf.x)
         self.update_measurement_noise()
         self.kf.update_noise_covariances(self.acc_variance, self.acc_variance2, self.gyro_variance, self.state_variance)
 
@@ -520,7 +541,7 @@ class CalCOGFrame(Node):
         # Publish the Kalman filter output
         msg = COGframe()
         msg.pos_x, msg.pos_y, msg.pos_z = float(pos[0]), float(pos[1]), float(pos[2])
-        msg.roll, msg.pitch, msg.yaw = float(roll), float(pitch), float(yaw)
+        msg.roll, msg.pitch, msg.yaw = float(orient[0]), float(orient[1]), float(orient[2])
         self.publishKalmanFrame.publish(msg)
         if ( not self.calibrated ):
             if (accel_imu1[0] < 0.1 and accel_imu1[1] < 0.1 and accel_imu1[2] < 0.1 and accel_imu2[0] < 0.1 and accel_imu2[1] < 0.1 and accel_imu2[2] < 0.1):
@@ -533,7 +554,7 @@ class CalCOGFrame(Node):
 
         
         self.get_logger().info(f"Pos X Y Z (meter): {float(pos[0])}, {float(pos[1])}, {float(pos[2])}")
-        self.get_logger().info(f"Roll pitch yaw rad: {float(roll)}, {float(pitch)}, {float(yaw)}")
+        self.get_logger().info(f"Roll pitch yaw rad: {float(orient[0])}, {float(orient[1])}, {float(orient[2])}")
 
         
 def main(args=None):

@@ -25,6 +25,7 @@ class ParticleFilter:
         # Particle state: [pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, roll, pitch, yaw]
         self.particles = np.random.uniform(low=-1, high=1, size=(N, 9))
         self.weights = np.ones(N) / N
+        self.complementary_alpha = 0.98  # Giving more weight to gyroscope data
 
     def predict(self, acceleration, angular_displacement):
         """
@@ -76,6 +77,7 @@ class ParticleFilter:
         :return: array of estimated state (9,) [pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, roll, pitch, yaw]
         """
         return np.average(self.particles, weights=self.weights, axis=0)
+    
 
     @staticmethod
     def systematic_resample(weights):
@@ -97,7 +99,39 @@ class ParticleFilter:
                 j += 1
         return indices
 
+    def complementary_filter(self, accel1, accel2, gyro1, gyro2, dt, prev_orientation):
+        """
+        Implements a complementary filter for two MPUs to fuse accelerometer and gyroscope data.
+        :param accel1: Accelerometer data from MPU1 [acc_x1, acc_y1, acc_z1]
+        :param accel2: Accelerometer data from MPU2 [acc_x2, acc_y2, acc_z2]
+        :param gyro1: Gyroscope data from MPU1 [gyro_x1, gyro_y1, gyro_z1]
+        :param gyro2: Gyroscope data from MPU2 [gyro_x2, gyro_y2, gyro_z2]
+        :param dt: time step
+        :param prev_orientation: previous orientation [roll, pitch, yaw]
+        :return: fused [roll, pitch, yaw]
+        """
+        # Fuse accelerometer and gyroscope data from both MPUs (e.g., using a weighted average)
+        alpha = 0.5  # Assuming equal weight for both MPUs
 
+        accel_fused = alpha * accel1 + (1 - alpha) * accel2
+        gyro_fused = alpha * gyro1 + (1 - alpha) * gyro2
+
+        # Gyroscope integration for short-term orientation (high-pass)
+        roll_gyro = prev_orientation[0] + gyro_fused[0] * dt
+        pitch_gyro = prev_orientation[1] + gyro_fused[1] * dt
+        yaw_gyro = prev_orientation[2] + gyro_fused[2] * dt
+
+        # Accelerometer for long-term orientation (low-pass)
+        roll_acc = np.arctan2(accel_fused[1], np.sqrt(accel_fused[0] ** 2 + accel_fused[2] ** 2))
+        pitch_acc = np.arctan2(-accel_fused[0], np.sqrt(accel_fused[1] ** 2 + accel_fused[2] ** 2))
+        yaw_acc = prev_orientation[2]  # Cannot determine yaw from accelerometer
+
+        # Complementary filter to combine the two estimates
+        roll = self.complementary_alpha * roll_gyro + (1 - self.complementary_alpha) * roll_acc
+        pitch = self.complementary_alpha * pitch_gyro + (1 - self.complementary_alpha) * pitch_acc
+        yaw = yaw_gyro  # Yaw primarily from gyroscope
+
+        return np.array([roll, pitch, yaw])
 class CalCOGFrame(Node):
 
     def __init__(self):
@@ -151,9 +185,12 @@ class CalCOGFrame(Node):
         self.calibrated = False
 
         self.prev_time = time()
+        self.prevOrientation = np.array([0.0, 0.0, 0.0])
 
     def listener_callback(self, msg):
         self.mpu1_data = msg
+        self.mpu1_data.acy = self.mpu1_data.acy*0.01
+        self.mpu1_data.acy2 = self.mpu1_data.acy2*0.01
         self.process_fusion()
         
     def listener_callback2(self, msg):
@@ -383,6 +420,12 @@ class CalCOGFrame(Node):
         z_imu1 = accel_imu1filt
         z_imu2 = accel_imu2filt
             # Fuse the accelerations (average)
+
+        gyro_imu1 = np.array([self.mpu1_data.gx, self.mpu1_data.gy, self.mpu1_data.gz])
+        gyro_imu2 = np.array([self.mpu1_data.gx2, self.mpu1_data.gy2, self.mpu1_data.gz2])
+
+        orientation = self.kf.complementary_filter(accel_imu1, accel_imu2, gyro_imu1, gyro_imu2, dt, self.prevOrientation )
+        self.prevOrientation = orientation
         acceleration = alpha*z_imu1 + (1-alpha)*z_imu2
         
         # Update step with acceleration (linear velocity) and angular velocity
