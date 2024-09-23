@@ -539,6 +539,7 @@ class CalCOGFrame(Node):
 
         
         roll, pitch, yaw = self.quaternion_to_euler_angles(self.quaternion)  # in rads
+        orientation = np.array([roll, pitch, yaw])
         # Compensate for gravity using the orientation from the Madgwick filter
         # Convert accelerometer readings to m/s² (if not already in m/s²)
         
@@ -553,8 +554,8 @@ class CalCOGFrame(Node):
         accel_imu1_comp_filt = self.compensate_gravity_with_quaternion(accel_imu1filt, self.quaternion)
         accel_imu2_comp_filt = self.compensate_gravity_with_quaternion(accel_imu2filt, self.quaternion)
         # Fused measurement vector for EKF (acceleration from both IMUs)
-        orientation = self.kf.complementary_filter(accel_imu1, accel_imu2, gyro_imu1, gyro_imu2, dt, self.prevOrientation )
-        self.prevOrientation = orientation
+        #orientation = self.kf.complementary_filter(accel_imu1, accel_imu2, gyro_imu1, gyro_imu2, dt, self.prevOrientation )
+        #self.prevOrientation = orientation
         z_imu1 = accel_imu1_comp_filt
         z_imu2 = accel_imu2_comp_filt
             # Fuse the accelerations (average)

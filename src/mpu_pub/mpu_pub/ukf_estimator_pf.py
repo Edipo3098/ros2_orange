@@ -472,11 +472,11 @@ class CalCOGFrame(Node):
             alpha * filtered_acz + (1 - alpha) * filtered_acz2
         ])*9.81   # Convert to m/s²
         self.quaternion
-        #self.quaternion  = self.madgwick_filter.updateIMU(q=self.quaternion,gyr=gyroscope_data_filtered, acc=accelerometer_data_filtered)
+        self.quaternion  = self.madgwick_filter.updateIMU(q=self.quaternion,gyr=gyroscope_data_filtered, acc=accelerometer_data_filtered)
 
        
-        #roll, pitch, yaw = self.quaternion_to_euler_angles(self.quaternion)  # in rads
-        
+        roll, pitch, yaw = self.quaternion_to_euler_angles(self.quaternion)  # in rads
+        orientation = np.array([roll, pitch, yaw])
         
         # Compensate for gravity using the orientation from the Madgwick filter
         # Convert accelerometer readings to m/s² (if not already in m/s²)
@@ -501,9 +501,9 @@ class CalCOGFrame(Node):
         accel_fused = alpha * z_imu1 + (1 - alpha) * z_imu2
         gyro_fused = alpha * gyro_imu1 + (1 - alpha) * gyro_imu2
         # Complementary filter for orientation
-        orientation = self.kf.complementary_filter(z_imu1, z_imu2, gyro_imu1, gyro_imu2, dt, self.prevOrientation )
-        self.prevOrientation = orientation
-        self.quaternion = self.euler_to_quaternion(orientation[0], orientation[1], orientation[2])
+        #orientation = self.kf.complementary_filter(z_imu1, z_imu2, gyro_imu1, gyro_imu2, dt, self.prevOrientation )
+        #self.prevOrientation = orientation
+        #self.quaternion = self.euler_to_quaternion(orientation[0], orientation[1], orientation[2])
 
         # Prediction step in UKF
         
