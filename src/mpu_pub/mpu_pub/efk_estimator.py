@@ -33,8 +33,8 @@ class IMUFusionEKF:
         self.residuals_window = deque(maxlen=100)  # Store last 100 residuals
         # Process noise covariance matrix (Q)
         self.mul = 1000
-        self.mulR = 1000000
-        self.mulQ = 0.00001
+        self.mulR = 0.001
+        self.mulQ = 0.0001
         self.ekf.Q = np.diag([1e-4, 1e-4, 1e-4, 1e-2, 1e-2, 1e-2, 1e-3, 1e-3, 1e-3])*self.mulR   # Noise for position, velocity, orientation
 
         # Measurement noise covariance matrix (R)
@@ -556,8 +556,8 @@ class CalCOGFrame(Node):
         # Fused measurement vector for EKF (acceleration from both IMUs)
         #orientation = self.kf.complementary_filter(accel_imu1, accel_imu2, gyro_imu1, gyro_imu2, dt, self.prevOrientation )
         #self.prevOrientation = orientation
-        z_imu1 = accel_imu1_comp_filt
-        z_imu2 = accel_imu2_comp_filt
+        z_imu1 = accel_imu1filt
+        z_imu2 = accel_imu1filt
             # Fuse the accelerations (average)
         u_fused = alpha*z_imu1 + (1-alpha)*z_imu2
         
