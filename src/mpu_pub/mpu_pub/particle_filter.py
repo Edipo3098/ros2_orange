@@ -420,23 +420,10 @@ class CalCOGFrame(Node):
         else:
             self.publishKalmanFrame.publish(msg)
 
-        self.get_logger().info(f"MPU 1 raw: {float(accel_imu1_raw[0])}, {float(accel_imu1_raw[1])}, {float(accel_imu1_raw[2])}")
-        self.get_logger().info(f"MPU 2 raw:  {float(accel_imu2_raw[0])}, {float(accel_imu2_raw[1])}, {float(accel_imu2_raw[2])}")
-        self.get_logger().info(f"MPU 1: {float(accel_imu1[0])}, {float(accel_imu1[1])}, {float(accel_imu1[2])}")
-        self.get_logger().info(f"MPU 2:  {float(accel_imu2[0])}, {float(accel_imu2[1])}, {float(accel_imu2[2])}")
-        self.get_logger().info(f"MPU 1 Filtered: {float(accel_imu1filt[0])}, {float(accel_imu1filt[1])},{float(accel_imu1filt[2])}")
-        self.get_logger().info(f"MPU 2 Filtered: {float(accel_imu2filt[0])}, {float(accel_imu2filt[1])},{float(accel_imu2filt[2])}")
-        self.get_logger().info(f"MPU 1  compensate G: {float(accel_imu1_comp[0])}, {float(accel_imu1_comp[1])}, {float(accel_imu1_comp[2])}")
-        self.get_logger().info(f"MPU 2  compensate G: {float(accel_imu2_comp[0])}, {float(accel_imu2_comp[1])}, {float(accel_imu2_comp[2])}")
-        self.get_logger().info(f"G: {float(accel_imu1_comp_filt[0])}, {float(accel_imu1_comp_filt[1])}, {float(accel_imu1_comp_filt[2])}")
-        self.get_logger().info(f"MPU 2  compensate G filt: {float(accel_imu2_comp_filt[0])}, {float(accel_imu2_comp_filt[1])}, {float(accel_imu2_comp_filt[2])}")
         self.get_logger().info(f"Pos X Y Z (meter): {float(pos[0])}, {float(pos[1])}, {float(pos[2])}")
-
-
-        self.get_logger().info(f"GIRO 1 raw: {float(gyroscope_data[0])}, {float(gyroscope_data[1])}, {float(gyroscope_data[2])}")
-        self.get_logger().info(f"GIRO 1 FILTER:  {float(gyroscope_data_filtered[0])}, {float(gyroscope_data_filtered[1])}, {float(gyroscope_data_filtered[2])}")
-        self.get_logger().info(f"Roll pitch yaw rad: {float(roll)}, {float(pitch)}, {float(yaw)}")
-
+        self.get_logger().info(f"Roll pitch yaw madwick: {float(roll)}, {float(pitch)}, {float(yaw)}")
+        self.get_logger().info(f"Roll pitch yaw  kalman: {float(orient[0])}, {float(orient[1])}, {float(orient[2])}")
+        
         """
         self.get_logger().info(f"MPU 1 Filtered: {float(filtered_acx)}, {float(filtered_acy)},{float(filtered_acz)}")
         self.get_logger().info(f"MPU 2 Filtered: {float(filtered_acx2)}, {float(filtered_acy2)},{float(filtered_acz2)}")

@@ -545,9 +545,10 @@ class CalCOGFrame(Node):
         else:
             self.publishKalmanFrame.publish(msg)
 
-        self.get_logger().info(f"MPU 1 raw: {float(accel_imu1_raw[0])}, {float(accel_imu1_raw[1])}, {float(accel_imu1_raw[2])}")
-        self.get_logger().info(f"MPU 2 raw:  {float(accel_imu2_raw[0])}, {float(accel_imu2_raw[1])}, {float(accel_imu2_raw[2])}")
-        self.get_logger().info(f"Pos X Y Z: {float(pos[0])}, {float(pos[1])}, {float(pos[2])}")
+     
+        self.get_logger().info(f"Pos X Y Z (meter): {float(pos[0])}, {float(pos[1])}, {float(pos[2])}")
+        self.get_logger().info(f"Roll pitch yaw madwick: {float(roll)}, {float(pitch)}, {float(yaw)}")
+        self.get_logger().info(f"Roll pitch yaw  kalman: {float(orient[0])}, {float(orient[1])}, {float(orient[2])}")
 
         """
         self.get_logger().info(f"MPU 1 Filtered: {float(filtered_acx)}, {float(filtered_acy)},{float(filtered_acz)}")
