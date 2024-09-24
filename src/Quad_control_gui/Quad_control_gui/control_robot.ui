@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>RobotControl</class>
+ <widget class="QStackedWidget" name="RobotControl">
+  <property name="windowTitle">
+   <string>StackedWidget</string>
+  </property>
+  <property name="currentIndex">
+   <number>2</number>
+  </property>
+  <widget class="QWidget" name="controlBasic">
+   <widget class="QComboBox" name="changeRobot">
+    <property name="geometry">
+     <rect>
+      <x>60</x>
+      <y>70</y>
+      <width>101</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <item>
+     <property name="text">
+      <string>ARM</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>Quad</string>
+     </property>
+    </item>
+   </widget>
+   <widget class="QPushButton" name="setCero">
+    <property name="geometry">
+     <rect>
+      <x>50</x>
+      <y>320</y>
+      <width>111</width>
+      <height>71</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>0º</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="setMinus10">
+    <property name="geometry">
+     <rect>
+      <x>260</x>
+      <y>320</y>
+      <width>111</width>
+      <height>71</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>-10º</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="setPLus10">
+    <property name="geometry">
+     <rect>
+      <x>450</x>
+      <y>320</y>
+      <width>111</width>
+      <height>71</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>+10º</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="setMax">
+    <property name="geometry">
+     <rect>
+      <x>640</x>
+      <y>320</y>
+      <width>111</width>
+      <height>71</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>180º</string>
+    </property>
+   </widget>
+   <widget class="QComboBox" name="jointArm">
+    <property name="geometry">
+     <rect>
+      <x>260</x>
+      <y>70</y>
+      <width>101</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <item>
+     <property name="text">
+      <string>Joint 0</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>Joint 1</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>Joint 2</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>Joint 3</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>Joint 4</string>
+     </property>
+    </item>
+   </widget>
+   <widget class="QComboBox" name="jointLegFR">
+    <property name="geometry">
+     <rect>
+      <x>430</x>
+      <y>70</y>
+      <width>101</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <item>
+     <property name="text">
+      <string>Joint Hip 0</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>Joint Knee 1</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>Joint  Anckle 2</string>
+     </property>
+    </item>
+   </widget>
+   <widget class="QComboBox" name="jointLegBR">
+    <property name="geometry">
+     <rect>
+      <x>430</x>
+      <y>110</y>
+      <width>101</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <item>
+     <property name="text">
+      <string>Joint Hip 0</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>Joint Knee 1</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>Joint  Anckle 2</string>
+     </property>
+    </item>
+   </widget>
+   <widget class="QComboBox" name="jointLegFL">
+    <property name="geometry">
+     <rect>
+      <x>430</x>
+      <y>150</y>
+      <width>101</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <item>
+     <property name="text">
+      <string>Joint Hip 0</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>Joint Knee 1</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>Joint  Anckle 2</string>
+     </property>
+    </item>
+   </widget>
+   <widget class="QComboBox" name="jointLegBL">
+    <property name="geometry">
+     <rect>
+      <x>430</x>
+      <y>190</y>
+      <width>101</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <item>
+     <property name="text">
+      <string>Joint Hip 0</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>Joint Knee 1</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>Joint  Anckle 2</string>
+     </property>
+    </item>
+   </widget>
+   <widget class="QLabel" name="label">
+    <property name="geometry">
+     <rect>
+      <x>40</x>
+      <y>260</y>
+      <width>701</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Move Joints</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="nextPage">
+    <property name="geometry">
+     <rect>
+      <x>640</x>
+      <y>410</y>
+      <width>111</width>
+      <height>71</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Next Page</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="prevPage2">
+    <property name="geometry">
+     <rect>
+      <x>40</x>
+      <y>410</y>
+      <width>111</width>
+      <height>71</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Previous Page</string>
+    </property>
+   </widget>
+  </widget>
+  <widget class="QWidget" name="controlQuad">
+   <widget class="QCheckBox" name="checkBox">
+    <property name="geometry">
+     <rect>
+      <x>710</x>
+      <y>270</y>
+      <width>92</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>CheckBox</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="prevButtom2">
+    <property name="geometry">
+     <rect>
+      <x>40</x>
+      <y>410</y>
+      <width>111</width>
+      <height>71</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Previous Page</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="nextPage2">
+    <property name="geometry">
+     <rect>
+      <x>640</x>
+      <y>410</y>
+      <width>111</width>
+      <height>71</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Next Page</string>
+    </property>
+   </widget>
+  </widget>
+  <widget class="QWidget" name="controlArm">
+   <widget class="QPushButton" name="prevButtom3">
+    <property name="geometry">
+     <rect>
+      <x>40</x>
+      <y>410</y>
+      <width>111</width>
+      <height>71</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Previous Page</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="nextPage3">
+    <property name="geometry">
+     <rect>
+      <x>640</x>
+      <y>410</y>
+      <width>111</width>
+      <height>71</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Next Page</string>
+    </property>
+   </widget>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

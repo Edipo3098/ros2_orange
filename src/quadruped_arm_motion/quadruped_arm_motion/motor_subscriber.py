@@ -33,34 +33,26 @@ class MinimalSubscriber(Node):
         msg_command = Command()
         msg_command.ready = True
         self.publishers_.publish(msg_command)
+        self.isARM  = False
         self.get_logger().info('Publish true')
         
   
     def listener_callback(self, msg):
         
         self.get_logger().info('SOMETHING HERE')
-        if msg.message == "m1":
+        if msg.robot == "ARM":
             self.get_logger().info('is publishing ARM')
-            self.get_logger().info('Z0 "%s"' % msg.armz0)
-            self.get_logger().info('Z1 "%s"' % msg.armz1)
-            self.get_logger().info('Z2 "%s"' % msg.armz2)
-            self.get_logger().info('Z3 "%s"' % msg.armz3)
-            self.get_logger().info('Z4 "%s"' % msg.armz4)
-            self.get_logger().info('Gripper "%s"' % msg.gripper)
+            self.get_logger().info('Joint "%s"' % msg.joint)
+            self.get_logger().info('Z0 "%s"' % msg.angle)
+            self.isARM = True
+            
         else:
             self.get_logger().info('is publishing QUAD')
-            self.get_logger().info('P0 Z0 "%s"' % msg.p0z0)
-            self.get_logger().info('P0 Z1 "%s"' % msg.p0z1)
-            self.get_logger().info('P0 Z2 "%s"' % msg.p0z2)
-            self.get_logger().info('P1 Z0 "%s"' % msg.p1z0)
-            self.get_logger().info('P1 Z1 "%s"' % msg.p1z1)
-            self.get_logger().info('P1 Z2 "%s"' % msg.p1z2)
-            self.get_logger().info('P2 Z0 "%s"' % msg.p2z0)
-            self.get_logger().info('P2 Z1 "%s"' % msg.p2z1)
-            self.get_logger().info('P2 Z2 "%s"' % msg.p2z2)
-            self.get_logger().info('P3 Z0 "%s"' % msg.p3z0)
-            self.get_logger().info('P3 Z1 "%s"' % msg.p3z1)
-            self.get_logger().info('P3 Z2 "%s"' % msg.p3z2)            
+            self.get_logger().info('Leg "%s"' % msg.leg)
+            self.get_logger().info('Joint "%s"' % msg.joint)
+            self.get_logger().info('P0 Z0 "%s"' % msg.angle)
+            self.isARM = False
+                
 
         #time.sleep(5)
         msg_command = Command()
@@ -80,71 +72,36 @@ class MinimalSubscriber(Node):
             # Send data over the serial connection
             
             
-            if ( msg.message == "m1"):
-                data_to_send = "m1"
-                ser.write(data_to_send.encode())  # Encode string as bytes before sending
+            if ( self.isARM):
+                
+                ser.write(str(msg.robot).encode())
                 ser.write(B"\n")
                 time.sleep(0.5)
-                ser.write(str(msg.armz0).encode())
+                ser.write(str(msg.joint).encode())
                 ser.write(B"\n")
                 time.sleep(0.5)
-                ser.write(str(msg.armz1).encode())
-                ser.write(B"\n")
-                time.sleep(0.5)
-                ser.write(str(msg.armz2).encode())
-                ser.write(B"\n")
-                time.sleep(0.5)
-                ser.write(str(msg.armz3).encode())
-                ser.write(B"\n")
-                time.sleep(0.5)
-                ser.write(str(msg.armz4).encode())
+                ser.write(str(msg.angle).encode())
                 ser.write(B"\n")
                 time.sleep(0.5)
                 ser.write(str(2).encode())
                 ser.write(B"\n")
                 time.sleep(0.5)
             else:
-                data_to_send = "m2"
-                ser.write(data_to_send.encode())  # Encode string as bytes before sending
+                ser.write(str(msg.robot).encode())
                 ser.write(B"\n")
                 time.sleep(0.5)
-                ser.write(str(msg.p0z0).encode())
+                ser.write(str(msg.leg).encode())
                 ser.write(B"\n")
                 time.sleep(0.5)
-                ser.write(str(msg.p0z1).encode())
+                ser.write(str(msg.joint).encode())
                 ser.write(B"\n")
                 time.sleep(0.5)
-                ser.write(str(msg.p0z2).encode())
-                ser.write(B"\n")
-                time.sleep(0.5)
-                ser.write(str(msg.p1z0).encode())
-                ser.write(B"\n")
-                time.sleep(0.5)
-                ser.write(str(msg.p1z1).encode())
-                ser.write(B"\n")
-                time.sleep(0.5)
-                ser.write(str(msg.p1z2).encode())
-                ser.write(B"\n")
-                time.sleep(0.5)
-                ser.write(str(msg.p2z0).encode())
-                ser.write(B"\n")
-                time.sleep(0.5)
-                ser.write(str(msg.p2z1).encode())
-                ser.write(B"\n")
-                time.sleep(0.5)
-                ser.write(str(msg.p2z2).encode())
-                ser.write(B"\n")
-                time.sleep(0.5)
-                ser.write(str(msg.p3z0).encode())
-                ser.write(B"\n")
-                time.sleep(0.5)
-                ser.write(str(msg.p3z1).encode())
-                ser.write(B"\n")
-                time.sleep(0.5)
-                ser.write(str(msg.p3z2).encode())
+                ser.write(str(msg.angle).encode())
                 ser.write(B"\n")
                 time.sleep(0.5)
                 ser.write(str(2).encode())
+                ser.write(B"\n")
+                time.sleep(0.5)
             # Wait for a moment
             
             # Read response from the serial connection

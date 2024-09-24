@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'control_gui = Quad_control_gui.control_gui:main',  # ROS 2 executable exceutable = package_name + file_name + function_name
+            'control_robot_node = Quad_control_gui.control_robot_node:main',  # ROS 2 executable exceutable = package_name + file_name + function_name
         ],
     },
 )
