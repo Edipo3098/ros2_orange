@@ -61,8 +61,13 @@ MPU_CONFIG = {
 }
 
 # Constants for sensitivity values
-ACCEL_SENSITIVITY = 2  # LSB/g for +/- 2g range
-GYRO_SENSITIVITY = 250  # LSB/dps for +/- 250 dps range
+ACCEL_SENSITIVITY_NORM = 2 
+GYRO_SENSITIVITY_NORM = 250
+
+ACCEL_SENSITIVITY_RAW = 16384
+GYRO_SENSITIVITY_RAW = 131 
+ACCEL_SENSITIVITY = ACCEL_SENSITIVITY_RAW  # LSB/g for +/- 2g range
+GYRO_SENSITIVITY = GYRO_SENSITIVITY_RAW 
 import numpy as np
 from collections import deque
 
@@ -274,6 +279,7 @@ class MinimalPublisher(Node):
             prev_gyro_x, prev_gyro_y, prev_gyro_z = gyro_x_filtered, gyro_y_filtered, gyro_z_filtered
 
             #convert to acceleration in g and gyro dps
+            """
             accel_x = (accel_x_filtered/(2.0**15.0))*ACCEL_SENSITIVITY
             accel_y = (accel_y_filtered/(2.0**15.0))*ACCEL_SENSITIVITY
             accel_z = (accel_z_filtered/(2.0**15.0))*ACCEL_SENSITIVITY
@@ -281,6 +287,16 @@ class MinimalPublisher(Node):
             gyro_x = (gyro_x_filtered/(2.0**15.0))*GYRO_SENSITIVITY
             gyro_y = (gyro_z_filtered/(2.0**15.0))*GYRO_SENSITIVITY
             gyro_z = (gyro_z_filtered/(2.0**15.0))*GYRO_SENSITIVITY
+
+            """
+
+            accel_x = accel_x_filtered/ACCEL_SENSITIVITY
+            accel_y = accel_y_filtered/ACCEL_SENSITIVITY
+            accel_z = accel_z_filtered/ACCEL_SENSITIVITY
+
+            gyro_x = gyro_x_filtered/GYRO_SENSITIVITY
+            gyro_y = gyro_y_filtered/GYRO_SENSITIVITY
+            gyro_z = gyro_z_filtered/GYRO_SENSITIVITY
             
             accel_data.append([accel_x, accel_y, accel_z])
             
@@ -536,13 +552,24 @@ class MinimalPublisher(Node):
         # Convert to correct units
             # Convert to correct units
         #convert to acceleration in g and gyro dps
-        accel_x = (accel_x_filtered/(2.0**15.0))*ACCEL_SENSITIVITY
-        accel_y = (accel_y_filtered/(2.0**15.0))*ACCEL_SENSITIVITY
-        accel_z = (accel_z_filtered/(2.0**15.0))*ACCEL_SENSITIVITY
+        """
+            accel_x = (accel_x_filtered/(2.0**15.0))*ACCEL_SENSITIVITY
+            accel_y = (accel_y_filtered/(2.0**15.0))*ACCEL_SENSITIVITY
+            accel_z = (accel_z_filtered/(2.0**15.0))*ACCEL_SENSITIVITY
 
-        gyro_x = (gyro_x_filtered/(2.0**15.0))*GYRO_SENSITIVITY
-        gyro_y = (gyro_y_filtered/(2.0**15.0))*GYRO_SENSITIVITY
-        gyro_z = (gyro_z_filtered/(2.0**15.0))*GYRO_SENSITIVITY
+            gyro_x = (gyro_x_filtered/(2.0**15.0))*GYRO_SENSITIVITY
+            gyro_y = (gyro_z_filtered/(2.0**15.0))*GYRO_SENSITIVITY
+            gyro_z = (gyro_z_filtered/(2.0**15.0))*GYRO_SENSITIVITY
+
+            """
+
+        accel_x = accel_x_filtered/ACCEL_SENSITIVITY
+        accel_y = accel_y_filtered/ACCEL_SENSITIVITY
+        accel_z = accel_z_filtered/ACCEL_SENSITIVITY
+
+        gyro_x = gyro_x_filtered/GYRO_SENSITIVITY
+        gyro_y = gyro_y_filtered/GYRO_SENSITIVITY
+        gyro_z = gyro_z_filtered/GYRO_SENSITIVITY
         # Apply calibration
         """
         accel_x = (accel_x - calibration_data[calibration_key]["accel"]["offset"][0])    + calibration_data[calibration_key]["accel"]["slope"][0]

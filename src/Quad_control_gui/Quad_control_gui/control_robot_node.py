@@ -232,16 +232,17 @@ class MyWindow(QMainWindow):
         
         
         if self.Robot == ARM:
-            self.ros_node.msg_move.robot = 'ARM'
+            self.ros_node.msg_move.robot = "ARM"
+            self.ros_node.msg_move.leg = "nn"
             if angle - currentAngle <= 0:
                 self.jointArm[self.armJoint] = 0
             elif angle+currentAngle >= 180:
                 self.jointArm[self.armJoint] = 180
             else:
                 self.jointArm[self.armJoint] = angle+currentAngle
-            self.ros_node.msg_move.leg = 'nn'
+            
             self.ros_node.msg_move.joint = self.armJoint
-            self.ros_node.msg_move.leg =  float(self.jointArm[self.armJoint])
+            self.ros_node.msg_move.angle =  float(self.jointArm[self.armJoint])
         elif self.Robot == QUAD:
             self.ros_node.msg_move.robot = 'QUAD'
             if self.leg == FL:
@@ -253,7 +254,7 @@ class MyWindow(QMainWindow):
                 else:
                     self.LegFL[self.legJoint] = angle + currentAngle
                 
-                self.ros_node.msg_move.leg = 'FL'
+                self.ros_node.msg_move.leg = str("FL")
                 self.ros_node.msg_move.joint = self.legJoint
                 self.ros_node.msg_move.leg =  float(self.LegFL[self.legJoint])
             elif self.leg == BL:
@@ -291,9 +292,10 @@ class MyWindow(QMainWindow):
                 self.ros_node.msg_move.joint = self.legJoint
                 self.ros_node.msg_move.leg =  float(self.LegBR[self.legJoint])
 
+        self.publishMessage()
+
     def publishMessage(self):
-        if (self.ros_node.RobotReady):
-            self.ros_node.publishers_.publish(self.msg_move)
+        self.ros_node.publisher.publish(self.ros_node.msg_move)
 
     
 
