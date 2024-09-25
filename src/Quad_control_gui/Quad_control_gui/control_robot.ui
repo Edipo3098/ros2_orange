@@ -2,11 +2,19 @@
 <ui version="4.0">
  <class>RobotControl</class>
  <widget class="QStackedWidget" name="RobotControl">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>812</width>
+    <height>569</height>
+   </rect>
+  </property>
   <property name="windowTitle">
    <string>StackedWidget</string>
   </property>
   <property name="currentIndex">
-   <number>2</number>
+   <number>0</number>
   </property>
   <widget class="QWidget" name="controlBasic">
    <widget class="QComboBox" name="changeRobot">
@@ -257,19 +265,6 @@
    </widget>
   </widget>
   <widget class="QWidget" name="controlQuad">
-   <widget class="QCheckBox" name="checkBox">
-    <property name="geometry">
-     <rect>
-      <x>710</x>
-      <y>270</y>
-      <width>92</width>
-      <height>23</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>CheckBox</string>
-    </property>
-   </widget>
    <widget class="QPushButton" name="prevButtom2">
     <property name="geometry">
      <rect>

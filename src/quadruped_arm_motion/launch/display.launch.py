@@ -16,12 +16,15 @@ def generate_launch_description():
         robot_description_content = infp.read()
 
     return LaunchDescription([
+        
         Node(
-            package='joint_state_publisher',
-            executable='joint_state_publisher',
-            name='joint_state_publisher',
+            package='Quad_control_gui',
+            executable='control_robot_node',
+            name='control_robot_node',
             output='screen',
+            
         ),
+
         Node(
             package='robot_state_publisher',
             executable='robot_state_publisher',
@@ -49,4 +52,6 @@ def generate_launch_description():
             name='rviz2',
             output='screen',
         ),
+
+        
     ])

@@ -28,13 +28,17 @@ class MinimalSubscriber(Node):
         self.subscription = self.create_subscription(Anglemotor, 'motor_angles', self.listener_callback, 10)
         self.subscription  # prevent unused variable warning
         self.publishers_ = self.create_publisher(Command, 'command_robot', 10)
+        timer_period = 0.5  # seconds
+        self.timer = self.create_timer(timer_period, self.timer_callback)
         #self.checkCommunication_Arduino()
 
-        msg_command = Command()
-        msg_command.ready = True
-        self.publishers_.publish(msg_command)
+        self.msg_command = Command()
+        self.msg_command.ready = True
+        self.publishers_.publish(self.msg_command)
         self.isARM  = False
         self.get_logger().info('Publish true')
+    def timer_callback(self):
+        self.publishers_.publish(self.msg_command)
         
   
     def listener_callback(self, msg):
@@ -55,9 +59,9 @@ class MinimalSubscriber(Node):
                 
 
         #time.sleep(5)
-        msg_command = Command()
-        msg_command.ready = False
-        self.publishers_.publish(msg_command)
+        self.msg_command = Command()
+        self.msg_command.ready = False
+        
 
         
 

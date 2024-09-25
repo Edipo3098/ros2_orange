@@ -7,15 +7,44 @@ from robot_interfaces.msg import Anglemotor
 from robot_interfaces.msg import Command
 from threading import Thread
 from robot_interfaces.msg import Mpu
+from sensor_msgs.msg import JointState
 import sys
 from Quad_control_gui.control_robot import Ui_RobotControl
+from enum import Enum
 ARM = 0
 QUAD = 1
 FL = 0
 FR = 1
 BL = 2
 BR = 3
-
+class Joints(Enum):
+    X_joint = 'X_joint'
+    Y_joint = 'Y_joint'
+    Z_joint = 'Z_joint'
+    Roll_joint = 'Roll_joint'
+    Pitch_joint = 'Pitch_joint'
+    Yaw_joint = 'Yaw_joint'
+    frontLeft_hip_joint = 'frontLeft_hip_joint'
+    frontLeft_hip_motor_joint = 'frontLeft_hip_motor_joint'
+    frontLeft_knee_joint = 'frontLeft_knee_joint'
+    frontLeft_ankle_joint = 'frontLeft_ankle_joint'
+    frontRight_hip_joint = 'frontRight_hip_joint'
+    frontRight_hip_motor_joint = 'frontRight_hip_motor_joint'
+    frontRight_knee_joint = 'frontRight_knee_joint'
+    frontRight_ankle_joint = 'frontRight_ankle_joint'
+    backLeft_hip_joint = 'backLeft_hip_joint'
+    backLeft_hip_motor_joint = 'backLeft_hip_motor_joint'
+    backLeft_knee_joint = 'backLeft_knee_joint'
+    backLeft_ankle_joint = 'backLeft_ankle_joint'
+    backRight_hip_joint = 'backRight_hip_joint'
+    backRight_hip_motor_joint = 'backRight_hip_motor_joint'
+    backRight_knee_joint = 'backRight_knee_joint'
+    backRight_ankle_joint = 'backRight_ankle_joint'
+    articulacion1 = 'articulacion1'
+    articulacion2 = 'articulacion2'
+    articulacion3 = 'articulacion3'
+    articulacion4 = 'articulacion4'
+    articulacion5 = 'articulacion5'
 
 class MyNode(Node):
     def __init__(self):
@@ -26,6 +55,20 @@ class MyNode(Node):
         self.msg_move = Anglemotor()
         self.publisher = self.create_publisher(Anglemotor, 'motor_angles', 10)
         self.subscription = self.create_subscription(Command, 'command_robot', self.listener_callback, 10)
+        self.joint_states_pub = self.create_publisher(JointState,'joint_states',10)
+        self.joint_state_msg = JointState()
+         # List of joint names from your URDF
+        self.joint_state_msg.name = self.joint_state_msg.name = [joint.value for joint in Joints]
+        
+        self.joint_state_msg.position = [float(value) for value in [0, 0, 0, 0, 0, 0, 0, 0, 0.5, -1, 0, 0, 0.5, -1, 0, 0, 0.5, -1, 0, 0, 0.5, -1, 0, 0, 0, 0, 0]]
+
+        # Set the current time for the header
+        self.joint_state_msg.header.stamp = self.get_clock().now().to_msg()
+
+        # Publish the initial joint states
+        
+        self.get_logger().info('Initial joint states published.')
+        self.joint_states_pub.publish(self.joint_state_msg)
         self.RobotReady = False
         
     def listener_callback(self, msg):
@@ -43,6 +86,17 @@ class MyNode(Node):
         msg = String()
         msg.data = message
         self.publisher.publish(msg)
+    def publish_joint_states(self):
+        """
+        Publishes joint states to the /joint_states topic
+        """
+        self.joint_state_msg.header.stamp = self.get_clock().now().to_msg()
+
+        # Here you update the joint states with the actual positions
+        # self.joint_state_msg.position[0] = <your_value>
+
+        # Publish the joint states
+        self.joint_states_pub.publish(self.joint_state_msg)
 
 
 
@@ -85,10 +139,10 @@ class MyWindow(QMainWindow):
         self.ui.setMax.clicked.connect(self.on_set_max_click)
 
         self.jointArm = { 'joint_0':0 , 'joint_1':0 , 'joint_2':0 , 'joint_3':0 , 'joint_4':0  }
-        self.LegFR = { 'joint_0':0 , 'joint_1':0 , 'joint_2':0}
-        self.LegBL = { 'joint_0':0 , 'joint_1':0 , 'joint_2':0}
-        self.LegFL = { 'joint_0':0 , 'joint_1':0 , 'joint_2':0}
-        self.LegBR = { 'joint_0':0 , 'joint_1':0 , 'joint_2':0}
+        self.LegFR = { 'joint_0':0 , 'joint_1':0.5 , 'joint_2':-1}
+        self.LegBL = { 'joint_0':0 , 'joint_1':0.5 , 'joint_2':-1}
+        self.LegFL = { 'joint_0':0 , 'joint_1':0.5 , 'joint_2':-1}
+        self.LegBR = { 'joint_0':0 , 'joint_1':0.5 , 'joint_2':-1}
         # Reference to the ROS2 node for interacting with ROS topics
         self.robotMoving = False
         
@@ -96,6 +150,11 @@ class MyWindow(QMainWindow):
         self.leg = FL
         self.legJoint = 'joint_0'
         self.Robot = ARM
+        self.ui.jointLegBL.setVisible(False)
+        self.ui.jointLegBR.setVisible(False)
+        self.ui.jointLegFL.setVisible(False)
+        self.ui.jointLegFR.setVisible(False)
+        self.ui.jointArm.setVisible(True)
         self.ros_node = ros_node
     def nextPage(self):
         if self.currentIdx < 2:
@@ -114,12 +173,23 @@ class MyWindow(QMainWindow):
         print(f"Changing to page {index}")
         if index == 0:
             self.Robot = ARM
+            self.ui.jointLegBL.setVisible(False)
+            self.ui.jointLegBR.setVisible(False)
+            self.ui.jointLegFL.setVisible(False)
+            self.ui.jointLegFR.setVisible(False)
+            self.ui.jointArm.setVisible(True)
         elif index == 1:
             self.Robot = QUAD
+            self.ui.jointLegBL.setVisible(True)
+            self.ui.jointLegBR.setVisible(True)
+            self.ui.jointLegFL.setVisible(True)
+            self.ui.jointLegFR.setVisible(True)
+            self.ui.jointArm.setVisible(False)
     def change_jointArm(self, index):
         """
         Change joint to move
         """
+        
         print(f"Changing joint {index}")
         match index:
             case 0:
@@ -193,7 +263,7 @@ class MyWindow(QMainWindow):
         This function is called when the '0º' button is clicked. It prints a message to the log.
         """
         angle = 0
-        self.moveRobot(angle)
+        self.moveRobot(angle,True)
         
 
 
@@ -205,8 +275,8 @@ class MyWindow(QMainWindow):
         This function is called when the '-10º' button is clicked. It prints a message to the log.
         """
         print("Set -10º clicked")
-        angle = -10
-        self.moveRobot(angle)
+        angle = -0.3142
+        self.moveRobot(angle,False)
         
 
     def on_plus_10_click(self):
@@ -214,8 +284,8 @@ class MyWindow(QMainWindow):
         This function is called when the '+10º' button is clicked. It prints a message to the log.
         """
         print("Set +10º clicked")
-        angle = 10
-        self.moveRobot(angle)
+        angle = 0.3142
+        self.moveRobot(angle,False)
         
         
 
@@ -224,75 +294,139 @@ class MyWindow(QMainWindow):
         This function is called when the '180º' button is clicked. It prints a message to the log.
         """
         print("Set 180º clicked")
-        angle = 180
-        self.moveRobot(angle)
+        angle = 3.142
+        self.moveRobot(angle,True)
     
-    def moveRobot(self,angle):
+    def moveRobot(self,angle,Force):
         currentAngle = 0
         
         
         if self.Robot == ARM:
             self.ros_node.msg_move.robot = "ARM"
             self.ros_node.msg_move.leg = "nn"
-            if angle - currentAngle <= 0:
-                self.jointArm[self.armJoint] = 0
-            elif angle+currentAngle >= 180:
-                self.jointArm[self.armJoint] = 180
+            currentAngle = self.jointArm[self.armJoint]
+            if not Force:
+                if angle + currentAngle <= 0:
+                    self.jointArm[self.armJoint] = 0
+                elif angle+currentAngle >= 3.142:
+                    self.jointArm[self.armJoint] = 3.142
+                else:
+                    self.jointArm[self.armJoint] = angle+currentAngle
             else:
-                self.jointArm[self.armJoint] = angle+currentAngle
+                self.jointArm[self.armJoint] = angle
             
+            print("Current angle %f",self.jointArm[self.armJoint])
             self.ros_node.msg_move.joint = self.armJoint
             self.ros_node.msg_move.angle =  float(self.jointArm[self.armJoint])
         elif self.Robot == QUAD:
             self.ros_node.msg_move.robot = 'QUAD'
+            
             if self.leg == FL:
-                currentAngle = self.LegFL[self.legJoint] 
-                if angle - currentAngle <= 0:
-                    self.LegFL[self.legJoint] = 0
-                elif angle+currentAngle >= 180:
-                    self.LegFL[self.legJoint] = 180
-                else:
-                    self.LegFL[self.legJoint] = angle + currentAngle
-                
+                if not Force:
+                    currentAngle = self.LegFL[self.legJoint] 
+                    if angle - currentAngle <= 0:
+                        self.LegFL[self.legJoint] = 0
+                    elif angle+currentAngle >= 3.142:
+                        self.LegFL[self.legJoint] = 3.142
+                    else:
+                        self.LegFL[self.legJoint] = angle 
+                else: 
+                    self.LegFL[self.legJoint] = angle                
                 self.ros_node.msg_move.leg = str("FL")
                 self.ros_node.msg_move.joint = self.legJoint
                 self.ros_node.msg_move.leg =  float(self.LegFL[self.legJoint])
             elif self.leg == BL:
-                currentAngle = self.LegBL[self.legJoint] 
-                if angle - currentAngle <= 0:
-                    self.LegBL[self.legJoint] = 0
-                elif angle+currentAngle >= 180:
-                    self.LegBL[self.legJoint] = 180
+                if not Force:
+                    currentAngle = self.LegBL[self.legJoint] 
+                    if angle - currentAngle <= 0:
+                        self.LegBL[self.legJoint] = 0
+                    elif angle+currentAngle >= 3.142:
+                        self.LegBL[self.legJoint] = 3.142
+                    else:
+                        self.LegBL[self.legJoint] = angle + currentAngle
                 else:
-                    self.LegBL[self.legJoint] = angle + currentAngle
+                    self.LegBL[self.legJoint] = angle 
                 self.ros_node.msg_move.leg = 'BL'
                 self.ros_node.msg_move.joint = self.legJoint
                 self.ros_node.msg_move.leg =  float(self.LegBL[self.legJoint])
             elif self.leg == FR:
-                currentAngle = self.LegFR[self.legJoint] 
-                if angle - currentAngle <= 0:
-                    self.LegFR[self.legJoint] = 0
-                elif angle+currentAngle >= 180:
-                    self.LegFR[self.legJoint] = 180
+                if not Force:
+                    currentAngle = self.LegFR[self.legJoint] 
+                    if angle - currentAngle <= 0:
+                        self.LegFR[self.legJoint] = 0
+                    elif angle+currentAngle >= 3.142:
+                        self.LegFR[self.legJoint] = 3.142
+                    else:
+                        self.LegFR[self.legJoint] = angle + currentAngle
                 else:
-                    self.LegFR[self.legJoint] = angle + currentAngle
-
+                    self.LegFR[self.legJoint] = angle
                 self.ros_node.msg_move.leg = 'FR'
                 self.ros_node.msg_move.joint = self.legJoint
                 self.ros_node.msg_move.leg =  float(self.LegFR[self.legJoint])
             elif self.leg == BR:
-                currentAngle = self.LegBR[self.legJoint] 
-                if angle - currentAngle <= 0:
-                    self.LegBR[self.legJoint] = 0
-                elif angle+currentAngle >= 180:
-                    self.LegBR[self.legJoint] = 180
+                if not Force:
+                    currentAngle = self.LegBR[self.legJoint] 
+                    if angle - currentAngle <= 0:
+                        self.LegBR[self.legJoint] = 0
+                    elif angle+currentAngle >= 3.142:
+                        self.LegBR[self.legJoint] = 3.142
+                    else:
+                        self.LegBR[self.legJoint] = angle + currentAngle
                 else:
-                    self.LegBR[self.legJoint] = angle + currentAngle
+                    self.LegBR[self.legJoint] = angle 
+
                 self.ros_node.msg_move.leg = 'BR'
                 self.ros_node.msg_move.joint = self.legJoint
                 self.ros_node.msg_move.leg =  float(self.LegBR[self.legJoint])
 
-        self.publishMessage()
+        self.update_joint_positions()
+    def update_joint_positions(self):
+        # Update the arm joint positions
+        position = [
+            
+            float(0),
+            float(0),
+            float(0) ,                                  
+            float(0),
+            float(0),
+            float(0),
+
+
+            # Leg FL (Front Left)
+            self.LegFL['joint_0'],  # Update 'joint_0' of the FL leg
+            self.LegFL['joint_1'],  # Update 'joint_1' of the FL leg
+            self.LegFL['joint_2'],  # Update 'joint_2' of the FL leg
+            
+            # Leg FR (Front Right)
+            self.LegFR['joint_0'],  # Update 'joint_0' of the FR leg
+            self.LegFR['joint_1'],  # Update 'joint_1' of the FR leg
+            self.LegFR['joint_2'],  # Update 'joint_2' of the FR leg
+            
+            # Leg BL (Back Left)
+            self.LegBL['joint_0'],  # Update 'joint_0' of the BL leg
+            self.LegBL['joint_1'],  # Update 'joint_1' of the BL leg
+            self.LegBL['joint_2'],  # Update 'joint_2' of the BL leg
+            
+            # Leg BR (Back Right)
+            self.LegBR['joint_0'],  # Update 'joint_0' of the BR leg
+            self.LegBR['joint_1'],  # Update 'joint_1' of the BR leg
+            self.LegBR['joint_2'],   # Update 'joint_2' of the BR leg
+
+            self.jointArm['joint_0'],  # Update 'joint_0' of the arm
+            self.jointArm['joint_1'],  # Update 'joint_1' of the arm
+            self.jointArm['joint_2'],  # Update 'joint_2' of the arm
+            self.jointArm['joint_3'],  # Update 'joint_3' of the arm
+            self.jointArm['joint_4']  # Update 'joint_4' of the arm
+        ]
+
+        # Ensure the JointState message header timestamp is updated
+
+        self.ros_node.joint_state_msg.position = [float(value) for value in  position ]
+
+        self.ros_node.joint_state_msg.stamp = self.get_clock().now().to_msg()
+        
+        # Publish the updated joint states
+        self.ros_node.joint_states_pub.publish(self.joint_state_msg)
 
     def publishMessage(self):
         self.ros_node.publisher.publish(self.ros_node.msg_move)
@@ -325,6 +459,8 @@ def main():
     # Run the ROS2 node in a separate thread so that it doesn't block the UI thread
     ros_thread = Thread(target=ros_spin_thread, args=(ros_node,), daemon=True)
     ros_thread.start()
+    # Regularly publish joint states every 100ms
+    timer = ros_node.create_timer(0.1, ros_node.publish_joint_states)
     # Ensure ROS2 shutdown when PyQt application exits
     app.aboutToQuit.connect(lambda: ros_node.destroy_node())
     app.aboutToQuit.connect(lambda: rclpy.shutdown())

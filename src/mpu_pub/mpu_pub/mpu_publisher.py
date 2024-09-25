@@ -290,13 +290,13 @@ class MinimalPublisher(Node):
 
             """
 
-            accel_x = accel_x_filtered/ACCEL_SENSITIVITY
-            accel_y = accel_y_filtered/ACCEL_SENSITIVITY
-            accel_z = accel_z_filtered/ACCEL_SENSITIVITY
+            accel_x = (accel_x_filtered/ACCEL_SENSITIVITY)*2
+            accel_y = (accel_y_filtered/ACCEL_SENSITIVITY)*2
+            accel_z = (accel_z_filtered/ACCEL_SENSITIVITY)*2
 
-            gyro_x = gyro_x_filtered/GYRO_SENSITIVITY
-            gyro_y = gyro_y_filtered/GYRO_SENSITIVITY
-            gyro_z = gyro_z_filtered/GYRO_SENSITIVITY
+            gyro_x = (gyro_x_filtered/GYRO_SENSITIVITY)*250
+            gyro_y = (gyro_y_filtered/GYRO_SENSITIVITY)*250
+            gyro_z = (gyro_z_filtered/GYRO_SENSITIVITY)*250
             
             accel_data.append([accel_x, accel_y, accel_z])
             
@@ -563,13 +563,13 @@ class MinimalPublisher(Node):
 
             """
 
-        accel_x = accel_x_filtered/ACCEL_SENSITIVITY
-        accel_y = accel_y_filtered/ACCEL_SENSITIVITY
-        accel_z = accel_z_filtered/ACCEL_SENSITIVITY
+        accel_x = (accel_x_filtered/ACCEL_SENSITIVITY)*2
+        accel_y = (accel_y_filtered/ACCEL_SENSITIVITY)*2
+        accel_z = (accel_z_filtered/ACCEL_SENSITIVITY)*2
 
-        gyro_x = gyro_x_filtered/GYRO_SENSITIVITY
-        gyro_y = gyro_y_filtered/GYRO_SENSITIVITY
-        gyro_z = gyro_z_filtered/GYRO_SENSITIVITY
+        gyro_x = (gyro_x_filtered/GYRO_SENSITIVITY)*250
+        gyro_y = (gyro_y_filtered/GYRO_SENSITIVITY)*250
+        gyro_z = (gyro_z_filtered/GYRO_SENSITIVITY)*250
         # Apply calibration
         """
         accel_x = (accel_x - calibration_data[calibration_key]["accel"]["offset"][0])    + calibration_data[calibration_key]["accel"]["slope"][0]
