@@ -1,22 +1,37 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QStackedWidget
+from threading import Thread
+from enum import Enum
+
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QStackedWidget,QVBoxLayout
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+from matplotlib.patches import Circle
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor
+from PyQt5.QtCore import QTimer
+
+
 import rclpy
 from rclpy.node import Node
+
+
+from Quad_control_gui.control_robot import Ui_RobotControl
+from tf2_ros import TransformListener, Buffer
+
+from geometry_msgs.msg import TransformStamped
 from std_msgs.msg import String
 from robot_interfaces.msg import Anglemotor
 from robot_interfaces.msg import Command
-from threading import Thread
 from robot_interfaces.msg import Mpu
 from sensor_msgs.msg import JointState
-import sys
-from Quad_control_gui.control_robot import Ui_RobotControl
-from enum import Enum
+
 ARM = 0
 QUAD = 1
+
 FL = 0
 FR = 1
-BL = 2
-BR = 3
+BR = 2
+BL = 3
 class Joints(Enum):
     X_joint = 'X_joint'
     Y_joint = 'Y_joint'
@@ -32,14 +47,14 @@ class Joints(Enum):
     frontRight_hip_motor_joint = 'frontRight_hip_motor_joint'
     frontRight_knee_joint = 'frontRight_knee_joint'
     frontRight_ankle_joint = 'frontRight_ankle_joint'
-    backLeft_hip_joint = 'backLeft_hip_joint'
-    backLeft_hip_motor_joint = 'backLeft_hip_motor_joint'
-    backLeft_knee_joint = 'backLeft_knee_joint'
-    backLeft_ankle_joint = 'backLeft_ankle_joint'
     backRight_hip_joint = 'backRight_hip_joint'
     backRight_hip_motor_joint = 'backRight_hip_motor_joint'
     backRight_knee_joint = 'backRight_knee_joint'
     backRight_ankle_joint = 'backRight_ankle_joint'
+    backLeft_hip_joint = 'backLeft_hip_joint'
+    backLeft_hip_motor_joint = 'backLeft_hip_motor_joint'
+    backLeft_knee_joint = 'backLeft_knee_joint'
+    backLeft_ankle_joint = 'backLeft_ankle_joint'
     articulacion1 = 'articulacion1'
     articulacion2 = 'articulacion2'
     articulacion3 = 'articulacion3'
@@ -56,11 +71,18 @@ class MyNode(Node):
         self.publisher = self.create_publisher(Anglemotor, 'motor_angles', 10)
         self.subscription = self.create_subscription(Command, 'command_robot', self.listener_callback, 10)
         self.joint_states_pub = self.create_publisher(JointState,'joint_states',10)
+
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
+
+        # Timer to periodically check the transform
+        self.timer_footPose = self.create_timer(0.1, self.timer_foot_callback)
+
         self.joint_state_msg = JointState()
          # List of joint names from your URDF
         self.joint_state_msg.name = self.joint_state_msg.name = [joint.value for joint in Joints]
         
-        self.joint_state_msg.position = [float(value) for value in [0, 0, 0, 0, 0, 0, 0, 0, 0.5, -1, 0, 0, 0.5, -1, 0, 0, 0.5, -1, 0, 0, 0.5, -1, 0, 0, 0, 0, 0]]
+        self.joint_state_msg.position = [float(value) for value in [0, 0, 0, 0, 0, 0, 0, 0, 0.6, -1.7, 0, 0, 0.6, -1.7, 0, 0, 0.6, -1.7, 0, 0, 0.6, -1.7, 0, 0, 0, 0, 0]]
 
         # Set the current time for the header
         self.joint_state_msg.header.stamp = self.get_clock().now().to_msg()
@@ -70,6 +92,50 @@ class MyNode(Node):
         self.get_logger().info('Initial joint states published.')
         self.joint_states_pub.publish(self.joint_state_msg)
         self.RobotReady = False
+        self.footPose = [[0,0],[0,0],[0,0],[0,0]]
+        self.cogPose = [0,0]
+    def timer_foot_callback(self):
+        foot= ['frontLeft_foot','frontRight_foot','backRight_foot','backLeft_foot'] 
+        x = 0
+        for i in foot:
+            
+            try:
+                
+                # Look for the transform from the world frame to the end effector
+                now = rclpy.time.Time()
+                transform = self.tf_buffer.lookup_transform('odom', i, now)
+                
+                # Extract the translation (position) and rotation (orientation)
+                trans = transform.transform.translation
+                rot = transform.transform.rotation  
+                
+                # Print the position and orientation of the end effector
+                self.get_logger().info(f"{i}: x={trans.x}, y={trans.y}, z={trans.z}")
+                
+                self.footPose[x] = [trans.x ,trans.y]
+               
+
+                x +=1
+            
+            except Exception as e:
+                self.get_logger().warn(f"Could not get transform: {str(e)}")
+         
+            # Look for the transform from the world frame to the end effector
+            try:
+                now = rclpy.time.Time()
+                transform = self.tf_buffer.lookup_transform('odom', 'Yaw_body', now)
+                
+                # Extract the translation (position) and rotation (orientation)
+                trans = transform.transform.translation
+                rot = transform.transform.rotation  
+                
+                # Print the position and orientation of the end effector
+                self.get_logger().info(f"{i}: x={trans.x}, y={trans.y}, z={trans.z}")
+                
+                self.cogPose = [trans.x ,trans.y]
+            except Exception as e:
+                self.get_logger().warn(f"Could not get transform: {str(e)}")
+
         
     def listener_callback(self, msg):
         """
@@ -98,7 +164,51 @@ class MyNode(Node):
         # Publish the joint states
         self.joint_states_pub.publish(self.joint_state_msg)
 
+class MyMplCanvas(FigureCanvas):
+    """A Matplotlib canvas that can be embedded into a PyQt5 application."""
+    def __init__(self, parent=None, width=5, height=4, dpi=100):
+        fig = Figure(figsize=(width, height), dpi=dpi)
+        self.axes = fig.add_subplot(111)  # Create a single subplot
+        super(MyMplCanvas, self).__init__(fig)
 
+    def plot_circles(self,footPose,cogPose,quadMoving,legMoving):
+        """Plot five circles at specified positions."""
+        # Define circle centers
+        centers = footPose
+        cogCenter = cogPose
+        radius = 0.05  # Circle radius
+
+        # Clear the axes
+        self.axes.clear()
+        self.axes.cla()
+        
+       # Plot each circle using matplotlib's Circle patch
+        for [x0, y0] in centers:
+            circle = Circle((x0, y0), radius, color='blue', fill=False)  # Create a circle using Circle from patches
+            self.axes.add_patch(circle)
+        # If there are multiple centers, connect them with a line
+        circle = Circle((cogCenter[0], cogCenter[1]), radius, color='red', fill=True)  # Create a circle using Circle from patches
+        self.axes.add_patch(circle)
+            
+        if quadMoving:
+            centers.pop(legMoving)
+            
+        x_coords = [center[0] for center in centers]
+        y_coords = [center[1] for center in centers]
+
+        x_coords.append(x_coords[0])
+        y_coords.append(y_coords[0])
+            # Plot the line connecting the centers
+        self.axes.plot(x_coords, y_coords, color='red', linestyle='-', linewidth=2)
+
+
+        # Set axis limits and aspect ratio
+        self.axes.set_xlim(-1, 2)
+        self.axes.set_ylim(-1, 2)
+        self.axes.set_aspect('equal')
+
+        # Re-draw the plot
+        self.draw()
 
 class MyWindow(QMainWindow):
     def __init__(self, ros_node):
@@ -117,6 +227,8 @@ class MyWindow(QMainWindow):
         self.stacked_widget.setCurrentIndex(0)
         self.ui.controlBasic.setVisible(True)
         self.stacked_widget.update()
+         # Embed the Matplotlib plot in the controlQuad page (index 1 of the QStackedWidget)
+       
         
         # Connect comboBox to switch pages in the stacked widget
         self.ui.changeRobot.currentIndexChanged.connect(self.change_robot)
@@ -139,10 +251,10 @@ class MyWindow(QMainWindow):
         self.ui.setMax.clicked.connect(self.on_set_max_click)
 
         self.jointArm = { 'joint_0':0 , 'joint_1':0 , 'joint_2':0 , 'joint_3':0 , 'joint_4':0  }
-        self.LegFR = { 'joint_0':0 , 'joint_1':0.5 , 'joint_2':-1}
-        self.LegBL = { 'joint_0':0 , 'joint_1':0.5 , 'joint_2':-1}
-        self.LegFL = { 'joint_0':0 , 'joint_1':0.5 , 'joint_2':-1}
-        self.LegBR = { 'joint_0':0 , 'joint_1':0.5 , 'joint_2':-1}
+        self.LegFR = { 'joint_0':0 , 'joint_1':0.6 , 'joint_2':-1.7}
+        self.LegBL = { 'joint_0':0 , 'joint_1':0.6 , 'joint_2':-1.7}
+        self.LegFL = { 'joint_0':0 , 'joint_1':0.6 , 'joint_2':-1.7}
+        self.LegBR = { 'joint_0':0 , 'joint_1':0.6 , 'joint_2':-1.7}
         # Reference to the ROS2 node for interacting with ROS topics
         self.robotMoving = False
         
@@ -156,6 +268,27 @@ class MyWindow(QMainWindow):
         self.ui.jointLegFR.setVisible(False)
         self.ui.jointArm.setVisible(True)
         self.ros_node = ros_node
+
+
+        self.plot_canvas = MyMplCanvas(self, width=5, height=4, dpi=100)
+
+        # Find the layout of the plotFoot widget (the placeholder in your UI on controlQuad)
+        layout = QVBoxLayout(self.ui.plotFoot)  # plotFoot is in the controlQuad page
+        layout.addWidget(self.plot_canvas)      # Add the matplotlib canvas to the layout
+        # QTimer to periodically update the plot
+        self.plot_timer = QTimer(self)
+        self.plot_timer.timeout.connect(self.plotFoots)
+        self.plot_timer.start(100)  # Refresh plot every 100ms
+        
+        # Plot the circles on the canvas
+        
+    def plotFoots(self):
+        footPose = self.ros_node.footPose
+        cogPose = self.ros_node.cogPose
+        quadMoving = self.robotMoving
+        legMoving = self.leg
+        self.plot_canvas.plot_circles(footPose[:],cogPose,quadMoving,legMoving)
+
     def nextPage(self):
         if self.currentIdx < 2:
             self.currentIdx +=1
@@ -299,7 +432,7 @@ class MyWindow(QMainWindow):
     
     def moveRobot(self,angle,Force):
         currentAngle = 0
-        
+        self.robotMoving = not self.robotMoving
         
         if self.Robot == ARM:
             self.ros_node.msg_move.robot = "ARM"
@@ -324,21 +457,21 @@ class MyWindow(QMainWindow):
             if self.leg == FL:
                 if not Force:
                     currentAngle = self.LegFL[self.legJoint] 
-                    if angle - currentAngle <= 0:
+                    if angle + currentAngle <= -3.142:
                         self.LegFL[self.legJoint] = 0
                     elif angle+currentAngle >= 3.142:
                         self.LegFL[self.legJoint] = 3.142
                     else:
-                        self.LegFL[self.legJoint] = angle 
+                        self.LegFL[self.legJoint] = angle +currentAngle
                 else: 
                     self.LegFL[self.legJoint] = angle                
                 self.ros_node.msg_move.leg = str("FL")
                 self.ros_node.msg_move.joint = self.legJoint
-                self.ros_node.msg_move.leg =  float(self.LegFL[self.legJoint])
+                self.ros_node.msg_move.angle =  float(self.LegFL[self.legJoint])
             elif self.leg == BL:
                 if not Force:
                     currentAngle = self.LegBL[self.legJoint] 
-                    if angle - currentAngle <= 0:
+                    if angle + currentAngle <= -3.142:
                         self.LegBL[self.legJoint] = 0
                     elif angle+currentAngle >= 3.142:
                         self.LegBL[self.legJoint] = 3.142
@@ -348,11 +481,11 @@ class MyWindow(QMainWindow):
                     self.LegBL[self.legJoint] = angle 
                 self.ros_node.msg_move.leg = 'BL'
                 self.ros_node.msg_move.joint = self.legJoint
-                self.ros_node.msg_move.leg =  float(self.LegBL[self.legJoint])
+                self.ros_node.msg_move.angle =  float(self.LegBL[self.legJoint])
             elif self.leg == FR:
                 if not Force:
                     currentAngle = self.LegFR[self.legJoint] 
-                    if angle - currentAngle <= 0:
+                    if angle + currentAngle <= -3.142:
                         self.LegFR[self.legJoint] = 0
                     elif angle+currentAngle >= 3.142:
                         self.LegFR[self.legJoint] = 3.142
@@ -362,11 +495,11 @@ class MyWindow(QMainWindow):
                     self.LegFR[self.legJoint] = angle
                 self.ros_node.msg_move.leg = 'FR'
                 self.ros_node.msg_move.joint = self.legJoint
-                self.ros_node.msg_move.leg =  float(self.LegFR[self.legJoint])
+                self.ros_node.msg_move.angle =  float(self.LegFR[self.legJoint])
             elif self.leg == BR:
                 if not Force:
                     currentAngle = self.LegBR[self.legJoint] 
-                    if angle - currentAngle <= 0:
+                    if angle + currentAngle <= -3.142:
                         self.LegBR[self.legJoint] = 0
                     elif angle+currentAngle >= 3.142:
                         self.LegBR[self.legJoint] = 3.142
@@ -377,7 +510,7 @@ class MyWindow(QMainWindow):
 
                 self.ros_node.msg_move.leg = 'BR'
                 self.ros_node.msg_move.joint = self.legJoint
-                self.ros_node.msg_move.leg =  float(self.LegBR[self.legJoint])
+                self.ros_node.msg_move.angle =  float(self.LegBR[self.legJoint])
 
         self.update_joint_positions()
     def update_joint_positions(self):
@@ -393,24 +526,28 @@ class MyWindow(QMainWindow):
 
 
             # Leg FL (Front Left)
+            float(0),
             self.LegFL['joint_0'],  # Update 'joint_0' of the FL leg
             self.LegFL['joint_1'],  # Update 'joint_1' of the FL leg
             self.LegFL['joint_2'],  # Update 'joint_2' of the FL leg
             
             # Leg FR (Front Right)
+            float(0),
             self.LegFR['joint_0'],  # Update 'joint_0' of the FR leg
             self.LegFR['joint_1'],  # Update 'joint_1' of the FR leg
             self.LegFR['joint_2'],  # Update 'joint_2' of the FR leg
             
-            # Leg BL (Back Left)
-            self.LegBL['joint_0'],  # Update 'joint_0' of the BL leg
-            self.LegBL['joint_1'],  # Update 'joint_1' of the BL leg
-            self.LegBL['joint_2'],  # Update 'joint_2' of the BL leg
+            # Leg BL (Back Right)
+            float(0),
+            self.LegBR['joint_0'],  # Update 'joint_0' of the BL leg
+            self.LegBR['joint_1'],  # Update 'joint_1' of the BL leg
+            self.LegBR['joint_2'],  # Update 'joint_2' of the BL leg
             
             # Leg BR (Back Right)
-            self.LegBR['joint_0'],  # Update 'joint_0' of the BR leg
-            self.LegBR['joint_1'],  # Update 'joint_1' of the BR leg
-            self.LegBR['joint_2'],   # Update 'joint_2' of the BR leg
+            float(0),
+            self.LegBL['joint_0'],  # Update 'joint_0' of the BR leg
+            self.LegBL['joint_1'],  # Update 'joint_1' of the BR leg
+            self.LegBL['joint_2'],   # Update 'joint_2' of the BR leg
 
             self.jointArm['joint_0'],  # Update 'joint_0' of the arm
             self.jointArm['joint_1'],  # Update 'joint_1' of the arm
@@ -423,10 +560,10 @@ class MyWindow(QMainWindow):
 
         self.ros_node.joint_state_msg.position = [float(value) for value in  position ]
 
-        self.ros_node.joint_state_msg.stamp = self.get_clock().now().to_msg()
+        self.ros_node.joint_state_msg.header.stamp = self.ros_node.get_clock().now().to_msg()
         
         # Publish the updated joint states
-        self.ros_node.joint_states_pub.publish(self.joint_state_msg)
+        self.ros_node.joint_states_pub.publish(self.ros_node.joint_state_msg)
 
     def publishMessage(self):
         self.ros_node.publisher.publish(self.ros_node.msg_move)
@@ -456,6 +593,7 @@ def main():
     # Create the PyQt5 window and pass the ROS2 node to it
     window = MyWindow(ros_node)
     window.show()
+    window.plotFoots()
     # Run the ROS2 node in a separate thread so that it doesn't block the UI thread
     ros_thread = Thread(target=ros_spin_thread, args=(ros_node,), daemon=True)
     ros_thread.start()
