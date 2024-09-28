@@ -6,15 +6,21 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>812</width>
-    <height>569</height>
+    <width>1200</width>
+    <height>800</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>StackedWidget</string>
   </property>
+  <property name="toolTipDuration">
+   <number>-5</number>
+  </property>
+  <property name="frameShape">
+   <enum>QFrame::Box</enum>
+  </property>
   <property name="currentIndex">
-   <number>0</number>
+   <number>1</number>
   </property>
   <widget class="QWidget" name="controlBasic">
    <widget class="QComboBox" name="changeRobot">
@@ -22,7 +28,7 @@
      <rect>
       <x>60</x>
       <y>70</y>
-      <width>101</width>
+      <width>151</width>
       <height>21</height>
      </rect>
     </property>
@@ -94,7 +100,7 @@
      <rect>
       <x>260</x>
       <y>70</y>
-      <width>101</width>
+      <width>111</width>
       <height>21</height>
      </rect>
     </property>
@@ -124,87 +130,12 @@
      </property>
     </item>
    </widget>
-   <widget class="QComboBox" name="jointLegFR">
+   <widget class="QComboBox" name="jointLeg">
     <property name="geometry">
      <rect>
-      <x>430</x>
-      <y>80</y>
-      <width>101</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <item>
-     <property name="text">
-      <string>Joint Hip 0</string>
-     </property>
-    </item>
-    <item>
-     <property name="text">
-      <string>Joint Knee 1</string>
-     </property>
-    </item>
-    <item>
-     <property name="text">
-      <string>Joint  Anckle 2</string>
-     </property>
-    </item>
-   </widget>
-   <widget class="QComboBox" name="jointLegBR">
-    <property name="geometry">
-     <rect>
-      <x>430</x>
+      <x>260</x>
       <y>110</y>
-      <width>101</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <item>
-     <property name="text">
-      <string>Joint Hip 0</string>
-     </property>
-    </item>
-    <item>
-     <property name="text">
-      <string>Joint Knee 1</string>
-     </property>
-    </item>
-    <item>
-     <property name="text">
-      <string>Joint  Anckle 2</string>
-     </property>
-    </item>
-   </widget>
-   <widget class="QComboBox" name="jointLegFL">
-    <property name="geometry">
-     <rect>
-      <x>430</x>
-      <y>50</y>
-      <width>101</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <item>
-     <property name="text">
-      <string>Joint Hip 0</string>
-     </property>
-    </item>
-    <item>
-     <property name="text">
-      <string>Joint Knee 1</string>
-     </property>
-    </item>
-    <item>
-     <property name="text">
-      <string>Joint  Anckle 2</string>
-     </property>
-    </item>
-   </widget>
-   <widget class="QComboBox" name="jointLegBL">
-    <property name="geometry">
-     <rect>
-      <x>430</x>
-      <y>140</y>
-      <width>101</width>
+      <width>111</width>
       <height>21</height>
      </rect>
     </property>
@@ -263,13 +194,43 @@
      <string>Previous Page</string>
     </property>
    </widget>
+   <widget class="QComboBox" name="changeLeg">
+    <property name="geometry">
+     <rect>
+      <x>60</x>
+      <y>110</y>
+      <width>151</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <item>
+     <property name="text">
+      <string>Front Left Leg</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>Front Right Leg</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>Back Right Leg</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>Back Left Leg</string>
+     </property>
+    </item>
+   </widget>
   </widget>
   <widget class="QWidget" name="controlQuad">
    <widget class="QPushButton" name="prevButtom2">
     <property name="geometry">
      <rect>
-      <x>40</x>
-      <y>410</y>
+      <x>50</x>
+      <y>680</y>
       <width>111</width>
       <height>71</height>
      </rect>
@@ -281,8 +242,8 @@
    <widget class="QPushButton" name="nextPage2">
     <property name="geometry">
      <rect>
-      <x>640</x>
-      <y>410</y>
+      <x>1050</x>
+      <y>680</y>
       <width>111</width>
       <height>71</height>
      </rect>
@@ -294,10 +255,50 @@
    <widget class="QWidget" name="plotFoot" native="true">
     <property name="geometry">
      <rect>
-      <x>49</x>
-      <y>49</y>
-      <width>321</width>
-      <height>211</height>
+      <x>60</x>
+      <y>150</y>
+      <width>341</width>
+      <height>231</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QWidget" name="plotFoot_2" native="true">
+    <property name="geometry">
+     <rect>
+      <x>430</x>
+      <y>150</y>
+      <width>341</width>
+      <height>231</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QWidget" name="plotArm" native="true">
+    <property name="geometry">
+     <rect>
+      <x>40</x>
+      <y>400</y>
+      <width>361</width>
+      <height>241</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QWidget" name="plotArm_2" native="true">
+    <property name="geometry">
+     <rect>
+      <x>430</x>
+      <y>400</y>
+      <width>351</width>
+      <height>241</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QWidget" name="plotArm_3" native="true">
+    <property name="geometry">
+     <rect>
+      <x>820</x>
+      <y>400</y>
+      <width>351</width>
+      <height>241</height>
      </rect>
     </property>
    </widget>
@@ -306,8 +307,8 @@
    <widget class="QPushButton" name="prevButtom3">
     <property name="geometry">
      <rect>
-      <x>40</x>
-      <y>410</y>
+      <x>50</x>
+      <y>680</y>
       <width>111</width>
       <height>71</height>
      </rect>
@@ -319,8 +320,8 @@
    <widget class="QPushButton" name="nextPage3">
     <property name="geometry">
      <rect>
-      <x>640</x>
-      <y>410</y>
+      <x>1050</x>
+      <y>680</y>
       <width>111</width>
       <height>71</height>
      </rect>
