@@ -3,7 +3,7 @@ from threading import Thread
 from enum import Enum
 import copy
 
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QStackedWidget,QVBoxLayout
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QStackedWidget,QVBoxLayout,QHBoxLayout
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.patches import Circle
@@ -15,7 +15,7 @@ import numpy as np
 import rclpy
 from rclpy.node import Node
 
-from Quad_control_gui.MyMplCanvas import MyMplCanvas
+from Quad_control_gui.MyMplCanvas import MyMplCanvas,IndicatorWidget
 from Quad_control_gui.control_robot import Ui_RobotControl
 from Quad_control_gui.IkQuad import FiveDOFArm , ForwardKinematicsLeg
 
@@ -25,7 +25,7 @@ from geometry_msgs.msg import TransformStamped
 from std_msgs.msg import String
 from robot_interfaces.msg import Anglemotor
 from robot_interfaces.msg import Command
-from robot_interfaces.msg import Mpu
+from robot_interfaces.msg import Mpu,COGframe
 from sensor_msgs.msg import JointState
 
 ARM = 0
@@ -133,6 +133,15 @@ class MyNode(Node):
         self.publisher = self.create_publisher(Anglemotor, 'motor_angles', 10)
         self.subscription = self.create_subscription(Command, 'command_robot', self.listener_callback, 10)
         self.joint_states_pub = self.create_publisher(JointState,'joint_states',10)
+        self.subscription_cog = self.create_subscription(COGframe, 'kalman_cog_frame_3', self.cog_callback, 10)
+
+        # Sample data storage for x, y, z, roll, pitch, yaw with 3 sources for each
+        self.data_x = []
+        self.data_y = []
+        self.data_z = []
+        self.data_roll = []
+        self.data_pitch = []
+        self.data_yaw = []
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
@@ -177,7 +186,39 @@ class MyNode(Node):
         self.get_logger().info('Initial joint states published.')
         self.joint_states_pub.publish(self.joint_state_msg)
         self.RobotReady = False
+    def add_data(self, msg, index):
+        """Add received data to the corresponding lists."""
+        self.data_x.append(msg.pos_x)
+        self.data_y.append(msg._pos_y)
+        self.data_z.append(msg.pos_z)
+        self.data_roll.append(msg.roll)
+        self.data_pitch.append(msg.pitch)
+        self.data_yaw.append(msg.yaw)
+
+        if len(self.data_x) > 1000:
+            self.data_x.pop(0)
         
+        if len(self.data_y) > 1000:
+            self.data_y.pop(0)
+        
+        if len(self.data_z) > 1000:
+            self.data_z.pop(0)
+        
+        if len(self.data_roll) > 1000:
+            self.data_roll.pop(0)
+        
+        if len(self.data_pitch) > 1000:
+            self.data_pitch.pop(0)
+        
+        if len(self.data_yaw) > 1000:
+            self.data_yaw.pop(0) 
+        
+
+        
+
+    def cog_callback(self, msg):
+        """Callback for cog_data topic."""
+        self.add_data(msg, 0)
     def timer_foot_callback(self):
         foot_joint= ['frontLeft_foot','frontRight_foot','backRight_foot','backLeft_foot'] 
         arm_joint= ['endEfector'] 
@@ -258,15 +299,15 @@ class MyNode(Node):
             rot = transform.transform.rotation  
             
             # Print the position and orientation of the end effector
-            self.get_logger().info(f"End Effecor: x={trans.x}, y={trans.y}, z={trans.z}")
+            #self.get_logger().info(f"End Effecor: x={trans.x}, y={trans.y}, z={trans.z}")
                 
             self.endEfector = [trans.x ,trans.y,trans.z,rot.x,rot.y,rot.z]
             endPose ,orientation= self.arm.ArmPose()
         
-            self.get_logger().info(f"End Effecor kinematics: x={endPose[0]}, y={endPose[1]}, z={endPose[2]}")
+            #self.get_logger().info(f"End Effecor kinematics: x={endPose[0]}, y={endPose[1]}, z={endPose[2]}")
 
-            self.get_logger().info(f"Rot x={rot.x}, y={rot.y}, z={rot.z}")
-            self.get_logger().info(f"Rot kinematics: x={orientation[0]}, y={orientation[1]}, z={orientation[2]}")  
+            #self.get_logger().info(f"Rot x={rot.x}, y={rot.y}, z={rot.z}")
+            #self.get_logger().info(f"Rot kinematics: x={orientation[0]}, y={orientation[1]}, z={orientation[2]}")  
 
             
             
@@ -320,14 +361,32 @@ class MyWindow(QMainWindow):
 
         self.stacked_widget = stacked_widget  
         pal = QPalette()
-
-        
         pal.setColor(QPalette.Window, Qt.white)
         self.setPalette(pal)
         self.stacked_widget
         self.stacked_widget.setCurrentIndex(0)
         self.ui.controlBasic.setVisible(True)
         self.stacked_widget.update()
+
+        # Add the indicator widget to the layout
+        self.indicator_quad = IndicatorWidget()  # Create the indicator widget
+        self.indicator_label = QLabel("Robot Status:")  # Create a label for the indicator
+
+        self.ui.layout_indicator = QHBoxLayout(self.ui.quadMoving)  # Assuming you have a placeholder in the .ui file
+        self.ui.layout_indicator.addWidget(self.indicator_label)
+        self.ui.layout_indicator.addWidget(self.indicator_quad)  
+
+        self.indicator_arm= IndicatorWidget()  # Create the indicator widget
+        self.indicator_label_arm = QLabel("Arm moving:")  # Create a label for the indicator
+        self.ui.layout_indicator2 = QHBoxLayout(self.ui.armMoving)  # Assuming you have a placeholder in the .ui file
+        self.ui.layout_indicator2.addWidget(self.indicator_label_arm)
+        self.ui.layout_indicator2.addWidget(self.indicator_arm)  
+
+        self.indicator_leg = IndicatorWidget()  # Create the indicator widget
+        self.indicator_label_leg = QLabel("Quad moving:")  # Create a label for the indicator
+        self.ui.layout_indicator3 = QHBoxLayout(self.ui.LegMoving)  # Assuming you have a placeholder in the .ui file
+        self.ui.layout_indicator3.addWidget(self.indicator_label_leg)
+        self.ui.layout_indicator3.addWidget(self.indicator_leg)  
          # Embed the Matplotlib plot in the controlQuad page (index 1 of the QStackedWidget)
        
         
@@ -341,6 +400,8 @@ class MyWindow(QMainWindow):
         self.ui.nextPage.clicked.connect(self.nextPage)
         self.ui.nextPage2.clicked.connect(self.nextPage)
         self.ui.prevButtom2.clicked.connect(self.prevPage)
+        self.ui.nextPage2_2.clicked.connect(self.nextPage)
+        self.ui.prevButtom2_2.clicked.connect(self.prevPage)
         self.ui.nextPage3.clicked.connect(self.nextPage)
         self.ui.prevButtom3.clicked.connect(self.prevPage)
         self.currentIdx = 0
@@ -365,9 +426,9 @@ class MyWindow(QMainWindow):
 
         self.ros_node = ros_node
 
-
-        self.plot_canvas = MyMplCanvas(self, width=5, height=5, dpi=100)
-        self.plot_canvas_2 = MyMplCanvas(self, width=5, height=5, dpi=100)
+        # Create a canvas for each plot (x, y, z, roll, pitch, yaw)
+        self.plot_canvas = MyMplCanvas(self, width=4, height=4, dpi=100)
+        self.plot_canvas_2 = MyMplCanvas(self, width=4, height=4, dpi=100)
         self.plot_canvas_arm = MyMplCanvas(self, width=4, height=4, dpi=100)
         self.plot_canvas_arm_2 = MyMplCanvas(self, width=4, height=4, dpi=100)
         self.plot_canvas_arm_3 = MyMplCanvas(self, width=4, height=4, dpi=100)
@@ -377,16 +438,48 @@ class MyWindow(QMainWindow):
         # Find the layout of the plotFoot widget (the placeholder in your UI on controlQuad)
         layout = QVBoxLayout(self.ui.plotFoot)  # plotFoot is in the controlQuad page
         layout.addWidget(self.plot_canvas)      # Add the matplotlib canvas to the layout
-
         layout_2 = QVBoxLayout(self.ui.plotFoot_2)  # plotFoot is in the controlQuad page
         layout_2.addWidget(self.plot_canvas_2)      # Add the matplotlib canvas to the layout
-
         layout_2 = QVBoxLayout(self.ui.plotArm)  # plotFoot is in the controlQuad page
         layout_2.addWidget(self.plot_canvas_arm)      # Add the matplotlib canvas to the layout
         layout_2 = QVBoxLayout(self.ui.plotArm_2)  # plotFoot is in the controlQuad page
         layout_2.addWidget(self.plot_canvas_arm_2)      # Add the matplotlib canvas to the layout
         layout_2 = QVBoxLayout(self.ui.plotArm_3)  # plotFoot is in the controlQuad page
         layout_2.addWidget(self.plot_canvas_arm_3)      # Add the matplotlib canvas to the layout
+
+
+        # Create a canvas for each plot (x, y, z, roll, pitch, yaw)
+        self.canvas_x = MyMplCanvas(self, width=5, height=4, dpi=100)
+        self.canvas_y = MyMplCanvas(self, width=5, height=4, dpi=100)
+        self.canvas_z = MyMplCanvas(self, width=5, height=4, dpi=100)
+        self.canvas_roll = MyMplCanvas(self, width=5, height=4, dpi=100)
+        self.canvas_pitch = MyMplCanvas(self, width=5, height=4, dpi=100)
+        self.canvas_yaw = MyMplCanvas(self, width=5, height=4, dpi=100)
+
+        # Add each canvas to the layout
+        layout_acx = QVBoxLayout(self.ui.acc_x)  # plotFoot is in the controlQuad page
+        layout_acx.addWidget(self.canvas_x)
+        layout_acy = QVBoxLayout(self.ui.acc_y)  # plotFoot is in the controlQuad page
+        layout_acy.addWidget(self.canvas_y)
+        layout_acz = QVBoxLayout(self.ui.acc_z)  # plotFoot is in the controlQuad page
+        layout_acz.addWidget(self.canvas_z)
+        layout_roll = QVBoxLayout(self.ui.rot_x)  # plotFoot is in the controlQuad page
+        layout_roll.addWidget(self.canvas_roll)
+        layout_pitch = QVBoxLayout(self.ui.rot_y)  # plotFoot is in the controlQuad page
+        layout_pitch.addWidget(self.canvas_pitch)
+        layout_yaw = QVBoxLayout(self.ui.rot_z)  # plotFoot is in the controlQuad page
+        layout_yaw.addWidget(self.canvas_yaw)
+
+        # Initialize three lines for each plot (x, y, z, roll, pitch, yaw)
+        self.x_lines = [self.canvas_x.axes.plot([], [])[0] for _ in range(1)]
+        self.y_lines = [self.canvas_y.axes.plot([], [])[0] for _ in range(1)]
+        self.z_lines = [self.canvas_z.axes.plot([], [])[0] for _ in range(1)]
+        self.roll_lines = [self.canvas_roll.axes.plot([], [])[0] for _ in range(1)]
+        self.pitch_lines = [self.canvas_pitch.axes.plot([], [])[0] for _ in range(1)]
+        self.yaw_lines = [self.canvas_yaw.axes.plot([], [])[0] for _ in range(1)]
+
+        self.ui.label_2.setText("Static Gait")
+        self.ui.label_2.setStyleSheet("font-size: 40px; font-weight: bold; color: blue;")  # Set font size, weight, and color
 
       
         # QTimer to periodically update the plot
@@ -395,10 +488,26 @@ class MyWindow(QMainWindow):
         self.plot_timer.start(500)  # Refresh plot every 100ms
 
         self.update_joint_positions()
-        
-        # Plot the circles on the canvas
-        
+        # Update the indicator based on conditions
+        self.update_indicator()
+    
+    def update_indicator(self):
+        """Update the indicator color or visibility based on some condition."""
+        if self.robotMoving:
+            self.indicator_quad.setStyleSheet("background-color: green")  # Change to green when moving
+            self.indicator_arm.setStyleSheet("background-color: green")  # Change to green when moving
+            self.indicator_leg.setStyleSheet("background-color: green")  # Change to green when moving
+        else:
+            self.indicator_quad.setStyleSheet("background-color: red")  # Change to red when stopped
+            self.indicator_arm.setStyleSheet("background-color: red")  # Change to red when stopped
+            self.indicator_leg.setStyleSheet("background-color: red")  # Change to red when stopped
+
     def plotFoots(self):
+        self.update_indicator()
+        try:
+            self.update_plots()
+        finally:
+            pass
         footPose = self.ros_node.footPose
         cogPose = self.ros_node.cogPose
         quadMoving = self.robotMoving
@@ -412,14 +521,14 @@ class MyWindow(QMainWindow):
         self.plot_canvas.plot_circles(footPose[:],cogPose,quadMoving,legMoving,'Foots pose URDF')
         self.plot_canvas_2.plot_circles(footPose_2[:],cogPose,quadMoving,legMoving, 'Foots pose Kinematics')
 
-        self.plot_canvas_arm.plot_circle(EndEffector , 'End Effector URDF XY')
+        self.plot_canvas_arm.plot_circle(EndEffector , 'End Effector URDF XY','X axis','Y axis')
         EndEffector = [self.ros_node.endEfector[1],self.ros_node.endEfector[2]]
-        self.plot_canvas_arm_2.plot_circle(EndEffector , 'End Effector URDF YZ')
+        self.plot_canvas_arm_2.plot_circle(EndEffector , 'End Effector URDF YZ','Y axis','Z axis')
         EndEffector = [self.ros_node.endEfector[0],self.ros_node.endEfector[2]]
-        self.plot_canvas_arm_3.plot_circle(EndEffector, 'End Effector URDF XZ')
+        self.plot_canvas_arm_3.plot_circle(EndEffector, 'End Effector URDF XZ','X axis','Z axis')
        
     def nextPage(self):
-        if self.currentIdx < 2:
+        if self.currentIdx < 3:
             self.currentIdx +=1
             self.stacked_widget.setCurrentIndex(self.currentIdx)
     def prevPage(self):
@@ -665,7 +774,120 @@ class MyWindow(QMainWindow):
         self.ros_node.publisher.publish(self.ros_node.msg_move)
 
     
+    def update_plots(self):
+        """Update the plots with new data from ROS."""
+        
+        # Create an x-axis for each plot, based on the number of data points
+        x_axis_x = range(1000)
+        x_axis_y = range(1000)
+        x_axis_z = range(1000)
+        x_axis_roll = range(1000)
+        x_axis_pitch = range(1000)
+        x_axis_yaw = range(1000)
+        """
+         # Debugging: Print the lengths and types of the data before plotting
+        self.ros_node.get_logger().info(f"Data X Length: {len(self.ros_node.data_x)}, Data Y Length: {len(self.ros_node.data_y)}")
+        self.ros_node.get_logger().info(f"Data Z Length: {len(self.ros_node.data_z)}, Data Roll Length: {len(self.ros_node.data_roll)}")
+        self.ros_node.get_logger().info(f"Data Pitch Length: {len(self.ros_node.data_pitch)}, Data Yaw Length: {len(self.ros_node.data_yaw)}")
+        self.ros_node.get_logger().info(f"First 5 X Values: {self.ros_node.data_x[:5]}")
+        self.ros_node.get_logger().info(f"First 5 Y Values: {self.ros_node.data_y[:5]}")
+            # Ensure the data is non-empty and numeric before plotting
+            # Ensure that x and y data arrays have the same length
+        """
+        if len(x_axis_x) == len(self.ros_node.data_x):
+            self.x_lines[0].set_data(x_axis_x, self.ros_node.data_x)
+        else:
+            return
 
+        if len(x_axis_y) == len(self.ros_node.data_y):
+            self.y_lines[0].set_data(x_axis_y, self.ros_node.data_y)
+        else:
+            return
+
+        if len(x_axis_z) == len(self.ros_node.data_z):
+            self.z_lines[0].set_data(x_axis_z, self.ros_node.data_z)
+        else:
+            return
+
+        if len(x_axis_roll) == len(self.ros_node.data_roll):
+            self.roll_lines[0].set_data(x_axis_roll, self.ros_node.data_roll)
+        else:
+            return
+
+        if len(x_axis_pitch) == len(self.ros_node.data_pitch):
+            self.pitch_lines[0].set_data(x_axis_pitch, self.ros_node.data_pitch)
+        else:
+            return
+
+        if len(x_axis_yaw) == len(self.ros_node.data_yaw):
+            self.yaw_lines[0].set_data(x_axis_yaw, self.ros_node.data_yaw)
+        else:
+            return
+        if not self.ros_node.data_x or not self.ros_node.data_y or not self.ros_node.data_z:
+            return
+        if not self.ros_node.data_roll or not self.ros_node.data_pitch or not self.ros_node.data_yaw:
+            return
+             # Adjust plot limits and redraw each plot
+        self.canvas_x.axes.set_xlabel('Time (s)')
+        self.canvas_x.axes.set_ylabel('Position X (m)')
+        self.canvas_x.axes.set_title('Position X vs Time')
+        self.canvas_x.axes.relim()
+        self.canvas_x.axes.autoscale_view()
+        self.canvas_x.fig.tight_layout()
+        self.canvas_x.fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
+        self.canvas_x.axes.grid(True)
+        self.canvas_x.draw()
+
+        self.canvas_y.axes.set_xlabel('Time (s)')
+        self.canvas_y.axes.set_ylabel('Position Y (m)')
+        self.canvas_y.axes.set_title('Position Y vs Time')
+        self.canvas_y.fig.tight_layout()
+        self.canvas_y.fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
+        self.canvas_y.axes.relim()
+        self.canvas_y.axes.autoscale_view()
+        self.canvas_y.axes.grid(True)
+        self.canvas_y.draw()
+
+        self.canvas_z.axes.set_xlabel('Time (s)')
+        self.canvas_z.axes.set_ylabel('Position Z (m)')
+        self.canvas_z.axes.set_title('Position Z vs Time')
+        self.canvas_z.fig.tight_layout()
+        self.canvas_z.fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
+        self.canvas_z.axes.relim()
+        self.canvas_z.axes.autoscale_view()
+        self.canvas_z.axes.grid(True)
+        self.canvas_z.draw()
+
+        self.canvas_roll.axes.set_xlabel('Time (s)')
+        self.canvas_roll.axes.set_ylabel('Orientation roll (rad)')
+        self.canvas_roll.axes.set_title('Roll vs Time')
+        self.canvas_roll.fig.tight_layout()
+        self.canvas_roll.fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
+        self.canvas_roll.axes.relim()
+        self.canvas_roll.axes.autoscale_view()
+        self.canvas_roll.axes.grid(True)
+        self.canvas_roll.draw()
+
+        self.canvas_pitch.axes.set_xlabel('Time (s)')
+        self.canvas_pitch.axes.set_ylabel('Orientation pitch (rad)')
+        self.canvas_pitch.axes.set_title('Pitchvs Time')
+        self.canvas_pitch.fig.tight_layout()
+        self.canvas_pitch.fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
+        self.canvas_pitch.axes.relim()
+        self.canvas_pitch.axes.autoscale_view()
+        self.canvas_pitch.axes.grid(True)
+        self.canvas_pitch.draw()
+
+        self.canvas_yaw.axes.set_xlabel('Time (s)')
+        self.canvas_yaw.axes.set_ylabel('Orientation yaw (rad)')
+        self.canvas_yaw.axes.set_title('Yaw vs Time')
+        self.canvas_yaw.fig.tight_layout()
+        self.canvas_yaw.fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
+        self.canvas_yaw.axes.relim()
+        self.canvas_yaw.axes.autoscale_view()
+        self.canvas_yaw.axes.grid(True)
+        self.canvas_yaw.draw()
+        # Plot the circles on the canvas
     
 
 def ros_spin_thread(node):
@@ -694,7 +916,7 @@ def main():
     ros_thread = Thread(target=ros_spin_thread, args=(ros_node,), daemon=True)
     ros_thread.start()
     # Regularly publish joint states every 100ms
-    timer = ros_node.create_timer(0.1, ros_node.publish_joint_states)
+    timer = ros_node.create_timer(0.5, ros_node.publish_joint_states)
     # Ensure ROS2 shutdown when PyQt application exits
     app.aboutToQuit.connect(lambda: ros_node.destroy_node())
     app.aboutToQuit.connect(lambda: rclpy.shutdown())

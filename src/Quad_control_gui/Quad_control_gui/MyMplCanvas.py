@@ -5,9 +5,11 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor,QPalette
+from PyQt5.QtGui import QColor,QPalette,QPainter
 from PyQt5.QtCore import QTimer
 import numpy as np
+
+
 class MyMplCanvas(FigureCanvas):
     """A Matplotlib canvas that can be embedded into a PyQt5 application."""
     def __init__(self, parent=None, width=8, height=10, dpi=100):
@@ -17,7 +19,7 @@ class MyMplCanvas(FigureCanvas):
         self.create_axes(is_3d=False)  # Default is 2D
         super(MyMplCanvas, self).__init__(self.fig)
         # Set explicit size for the canvas to make it larger in the PyQt5 layout
-        self.setMinimumSize(width * 10, height * 10)  # Set minimum size based on width and height
+        self.setMinimumSize(width * 5, height * 5)  # Set minimum size based on width and height
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
 
@@ -76,6 +78,11 @@ class MyMplCanvas(FigureCanvas):
 
 
         # Re-draw the plot
+        self.fig.tight_layout()
+        self.fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
+
+        
+
         self.draw()
     def plot_axes(self, base,yaw,ef, title):
         """Plot 3D coordinate axes based on the given position and orientation."""
@@ -103,8 +110,10 @@ class MyMplCanvas(FigureCanvas):
         
 
         # Re-draw the plot to reflect updates
+        self.fig.tight_layout()
+        self.fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
         self.draw()
-    def plot_circle(self,footPose,title):
+    def plot_circle(self,footPose,title,axis_1,axis_2):
         """Plot five circles at specified positions."""
         # Define circle centers
         centers = footPose
@@ -126,8 +135,8 @@ class MyMplCanvas(FigureCanvas):
         self.axes.set_ylim(-1, 3)
         self.axes.autoscale_view()  # Automatically scale the view to include all data.
         self.axes.set_title(title)
-        self.axes.set_xlabel('X-axis')
-        self.axes.set_ylabel('Y-axis')
+        self.axes.set_xlabel(axis_1)
+        self.axes.set_ylabel(axis_2)
 
         # Set axis limits and aspect ratio
         
@@ -138,6 +147,8 @@ class MyMplCanvas(FigureCanvas):
 
 
         # Re-draw the plot
+        self.fig.tight_layout()
+        self.fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
         self.draw()
     def plot_axes(self, base,yaw,ef, title):
         """Plot 3D coordinate axes based on the given position and orientation."""
@@ -165,6 +176,8 @@ class MyMplCanvas(FigureCanvas):
         
 
         # Re-draw the plot to reflect updates
+        self.fig.tight_layout()
+        self.fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
         self.draw()
     def plot_axi(self,pose):
         # Extract translation (position) and rotation (orientation) from the pose
@@ -211,3 +224,24 @@ class MyMplCanvas(FigureCanvas):
         self.axes.quiver(*origin, *(x_axis - origin), color='red', arrow_length_ratio=0.01, label='X-axis')
         self.axes.quiver(*origin, *(y_axis - origin), color='green', arrow_length_ratio=0.01, label='Y-axis')
         self.axes.quiver(*origin, *(z_axis - origin), color='blue', arrow_length_ratio=0.01, label='Z-axis')
+
+class IndicatorWidget(QWidget):
+    """A simple widget that draws a red circle to act as an indicator."""
+    def __init__(self, parent=None):
+        super(IndicatorWidget, self).__init__(parent)
+        self.setFixedSize(25, 25)  # Set the fixed size of the indicator widget
+        self.greenColor = QColor(0, 255, 0)
+        self.redColor = QColor(255, 0, 0)
+    
+    def paintEvent(self, event):
+        """Override paintEvent to draw a red circle."""
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)  # Enable anti-aliasing for smooth edges
+
+        # Define the brush color and style
+        painter.setBrush(self.redColor)  # Red color
+        painter.setPen(Qt.NoPen)  # No outline for the circle
+
+        # Draw a filled circle in the center of the widget
+        radius = min(self.width(), self.height()) // 2
+        painter.drawEllipse(self.rect().center(), radius, radius)
