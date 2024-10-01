@@ -142,6 +142,7 @@ class MinimalPublisher(Node):
         self.Check_communication(mpu9250_address_2)
         timer_period = 1/2000   # seconds 50Hz
         self.timer = self.create_timer(timer_period, self.timer_callback)
+        self.sendData = self.create_timer(timer_period, self.send_data)
         self.timer2 = self.create_timer(1, self.timer_callback2)
         self.i = 0
         self.prev_accel_x, self.prev_accel_y, self.prev_accel_z = 0, 0, 0
@@ -604,9 +605,9 @@ class MinimalPublisher(Node):
 
     
     def timer_callback(self):
-        msg = Mpu()
+        
         try:
-            self.current_time = time.time()
+            
             """
             if self.current_time - self.calibrationTime > 600:
                 self.calibrate_mpu(mpu9250_address,20000,'mpu1')
@@ -655,29 +656,7 @@ class MinimalPublisher(Node):
 
 
             
-            msg.message = "EL mensaje es"
-            msg.acx = float(accel_x)
-            msg.acy = float(accel_y)
-            msg.acz = float(accel_z)
-            msg.gx = float(gyro_x)
-            msg.gy = float(gyro_y)
-            msg.gz = float(gyro_z)
-
            
-            
-            msg.acx2 = float(accel_x_2)
-            msg.acy2 = float(accel_y)
-            msg.acz2 = float(accel_z_2)
-            msg.gx2 = float(gyro_x_2)
-            msg.gy2 = float(gyro_y_2)
-            msg.gz2 = float(gyro_z_2)
-            # Convert to Imu message and publish
-            #imu_msg_1 = self.convert_mpu_to_imu(msg)  # First sensor
-            #imu_msg_2 = self.convert_mpu_to_imu(msg2)  # Second sensor
-
-            #self.imu_publisher_.publish(imu_msg_1)
-            #self.imu_publisher_second.publish(imu_msg_2)
-            self.publisher_.publish(msg)
             
             #self.get_logger().info('is publishing')
 
@@ -689,6 +668,31 @@ class MinimalPublisher(Node):
         self.get_logger().info(f"Accel_x: {self.prev_accel_x}, Accel_y: {self.prev_accel_y}, Accel_z: {self.prev_accel_z}")
         self.get_logger().info(f"Accel_x_2: {self.prev_accel_x2}, Accel_y_2: {self.prev_accel_y2}, Accel_z_2: {self.prev_accel_z2}")
 
+    def send_data(self):
+        msg = Mpu()
+        msg.message = "EL mensaje es"
+        msg.acx = float(self.prev_accel_x)
+        msg.acy = float(self.prev_accel_y)
+        msg.acz = float(self.prev_accel_z)
+        msg.gx = float(self.prev_gyro_x2)
+        msg.gy = float(self.prev_gyro_x2)
+        msg.gz = float(self.prev_gyro_x2)
+
+        
+        
+        msg.acx2 = float(self.prev_accel_x2)
+        msg.acy2 = float(self.prev_accel_y2)
+        msg.acz2 = float(self.prev_accel_z2)
+        msg.gx2 = float(self.prev_gyro_x2)
+        msg.gy2 = float(self.prev_gyro_x2)
+        msg.gz2 = float(self.prev_gyro_x2)
+        # Convert to Imu message and publish
+        #imu_msg_1 = self.convert_mpu_to_imu(msg)  # First sensor
+        #imu_msg_2 = self.convert_mpu_to_imu(msg2)  # Second sensor
+
+        #self.imu_publisher_.publish(imu_msg_1)
+        #self.imu_publisher_second.publish(imu_msg_2)
+        self.publisher_.publish(msg)
 
 def main(args=None):
     rclpy.init(args=args)

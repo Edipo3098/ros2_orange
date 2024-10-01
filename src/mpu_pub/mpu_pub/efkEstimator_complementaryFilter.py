@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from robot_interfaces.msg import Mpu, COGframe
-from time import time
+from time import perf_counter 
 import numpy as np
 from filterpy.kalman import ExtendedKalmanFilter
 from ahrs.filters import Madgwick  # Use Madgwick from ahrs package
@@ -338,7 +338,7 @@ class CalCOGFrame(Node):
         self.mpu2_data = None
         self.calibrated = False
 
-        self.prev_time = time()
+        self.prev_time = perf_counter()
         self.prevOrientation  = np.array([0.0, 0.0, 0.0])
 
         self.pos = np.array([0.0, 0.0, 0.0])
@@ -506,7 +506,7 @@ class CalCOGFrame(Node):
     def process_fusion(self):
         
 
-        current_time = time()
+        current_time = perf_counter()
         dt = current_time - self.prev_time
         if dt < 1e-6:
             dt = 1e-6  # Set a minimum time step threshold
@@ -610,7 +610,7 @@ class CalCOGFrame(Node):
         if ( not self.calibrated ):
             if (accel_imu1_raw[0] < 0.1 and accel_imu1_raw[1] < 0.1 and accel_imu1_raw[2] < 0.1 and accel_imu2_raw[0] < 0.1 and accel_imu2_raw[1] < 0.1 and accel_imu2_raw[2] < 0.1):
                 self.calibrated = True
-                self.calibration_time = time()
+                self.calibration_time = perf_counter()
                 self.get_logger().info("Calibration  done")
             
         else:
