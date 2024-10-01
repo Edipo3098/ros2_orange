@@ -21,6 +21,7 @@ from robot_interfaces.msg import Mpu
 import numpy as np
 from sensor_msgs.msg import Imu
 from time import perf_counter
+from rclpy.executors import MultiThreadedExecutor
 
 mpu9250_address = 0x68  # MPU9250 default I2C address
 mpu9250_address_2 = 0x69  # MPU9250 I2C address AD0 high
@@ -716,17 +717,19 @@ class MinimalPublisher(Node):
         self.publisher_.publish(self.msg)
 
 def main(args=None):
-    rclpy.init(args=args)
-
-    mpu_publisher = MinimalPublisher()
-
-    rclpy.spin(mpu_publisher)
-
-    # Destroy the node explicitly
-    # (optional - otherwise it will be done automatically
-    # when the garbage collector destroys the node object)
-    mpu_publisher.destroy_node()
+    
     rclpy.shutdown()
+
+    rclpy.init(args=args)
+    mpu_publisher = MinimalPublisher()
+    executor = MultiThreadedExecutor()
+    executor.add_node(mpu_publisher)
+    try:
+        executor.spin()
+    finally:
+        executor.shutdown()
+        mpu_publisher.destroy_node()
+        rclpy.shutdown()
 
 
 if __name__ == '__main__':

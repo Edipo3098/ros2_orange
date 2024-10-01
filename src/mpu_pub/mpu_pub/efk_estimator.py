@@ -542,8 +542,7 @@ class CalCOGFrame(Node):
 
         current_time = perf_counter()
         dt = current_time - self.prev_time
-        if dt < 1e-6:
-            dt = 1e-6  # Set a minimum time step threshold
+        
          # Apply low-pass filter to the raw accelerometer data
 
         self.mpu1_data.acy = abs(self.mpu1_data.acy*0.001)
@@ -631,9 +630,9 @@ class CalCOGFrame(Node):
 
         # Retrieve filtered state (position, velocity)
         pos, vel, orient = self.kf.get_state()
-        self.add_measurement_to_buffers(self.mpu1_data,orientation,self.kf.ekf.x)
+        """self.add_measurement_to_buffers(self.mpu1_data,orientation,self.kf.ekf.x)
         self.update_measurement_noise()
-        self.kf.update_noise_covariances(self.acc_variance, self.acc_variance2, self.gyro_variance, self.state_variance)
+        self.kf.update_noise_covariances(self.acc_variance, self.acc_variance2, self.gyro_variance, self.state_variance)"""
         
         self.pos = pos
         self.orient = orient
