@@ -682,7 +682,8 @@ class MinimalPublisher(Node):
     def timer_callback2(self):
         self.get_logger().info(f"Accel_x: {self.prev_accel_x}, Accel_y: {self.prev_accel_y}, Accel_z: {self.prev_accel_z}")
         self.get_logger().info(f"Accel_x_2: {self.prev_accel_x2}, Accel_y_2: {self.prev_accel_y2}, Accel_z_2: {self.prev_accel_z2}")
-        self.get_logger().info(f"delta time {self.dt }")
+        self.get_logger().info(f"delta time process  {self.dt }")
+        self.get_logger().info(f"delta time sen data {self.dt2 }")
     def send_data(self):
         self.current_time2 = perf_counter()
         
