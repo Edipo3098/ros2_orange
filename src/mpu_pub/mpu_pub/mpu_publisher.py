@@ -502,7 +502,7 @@ class MinimalPublisher(Node):
             calibration_data[calibration_key]["accel"]["offset"][2] += 0.01 * error_z
         # Log adjustment (optional for debugging)
         """
-        self.get_logger().info(f"Adaptive calibration adjustment 1: {calibration_data[calibration_key]['accel']['offset']}")
+        #self.get_logger().info(f"Adaptive calibration adjustment 1: {calibration_data[calibration_key]['accel']['offset']}")
 
     def read_sensor_data(self, address, calibration_key,prev):
         """Reads the raw sensor data from the MPU9250"""
@@ -511,7 +511,7 @@ class MinimalPublisher(Node):
             accel_data_error = self.bus.read_i2c_block_data(address, 0x3B, 6)
             gyro_data_error = self.bus.read_i2c_block_data(address, 0x43, 6)
         except Exception as e:
-            self.get_logger().info(f'Error in read_sensor_data: {e}')
+            #self.get_logger().info(f'Error in read_sensor_data: {e}')
             accel_data_error = [0, 0, 0, 0, 0, 0]
             gyro_data_error = [0, 0, 0, 0, 0, 0]
 
@@ -661,7 +661,8 @@ class MinimalPublisher(Node):
             #self.get_logger().info('is publishing')
 
         except KeyboardInterrupt:
-            self.get_logger().info('Exiting the system key')
+            pass
+            #self.get_logger().info('Exiting the system key')
         #finally:
             #self.get_logger().info('Exiting the system')
     def timer_callback2(self):
