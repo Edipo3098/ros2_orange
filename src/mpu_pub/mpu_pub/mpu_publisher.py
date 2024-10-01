@@ -727,8 +727,7 @@ class MinimalPublisher(Node):
 
 def main(args=None):
     
-    rclpy.shutdown()
-
+    
     rclpy.init(args=args)
     mpu_publisher = MinimalPublisher()
     executor = MultiThreadedExecutor()
