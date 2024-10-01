@@ -618,8 +618,8 @@ class MinimalPublisher(Node):
             accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z = self.read_sensor_data(mpu9250_address, key, prev)
             
             # Apply adaptive calibration to adjust offsets in real-time
-            #self.adaptive_calibration([accel_x, accel_y, accel_z], key)
-            #self.adaptive_calibration2([accel_x, accel_y, accel_z], key) # Second calibration method to Z axis
+            self.adaptive_calibration([accel_x, accel_y, accel_z], key)
+            self.adaptive_calibration2([accel_x, accel_y, accel_z], key) # Second calibration method to Z axis
 
             self.prev_accel_x, self.prev_accel_y, self.prev_accel_z = accel_x, accel_y, accel_z
             self.prev_gyro_x, self.prev_gyro_y, self.prev_gyro_z = gyro_x, gyro_y, gyro_z
@@ -633,8 +633,8 @@ class MinimalPublisher(Node):
             accel_x_2, accel_y_2, accel_z_2, gyro_x_2, gyro_y_2, gyro_z_2 = self.read_sensor_data(mpu9250_address_2, key, prev)
 
             # Apply adaptive calibration to MPU2
-            #self.adaptive_calibration([accel_x_2, accel_y_2, accel_z_2], key)
-            #self.adaptive_calibration2([accel_x_2, accel_y_2, accel_z_2], key) # Second calibration method to Z axis
+            self.adaptive_calibration([accel_x_2, accel_y_2, accel_z_2], key)
+            self.adaptive_calibration2([accel_x_2, accel_y_2, accel_z_2], key) # Second calibration method to Z axis
 
             # Update previous values for MPU2
             self.prev_accel_x2, self.prev_accel_y2, self.prev_accel_z2 = accel_x_2, accel_y_2, accel_z_2
