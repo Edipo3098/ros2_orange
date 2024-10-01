@@ -173,10 +173,14 @@ class MinimalPublisher(Node):
         self.bus.write_byte_data(address, PWR_MGMT_1, 0x00)
         time.sleep(0.1)
 
+        """
         # Set the DLPF to 10 Hz (DLPF_CFG = 0b101) in the CONFIG register
         self.bus.write_byte_data(address, CONFIG, 0x05)
         time.sleep(0.1)
-
+        """
+        # Set the DLPF to allow higher frequency data through (DLPF_CFG = 0b000, for 260 Hz bandwidth)
+        self.bus.write_byte_data(address, CONFIG, 0x00)  # Set the DLPF to a higher bandwidth configuration
+        time.sleep(0.1)
         # Set the sample rate to 100 Hz (SMPLRT_DIV = 9)
         """
         sample_rate_div = 9  # 100 Hz sample rate
