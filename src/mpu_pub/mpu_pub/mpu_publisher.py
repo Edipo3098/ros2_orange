@@ -20,6 +20,7 @@ from std_msgs.msg import String
 from robot_interfaces.msg import Mpu
 import numpy as np
 from sensor_msgs.msg import Imu
+from time import perf_counter
 
 mpu9250_address = 0x68  # MPU9250 default I2C address
 mpu9250_address_2 = 0x69  # MPU9250 I2C address AD0 high
@@ -112,6 +113,15 @@ class MinimalPublisher(Node):
         self.kf_gyro_y2 = KalmanFilter()
         self.kf_gyro_z2 = KalmanFilter()
 
+        self.current_time = perf_counter()
+        self.prevTime = perf_counter()
+        self.dt = self.current_time - self.prevTime 
+
+        self.current_time2 = perf_counter()
+        self.prevTime2 = perf_counter()
+        self.dt2 = self.current_time2 - self.prevTime2 
+
+        self.msg = Mpu()
   
 
         # Publisher for Imu (standard message)
@@ -605,7 +615,11 @@ class MinimalPublisher(Node):
 
     
     def timer_callback(self):
+        self.current_time = perf_counter()
         
+        self.dt = self.current_time - self.prevTime 
+
+        self.prevTime = perf_counter()
         try:
             
             """
@@ -668,32 +682,37 @@ class MinimalPublisher(Node):
     def timer_callback2(self):
         self.get_logger().info(f"Accel_x: {self.prev_accel_x}, Accel_y: {self.prev_accel_y}, Accel_z: {self.prev_accel_z}")
         self.get_logger().info(f"Accel_x_2: {self.prev_accel_x2}, Accel_y_2: {self.prev_accel_y2}, Accel_z_2: {self.prev_accel_z2}")
-
+        self.get_logger().info(f"delta time {self.dt }")
     def send_data(self):
-        msg = Mpu()
-        msg.message = "EL mensaje es"
-        msg.acx = float(self.prev_accel_x)
-        msg.acy = float(self.prev_accel_y)
-        msg.acz = float(self.prev_accel_z)
-        msg.gx = float(self.prev_gyro_x2)
-        msg.gy = float(self.prev_gyro_x2)
-        msg.gz = float(self.prev_gyro_x2)
+        self.current_time2 = perf_counter()
+        
+        self.dt2 = self.current_time2 - self.prevTime2 
+
+        self.prevTime2= perf_counter()
+        
+        self.msg.message = "EL mensaje es"
+        self.msg.acx = float(self.prev_accel_x)
+        self.msg.acy = float(self.prev_accel_y)
+        self.msg.acz = float(self.prev_accel_z)
+        self.msg.gx = float(self.prev_gyro_x2)
+        self.msg.gy = float(self.prev_gyro_x2)
+        self.msg.gz = float(self.prev_gyro_x2)
 
         
         
-        msg.acx2 = float(self.prev_accel_x2)
-        msg.acy2 = float(self.prev_accel_y2)
-        msg.acz2 = float(self.prev_accel_z2)
-        msg.gx2 = float(self.prev_gyro_x2)
-        msg.gy2 = float(self.prev_gyro_x2)
-        msg.gz2 = float(self.prev_gyro_x2)
+        self.msg.acx2 = float(self.prev_accel_x2)
+        self.msg.acy2 = float(self.prev_accel_y2)
+        self.msg.acz2 = float(self.prev_accel_z2)
+        self.msg.gx2 = float(self.prev_gyro_x2)
+        self.msg.gy2 = float(self.prev_gyro_x2)
+        self.msg.gz2 = float(self.prev_gyro_x2)
         # Convert to Imu message and publish
         #imu_msg_1 = self.convert_mpu_to_imu(msg)  # First sensor
         #imu_msg_2 = self.convert_mpu_to_imu(msg2)  # Second sensor
 
         #self.imu_publisher_.publish(imu_msg_1)
         #self.imu_publisher_second.publish(imu_msg_2)
-        self.publisher_.publish(msg)
+        self.publisher_.publish(self.msg)
 
 def main(args=None):
     rclpy.init(args=args)

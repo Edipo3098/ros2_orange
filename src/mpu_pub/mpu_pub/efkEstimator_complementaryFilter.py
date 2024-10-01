@@ -334,8 +334,21 @@ class CalCOGFrame(Node):
         If your IMU data is noisy, a lower beta value may help reduce jitter, though you will need to balance this with the slower data rate.
         """
         # Buffers to hold the last measurements from each MPU
-        self.mpu1_data = None
-        self.mpu2_data = None
+        mpu_start = Mpu()
+        mpu_start.acx = 0.0
+        mpu_start.acy = 0.0
+        mpu_start.acz = 0.0
+        mpu_start.gx = 0.0
+        mpu_start.gy = 0.0
+        mpu_start.gz = 0.0
+        mpu_start.acx2 = 0.0
+        mpu_start.acy2 = 0.0
+        mpu_start.acz2 = 0.0
+        mpu_start.gx2 = 0.0
+        mpu_start.gy2 = 0.0
+        mpu_start.gz2 = 0.0
+        self.mpu1_data = mpu_start
+        self.mpu2_data = mpu_start
         self.calibrated = False
 
         self.prev_time = perf_counter()
@@ -344,11 +357,12 @@ class CalCOGFrame(Node):
         self.pos = np.array([0.0, 0.0, 0.0])
         self.orient  = np.array([0.0, 0.0, 0.0])
         self.timer2 = self.create_timer(1, self.timerCallback2)
+        self.timer3 = self.create_timer(1/self.frec, self.process_fusion)
 
 
     def listener_callback(self, msg):
         self.mpu1_data = msg
-        self.process_fusion()
+        
         
     def listener_callback2(self, msg):
         self.mpu2_data = msg
