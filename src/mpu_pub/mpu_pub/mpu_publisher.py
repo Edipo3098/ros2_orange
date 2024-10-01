@@ -142,6 +142,7 @@ class MinimalPublisher(Node):
         self.Check_communication(mpu9250_address_2)
         timer_period = 1/2000   # seconds 50Hz
         self.timer = self.create_timer(timer_period, self.timer_callback)
+        self.timer2 = self.create_timer(1, self.timer_callback2)
         self.i = 0
         self.prev_accel_x, self.prev_accel_y, self.prev_accel_z = 0, 0, 0
         self.prev_gyro_x, self.prev_gyro_y, self.prev_gyro_z = 0, 0, 0
@@ -643,8 +644,8 @@ class MinimalPublisher(Node):
 
             
             
-            self.get_logger().info(f"Accel_x: {accel_x}, Accel_y: {accel_y}, Accel_z: {accel_z}")
-            self.get_logger().info(f"Accel_x_2: {accel_x_2}, Accel_y_2: {accel_y_2}, Accel_z_2: {accel_z_2}")
+            #self.get_logger().info(f"Accel_x: {accel_x}, Accel_y: {accel_y}, Accel_z: {accel_z}")
+            #self.get_logger().info(f"Accel_x_2: {accel_x_2}, Accel_y_2: {accel_y_2}, Accel_z_2: {accel_z_2}")
             #self.get_logger().info(f"Accel_x_2: {accel_x_2}, Accel_y_2: {accel_y_2}, Accel_z_2: {accel_z_2}")
 
             #self.get_logger().info(f"Gyro_x: {gyro_x}, Gyro_y: {gyro_y}, Gyro_z: {gyro_z}")
@@ -684,7 +685,9 @@ class MinimalPublisher(Node):
             self.get_logger().info('Exiting the system key')
         #finally:
             #self.get_logger().info('Exiting the system')
-
+    def timer_callback2(self):
+        self.get_logger().info(f"Accel_x: {self.prev_accel_x}, Accel_y: {self.prev_accel_y}, Accel_z: {self.prev_accel_z}")
+        self.get_logger().info(f"Accel_x_2: {self.prev_accel_x2}, Accel_y_2: {self.prev_accel_y2}, Accel_z_2: {self.prev_accel_z2}")
 
 
 def main(args=None):

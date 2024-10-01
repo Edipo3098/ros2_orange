@@ -341,6 +341,11 @@ class CalCOGFrame(Node):
         self.prev_time = time()
         self.prevOrientation  = np.array([0.0, 0.0, 0.0])
 
+        self.pos = np.array([0.0, 0.0, 0.0])
+        self.orient  = np.array([0.0, 0.0, 0.0])
+        self.timer2 = self.create_timer(1, self.timerCallback2)
+
+
     def listener_callback(self, msg):
         self.mpu1_data = msg
         self.process_fusion()
@@ -599,6 +604,8 @@ class CalCOGFrame(Node):
         msg = COGframe()
         msg.pos_x, msg.pos_y, msg.pos_z = float(pos[0]), float(pos[1]), float(pos[2])
         msg.roll, msg.pitch, msg.yaw = float(orient[0]), float(orient[1]), float(orient[2])
+        self.pos = pos
+        self.orient = orient
         self.publishKalmanFrame.publish(msg)
         if ( not self.calibrated ):
             if (accel_imu1_raw[0] < 0.1 and accel_imu1_raw[1] < 0.1 and accel_imu1_raw[2] < 0.1 and accel_imu2_raw[0] < 0.1 and accel_imu2_raw[1] < 0.1 and accel_imu2_raw[2] < 0.1):
@@ -610,8 +617,6 @@ class CalCOGFrame(Node):
             self.publishKalmanFrame.publish(msg)
 
      
-        self.get_logger().info(f"Pos X Y Z (meter) dt : {float(pos[0])}, {float(pos[1])}, {float(pos[2])}, {1/self.kf.dt}")
-        self.get_logger().info(f"Roll pitch yaw  : {float(orient[0])}, {float(orient[1])}, {float(orient[2])}")
         
         """
         self.get_logger().info(f"MPU 1 Filtered: {float(filtered_acx)}, {float(filtered_acy)},{float(filtered_acz)}")
@@ -621,6 +626,11 @@ class CalCOGFrame(Node):
         self.get_logger().info(f"MPU 1  compensate G filt: {float(accel_imu1_comp_filt[0])}, {float(accel_imu1_comp_filt[1])}, {float(accel_imu1_comp_filt[2])}")
         self.get_logger().info(f"MPU 2  compensate G filt: {float(accel_imu2_comp_filt[0])}, {float(accel_imu2_comp_filt[1])}, {float(accel_imu2_comp_filt[2])}")
         """
+    def timerCallback2(self):
+        self.get_logger().info("Timer callback 2")
+        self.get_logger().info(f"Pos X Y Z (meter) dt : {float(self.pos[0])}, {float(self.pos[1])}, {float(self.pos[2])}, {1/self.kf.dt}")
+        self.get_logger().info(f"Roll pitch yaw  : {float(self.orient[0])}, {float(self.orient[1])}, {float(self.orient[2])}")
+        
 def main(args=None):
     rclpy.init(args=args)
     efkEstimator = CalCOGFrame()
