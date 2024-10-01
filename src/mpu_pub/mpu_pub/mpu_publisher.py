@@ -140,7 +140,7 @@ class MinimalPublisher(Node):
 
         self.Check_communication(mpu9250_address)
         self.Check_communication(mpu9250_address_2)
-        timer_period = 1/100   # seconds 50Hz
+        timer_period = 1/2000   # seconds 50Hz
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0
         self.prev_accel_x, self.prev_accel_y, self.prev_accel_z = 0, 0, 0
@@ -178,10 +178,15 @@ class MinimalPublisher(Node):
         time.sleep(0.1)
 
         # Set the sample rate to 100 Hz (SMPLRT_DIV = 9)
+        """
         sample_rate_div = 9  # 100 Hz sample rate
         self.bus.write_byte_data(address, SMPLRT_DIV, sample_rate_div)
         time.sleep(0.1)
-
+        """
+        # Set the sample rate to 4000 Hz (SMPLRT_DIV = 1 for 4000 Hz output rate)
+        sample_rate_div = 1  # High sample rate
+        self.bus.write_byte_data(address, SMPLRT_DIV, sample_rate_div)
+        time.sleep(0.1)
         # Set gyroscope sensitivity to ±250°/s
         gyro_config_sel = 0b00000  # Corresponds to ±250°/s
         self.bus.write_byte_data(address, GYRO_CONFIG, gyro_config_sel)
