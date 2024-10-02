@@ -73,46 +73,13 @@ GYRO_SENSITIVITY = GYRO_SENSITIVITY_RAW
 import numpy as np
 from collections import deque
 
-
-class KalmanFilter:
-    def __init__(self, Q=0.0001, R=0.01):
-        # Process noise covariance (Q) and measurement noise covariance (R)
-        self.Q = Q
-        self.R = R
-        self.x = 0.0  # State estimate
-        self.P = 1.0  # Estimate covariance
-
-    def update(self, measurement):
-        # Prediction step
-        self.P += self.Q
-
-        # Measurement update step
-        K = self.P / (self.P + self.R)  # Kalman Gain
-        self.x += K * (measurement - self.x)  # Update estimate with measurement
-        self.P *= (1 - K)  # Update estimate covariance
-
-        return self.x
-
 class MinimalPublisher(Node):
 
     def __init__(self):
         super().__init__('mpu_publisher')
         self.publisher_ = self.create_publisher(Mpu, 'mpu_data_1', 10)
         # Kalman Filters for each axis of accelerometer and gyroscope
-        self.kf_accel_x = KalmanFilter()
-        self.kf_accel_y = KalmanFilter()
-        self.kf_accel_z = KalmanFilter()
-        self.kf_gyro_x = KalmanFilter()
-        self.kf_gyro_y = KalmanFilter()
-        self.kf_gyro_z = KalmanFilter()
-
-        # Kalman Filters for second MPU
-        self.kf_accel_x2 = KalmanFilter()
-        self.kf_accel_y2 = KalmanFilter()
-        self.kf_accel_z2 = KalmanFilter()
-        self.kf_gyro_x2 = KalmanFilter()
-        self.kf_gyro_y2 = KalmanFilter()
-        self.kf_gyro_z2 = KalmanFilter()
+        
 
         self.current_time = perf_counter()
         self.prevTime = perf_counter()
@@ -142,11 +109,11 @@ class MinimalPublisher(Node):
         self.check_full_scale(mpu9250_address)
         calibration_key = 'mpu1'
         
-        self.calibrate_mpu(mpu9250_address,20000,calibration_key)
+        #self.calibrate_mpu(mpu9250_address,20000,calibration_key)
 
         calibration_key = 'mpu2'
-        self.check_full_scale(mpu9250_address_2)
-        self.calibrate_mpu(mpu9250_address_2,20000,calibration_key)
+        #self.check_full_scale(mpu9250_address_2)
+        #self.calibrate_mpu(mpu9250_address_2,20000,calibration_key)
         
 
         self.Check_communication(mpu9250_address)
@@ -373,89 +340,7 @@ class MinimalPublisher(Node):
         self.get_logger().info(f"Accel standard deviation: {accel_std}, Gyro standard deviation: {gyro_std}")
 
         self.get_logger().info(f"Calibration completed for {key}. Accel offsets: {accel_offset}, Gyro offsets: {gyro_offset}")
-    def check_calibration_convergence(self, sensor_data, threshold=0.001):
-        """
-        Check if the sensor data has converged to within a small threshold for all axes.
-        - sensor_data: the current accelerometer data (X, Y, Z)
-        - threshold: the acceptable error margin to consider convergence (default is 0.05)
-        """
-        accel_x, accel_y, accel_z = sensor_data[:3]
-
-        # Expected values for accelerometer in a flat orientation (stationary) are zero
-        expected_accel_x, expected_accel_y, expected_accel_z = 0.0, 0.0, 0.0
-
-        # Calculate the absolute errors
-        error_x = abs(expected_accel_x - accel_x)
-        error_y = abs(expected_accel_y - accel_y)
-        error_z = abs(expected_accel_z - accel_z)
-
-        # Check if all errors are within the acceptable threshold
-        if error_x < threshold and error_y < threshold and error_z < threshold:
-            return True  # Calibration has converged
-        return False  # Still need to adjust calibration
-
-    def adaptive_calibration2(self, sensor_data, calibration_key):
-        """
-        Perform adaptive calibration by continuously adjusting based on sensor data.
-        The expected value for each axis is assumed to be zero.
-        - sensor_data: the current accelerometer data (X, Y, Z)
-        - calibration_key: 'mpu1' or 'mpu2'
-        
-        if self.check_calibration_convergence(sensor_data):
-            return
-
-        """
-        # Proceed with calibration adjustments if not converged
-        accel_x, accel_y, accel_z = sensor_data[:3]
-
-        # Expected values for accelerometer in a flat, stationary orientation are zero
-        expected_accel_x, expected_accel_y, expected_accel_z = 0.0, 0.0, 0.0
-
-        # Calculate the error between expected and actual values
-        error_x = expected_accel_x - accel_x
-        error_y = expected_accel_y - accel_y
-        error_z = expected_accel_z - accel_z
-
-        # Dynamically calculate adjustment factor based on error magnitude
-        adjustment_factor_x = np.clip(abs(error_x), 0.001, 0.02)  # X-axis adjustment factor
-        adjustment_factor_y = np.clip(abs(error_y), 0.001, 0.02)  # Y-axis adjustment factor
-        adjustment_factor_z = np.clip(abs(error_z), 0.001, 0.02)  # Z-axis adjustment factor (Z may need larger adjustment)
-
-        # Adjust the offsets based on error direction and magnitude
-        
-        if error_x >=  0.05:
-            # Positive error: measured value is too high, so decrease the offset
-            calibration_data[calibration_key]["accel"]["offset"][0] += adjustment_factor_x
-        else:
-            if error_x <= -0.05:
-                # Negative error: measured value is too low, so increase the offset
-                calibration_data[calibration_key]["accel"]["offset"][0] -= adjustment_factor_x
-
-        if error_y >=  0.05:
-            # Positive error: measured value is too high, so decrease the offset
-            calibration_data[calibration_key]["accel"]["offset"][1] += adjustment_factor_y
-        else:
-            if error_y <= -0.05:
-                # Negative error: measured value is too low, so increase the offset
-                calibration_data[calibration_key]["accel"]["offset"][1] -= adjustment_factor_y
-        
-        if error_z >=  0.05:
-            # Positive error: measured value is too high, so decrease the offset
-            calibration_data[calibration_key]["accel"]["offset"][2] += adjustment_factor_z
-        else:
-            if error_z <= -0.05:
-                # Negative error: measured value is too low, so increase the offset
-                calibration_data[calibration_key]["accel"]["offset"][2] -= adjustment_factor_z
-
-        #self.get_logger().info(f"Adaptive calibration adjustment 2: {error_z}")
-        # Log the calibration adjustments for debugging
-        """
-        self.get_logger().info(f"Adaptive calibration adjustment for {calibration_key}: "
-                            f"Accel X offset: {calibration_data[calibration_key]['accel']['offset'][0]}, "
-                            f"Accel Y offset: {calibration_data[calibration_key]['accel']['offset'][1]}, "
-                            f"Accel Z offset: {calibration_data[calibration_key]['accel']['offset'][2]}")
-        """
-
+    
     def convert_data(self, high_byte, low_byte):
         """Converts high and low bytes into a signed integer"""
         value = (high_byte << 8) | low_byte
@@ -467,53 +352,6 @@ class MinimalPublisher(Node):
         if alpha is None:
             alpha = self.dynamic_alpha_calculation(current_value, previous_value)
         return alpha * current_value + (1 - alpha) * previous_value
-    
-    def dynamic_alpha_calculation(self, current_value, previous_value):
-        # Example: Calculate alpha based on the difference between values
-        delta = abs(current_value - previous_value)
-        return min(0.9, max(0.1, delta / 100))  # Adjust range as needed
-    def adaptive_calibration(self, sensor_data, calibration_key):
-        """
-        Perform adaptive calibration by continuously adjusting based on sensor data.
-        - sensor_data: the current accelerometer data
-        - calibration_key: 'mpu1' or 'mpu2'
-        """
-        accel_x, accel_y, accel_z = sensor_data[:3]
-
-        # Expected values for accelerometer in a flat orientation (stationary)
-        expected_accel_x, expected_accel_y, expected_accel_z = 0.0, 0.0, 0.0# delete gravity  # assuming gravity in z-axis only
-
-        # Calculate the error in measurement
-        error_x = expected_accel_x - accel_x
-        error_y = expected_accel_y - accel_y
-        error_z = expected_accel_z - accel_z
-
-        # Dynamically adjust the calibration offset (small adjustment factor to avoid over-adjusting)
-        adjustment_factor = np.array([0.01 , 0.01 ,0.01])  # Small adjustment factor for adaptive calibration
-        
-        if (error_x<0.1):
-            adjustment_factor[0]  = 0.0000
-        if (error_y<0.1):
-            adjustment_factor[1]  = 0.0000
-        if (error_z<0.1):
-            adjustment_factor[2]  = 0.0000
-        calibration_data[calibration_key]["accel"]["offset"][0]+= adjustment_factor[0] * (error_x)
-        #calibration_data[calibration_key]["accel"]["offset"][1]+= adjustment_factor[1] * (error_y)
-        
-        
-        # Define a threshold for error below which no adjustment should be made
-        threshold = 0.05
-        """
-        # Only adjust calibration offset if the error exceeds the threshold
-        if abs(error_x) > threshold:
-            calibration_data[calibration_key]["accel"]["offset"][0] += 0.01 * error_x
-        if abs(error_y) > threshold:
-            calibration_data[calibration_key]["accel"]["offset"][1] += 0.01 * error_y
-        if abs(error_z) > threshold:
-            calibration_data[calibration_key]["accel"]["offset"][2] += 0.01 * error_z
-        # Log adjustment (optional for debugging)
-        """
-        #self.get_logger().info(f"Adaptive calibration adjustment 1: {calibration_data[calibration_key]['accel']['offset']}")
 
     def read_sensor_data(self, address, calibration_key,prev):
         """Reads the raw sensor data from the MPU9250"""
@@ -540,82 +378,8 @@ class MinimalPublisher(Node):
         gyro_y = self.convert_data(gyro_data[2], gyro_data[3])
         gyro_z = self.convert_data(gyro_data[4], gyro_data[5])
 
-        # Apply Kalman filter to smooth data
-
-        accel_x = self.low_pass_filter(accel_x, prev[0])
-        accel_y = self.low_pass_filter(accel_y, prev[1])
-        accel_z = self.low_pass_filter(accel_z, prev[2])
-
-        gyro_x = self.low_pass_filter(gyro_x, prev[3])
-        gyro_y = self.low_pass_filter(gyro_y, prev[4])
-        gyro_z = self.low_pass_filter(gyro_z, prev[5])
-
-        accel_y_filtered = accel_y
-        accel_x_filtered = accel_x
-        accel_z_filtered = accel_z
-
-        gyro_x_filtered =gyro_x
-
-        gyro_y_filtered = gyro_y
-
-        gyro_z_filtered = gyro_z
-        """accel_x_filtered = self.kf_accel_x.update(accel_x)
-        accel_y_filtered = self.kf_accel_y.update(accel_y)
-        accel_z_filtered = self.kf_accel_z.update(accel_z)
-
-        gyro_x_filtered = self.kf_gyro_x.update(gyro_x)
-        gyro_y_filtered = self.kf_gyro_y.update(gyro_y)
-        gyro_z_filtered = self.kf_gyro_z.update(gyro_z)"""
-        """
-        # Apply low-pass filter to raw values
         
-        """
-        # Apply low-pass filter to raw values
-        #accel_x = self.low_pass_filter(accel_x, prev[0])
-        #accel_y = self.low_pass_filter(accel_y, prev[1])
-        #accel_z = self.low_pass_filter(accel_z, prev[2])
-
-        #gyro_x = self.low_pass_filter(gyro_x, prev[3])
-        #gyro_y = self.low_pass_filter(gyro_y, prev[4])
-        #gyro_z = self.low_pass_filter(gyro_z, prev[5])
-
-        
-        # Convert to correct units
-            # Convert to correct units
-        #convert to acceleration in g and gyro dps
-        """
-            accel_x = (accel_x_filtered/(2.0**15.0))*ACCEL_SENSITIVITY
-            accel_y = (accel_y_filtered/(2.0**15.0))*ACCEL_SENSITIVITY
-            accel_z = (accel_z_filtered/(2.0**15.0))*ACCEL_SENSITIVITY
-
-            gyro_x = (gyro_x_filtered/(2.0**15.0))*GYRO_SENSITIVITY
-            gyro_y = (gyro_z_filtered/(2.0**15.0))*GYRO_SENSITIVITY
-            gyro_z = (gyro_z_filtered/(2.0**15.0))*GYRO_SENSITIVITY
-
-            """
-
-        accel_x = (accel_x_filtered/ACCEL_SENSITIVITY)*2
-        accel_y = (accel_y_filtered/ACCEL_SENSITIVITY)*2
-        accel_z = (accel_z_filtered/ACCEL_SENSITIVITY)*2
-
-        gyro_x = (gyro_x_filtered/GYRO_SENSITIVITY)*250
-        gyro_y = (gyro_y_filtered/GYRO_SENSITIVITY)*250
-        gyro_z = (gyro_z_filtered/GYRO_SENSITIVITY)*250
-        # Apply calibration
-        """
-        accel_x = (accel_x - calibration_data[calibration_key]["accel"]["offset"][0])    + calibration_data[calibration_key]["accel"]["slope"][0]
-        accel_y = ( accel_y - calibration_data[calibration_key]["accel"]["offset"][1])    +calibration_data[calibration_key]["accel"]["slope"][1]
-        accel_z = ( accel_z - calibration_data[calibration_key]["accel"]["offset"][2])    +calibration_data[calibration_key]["accel"]["slope"][2]
-        
-        """
-        # Apply calibration (common form: subtract offset, then apply slope)
-        accel_x = (accel_x - calibration_data[calibration_key]["accel"]["offset"][0]) * calibration_data[calibration_key]["accel"]["slope"][0]
-        accel_y = (accel_y - calibration_data[calibration_key]["accel"]["offset"][1]) * calibration_data[calibration_key]["accel"]["slope"][1]
-        accel_z = (accel_z - calibration_data[calibration_key]["accel"]["offset"][2]) * calibration_data[calibration_key]["accel"]["slope"][2]
-
-        gyro_x -= calibration_data[calibration_key]["gyro"]["offset"][0]
-        gyro_y -= calibration_data[calibration_key]["gyro"]["offset"][1]
-        gyro_z -= calibration_data[calibration_key]["gyro"]["offset"][2]
+       
 
 
         
@@ -643,14 +407,13 @@ class MinimalPublisher(Node):
             accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z = self.read_sensor_data(mpu9250_address, key, prev)
             
             # Apply adaptive calibration to adjust offsets in real-time
-            self.adaptive_calibration([accel_x, accel_y, accel_z], key)
-            self.adaptive_calibration2([accel_x, accel_y, accel_z], key) # Second calibration method to Z axis
+            #self.adaptive_calibration([accel_x, accel_y, accel_z], key)
+            #self.adaptive_calibration2([accel_x, accel_y, accel_z], key) # Second calibration method to Z axis
 
             self.prev_accel_x, self.prev_accel_y, self.prev_accel_z = accel_x, accel_y, accel_z
             self.prev_gyro_x, self.prev_gyro_y, self.prev_gyro_z = gyro_x, gyro_y, gyro_z
              # Update previous values for next loop iteration
-            self.prev_accel_x, self.prev_accel_y, self.prev_accel_z = accel_x, accel_y, accel_z
-            self.prev_gyro_x, self.prev_gyro_y, self.prev_gyro_z = gyro_x, gyro_y, gyro_z
+            
 
             # Repeat the same process for the second MPU
             key = 'mpu2'
@@ -658,8 +421,8 @@ class MinimalPublisher(Node):
             accel_x_2, accel_y_2, accel_z_2, gyro_x_2, gyro_y_2, gyro_z_2 = self.read_sensor_data(mpu9250_address_2, key, prev)
 
             # Apply adaptive calibration to MPU2
-            self.adaptive_calibration([accel_x_2, accel_y_2, accel_z_2], key)
-            self.adaptive_calibration2([accel_x_2, accel_y_2, accel_z_2], key) # Second calibration method to Z axis
+            #self.adaptive_calibration([accel_x_2, accel_y_2, accel_z_2], key)
+            #self.adaptive_calibration2([accel_x_2, accel_y_2, accel_z_2], key) # Second calibration method to Z axis
 
             # Update previous values for MPU2
             self.prev_accel_x2, self.prev_accel_y2, self.prev_accel_z2 = accel_x_2, accel_y_2, accel_z_2
@@ -705,9 +468,9 @@ class MinimalPublisher(Node):
         self.msg.acx = float(self.prev_accel_x)
         self.msg.acy = float(self.prev_accel_y)
         self.msg.acz = float(self.prev_accel_z)
-        self.msg.gx = float(self.prev_gyro_x2)
-        self.msg.gy = float(self.prev_gyro_x2)
-        self.msg.gz = float(self.prev_gyro_x2)
+        self.msg.gx = float(self.prev_gyro_x)
+        self.msg.gy = float(self.prev_gyro_y)
+        self.msg.gz = float(self.prev_gyro_x)
 
         
         
