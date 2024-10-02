@@ -5,8 +5,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     # Locate the package and YAML file
-    package_dir = get_package_share_directory('mpu_pub')
-    param_file = os.path.join(package_dir, 'config', 'ekf.yaml')
+   
 
     return LaunchDescription([
         Node(
