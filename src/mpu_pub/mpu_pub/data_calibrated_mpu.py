@@ -97,7 +97,7 @@ class KalmanFilter:
 class MinimalPublisher(Node):
 
     def __init__(self):
-        super().__init__('mpu_publisher')
+        super().__init__('data_calibrated_mpu')
         self.subscriber = self.create_subscription(Mpu, 'mpu_data_1',self.listener_callback, 10)
         self.publisher_ = self.create_publisher(Mpu, 'mpu_data_2', 10)
         # Kalman Filters for each axis of accelerometer and gyroscope
