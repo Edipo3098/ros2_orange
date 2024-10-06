@@ -17,6 +17,7 @@ G
 
 from filterpy.kalman import UnscentedKalmanFilter as UKF
 from filterpy.kalman import MerweScaledSigmaPoints
+
 import numpy as np
 
 class IMUFusionUKF:
@@ -38,11 +39,13 @@ class IMUFusionUKF:
         self.mulR = 1000
         self.mulQ = 0.00001
         self.complementary_alpha = 0.98  # Giving more weight to gyroscope data
+        # Set the inverse function to use pseudo-inverse instead
+        self.ukf.inv = np.linalg.pinv
         
     # Define state transition function for UKF
     def fx(self, x, dt):
         # x = [pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, roll, pitch, yaw]
-        # Update position based on velocity and acceleration
+        # perf_counter position based on velocity and acceleration
         pos = x[:3] + x[3:6] * dt + 0.5 * x[6:] * dt**2
         
         # Update velocity based on acceleration
@@ -191,6 +194,8 @@ class CalCOGFrame(Node):
         self.prevOrientation  = np.array([0.0, 0.0, 0.0])
         self.timerPrint = self.create_timer(1, self.printData)
         self.msg = COGframe()
+        self.pos = np.array([0.0, 0.0, 0.0])
+        self.orient = np.array([0.0, 0.0, 0.0])
 
 
     def listener_callback(self, msg):
@@ -420,6 +425,11 @@ class CalCOGFrame(Node):
 
         # Update step with acceleration (linear velocity) and angular velocity
         measurements = np.hstack((z_imu1, z_imu2, [roll, pitch, yaw]))  # [vel_x, vel_y, vel_z, roll, pitch, yaw]
+        # Add regularization to the measurement noise covariance
+        self.kf.ukf.R += np.eye(self.kf.ukf.R.shape[0]) * 1e-6
+        # Add regularization to the measurement noise covariance
+        self.kf.ukf.Q += np.eye(self.kf.ukf.Q.shape[0]) * 1e-6
+
         self.kf.ukf.update(measurements)
 
         # Get filtered state (position, velocity, orientation)
@@ -435,6 +445,8 @@ class CalCOGFrame(Node):
         msg.pos_x, msg.pos_y, msg.pos_z = float(pos[0]), float(pos[1]), float(pos[2])
         msg.roll, msg.pitch, msg.yaw = float(roll), float(pitch), float(yaw)
         self.publishKalmanFrame.publish(msg)
+        self.pos = pos
+        self.orient = orient
         
 
     def printData(self):
