@@ -544,23 +544,12 @@ class CalCOGFrame(Node):
         alpha = 0.6  # Weight for IMU1, 1 - alpha for IMU2
         
         # Weighted average for gyroscope data in
-        gyroscope_data = np.array([
-            alpha * self.mpu1_data.gx + (1 - alpha) * self.mpu1_data.gx2,
-            alpha * self.mpu1_data.gy + (1 - alpha) * self.mpu1_data.gy2,
-            alpha * self.mpu1_data.gz + (1 - alpha) * self.mpu1_data.gz2
-        ]) # already in rad/s
-
-        # Weighted average for accelerometer data
-        accelerometer_data = np.array([
-            alpha * self.mpu1_data.acx + (1 - alpha) * self.mpu1_data.acx2,
-            alpha * self.mpu1_data.acy + (1 - alpha) * self.mpu1_data.acy2,
-            alpha * self.mpu1_data.acz + (1 - alpha) * self.mpu1_data.acz2
-        ])*9.81
+        
         gyroscope_data_filtered = np.array([
             alpha * self.mpu1_data.gx + (1 - alpha) * self.mpu1_data.gx2,
             alpha * self.mpu1_data.gy + (1 - alpha) * self.mpu1_data.gy2,
             alpha * self.mpu1_data.gz + (1 - alpha) * self.mpu1_data.gz2
-        ]) # already in rad/s
+        ])*np.pi/180# already in rad/s
 
         # Weighted average for accelerometer data
         accelerometer_data_filtered = np.array([
@@ -573,29 +562,26 @@ class CalCOGFrame(Node):
         gyro_imu2 = np.array([self.mpu1_data.gx2, self.mpu1_data.gy2, self.mpu1_data.gz2])
         # Use complementary filter to calculate orientation
         
-        self.quaternion  = self.madgwick_filter.updateIMU(q=self.quaternion,gyr=gyroscope_data_filtered, acc=accelerometer_data_filtered)
+        #self.quaternion  = self.madgwick_filter.updateIMU(q=self.quaternion,gyr=gyroscope_data_filtered, acc=accelerometer_data_filtered)
 
         
-        roll, pitch, yaw = self.quaternion_to_euler_angles(self.quaternion)  # in rads
-        orientation = np.array([roll, pitch, yaw])
+       
         # Compensate for gravity using the orientation from the Madgwick filter
         # Convert accelerometer readings to m/s² (if not already in m/s²)
         
-        accel_imu1_raw = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz]) 
-        accel_imu2_raw = np.array([self.mpu1_data.acx2, self.mpu1_data.acy2, self.mpu1_data.acz2]) 
+        
         accel_imu1 = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz]) 
         accel_imu2 = np.array([self.mpu1_data.acx2, self.mpu1_data.acy2, self.mpu1_data.acz2]) 
         accel_imu1filt = np.array([filtered_acx, filtered_acy, filtered_acz]) 
         accel_imu2filt = np.array([filtered_acx2, filtered_acy2, filtered_acz2]) 
-        accel_imu1_comp = self.compensate_gravity_with_quaternion(accel_imu1, self.quaternion)
-        accel_imu2_comp = self.compensate_gravity_with_quaternion(accel_imu2, self.quaternion)
-        accel_imu1_comp_filt = self.compensate_gravity_with_quaternion(accel_imu1filt, self.quaternion)
-        accel_imu2_comp_filt = self.compensate_gravity_with_quaternion(accel_imu2filt, self.quaternion)
+        
         # Fused measurement vector for EKF (acceleration from both IMUs)
-        #orientation = self.kf.complementary_filter(accel_imu1, accel_imu2, gyro_imu1, gyro_imu2, dt, self.prevOrientation )
-        #self.prevOrientation = orientation
+        orientation = self.kf.complementary_filter(accel_imu1, accel_imu2, gyro_imu1, gyro_imu2, dt, self.prevOrientation )
+         #roll, pitch, yaw = self.quaternion_to_euler_angles(self.quaternion)  # in rads
+        
+        self.prevOrientation = orientation
         z_imu1 = accel_imu1filt
-        z_imu2 = accel_imu1filt
+        z_imu2 = accel_imu2filt
             # Fuse the accelerations (average)
         u_fused = alpha*z_imu1 + (1-alpha)*z_imu2
         
@@ -610,6 +596,7 @@ class CalCOGFrame(Node):
 
         # Retrieve filtered state (position, velocity)
         pos, vel, orient = self.kf.get_state()
+        orient = orientation
         self.add_measurement_to_buffers(self.mpu1_data,orientation,self.kf.ekf.x)
         self.update_measurement_noise()
         self.kf.update_noise_covariances(self.acc_variance, self.acc_variance2, self.gyro_variance, self.state_variance)
@@ -619,16 +606,9 @@ class CalCOGFrame(Node):
         msg.pos_x, msg.pos_y, msg.pos_z = float(pos[0]), float(pos[1]), float(pos[2])
         msg.roll, msg.pitch, msg.yaw = float(orient[0]), float(orient[1]), float(orient[2])
         self.pos = pos
-        self.orient = orient
+        self.orient = orientation
         self.publishKalmanFrame.publish(msg)
-        if ( not self.calibrated ):
-            if (accel_imu1_raw[0] < 0.1 and accel_imu1_raw[1] < 0.1 and accel_imu1_raw[2] < 0.1 and accel_imu2_raw[0] < 0.1 and accel_imu2_raw[1] < 0.1 and accel_imu2_raw[2] < 0.1):
-                self.calibrated = True
-                self.calibration_time = perf_counter()
-                self.get_logger().info("Calibration  done")
-            
-        else:
-            self.publishKalmanFrame.publish(msg)
+        
 
      
         

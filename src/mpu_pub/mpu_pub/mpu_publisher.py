@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# This node read data from MPU and publish data in raw values
 
 import rclpy
 from rclpy.node import Node
@@ -107,14 +108,7 @@ class MinimalPublisher(Node):
         
 
         self.check_full_scale(mpu9250_address)
-        calibration_key = 'mpu1'
-        
-        #self.calibrate_mpu(mpu9250_address,20000,calibration_key)
-
-        calibration_key = 'mpu2'
-        #self.check_full_scale(mpu9250_address_2)
-        #self.calibrate_mpu(mpu9250_address_2,20000,calibration_key)
-        
+       
 
         self.Check_communication(mpu9250_address)
         self.Check_communication(mpu9250_address_2)
@@ -210,136 +204,7 @@ class MinimalPublisher(Node):
             value = value - 65536
         return value/sensitivity
     
-    def calibrate_mpu(self,address, num_samples=10000,key='mpu1'):
-        accel_data = []
-        gyro_data = []
-        accel_data_filtered = []
-        
-        self.calibrationTime = time.time()
-        prev_accel_x, prev_accel_y, prev_accel_z = 0, 0, 0
-        prev_gyro_x, prev_gyro_y, prev_gyro_z = 0, 0, 0
-        self.get_logger().info(f"Calibrating MPU at address {hex(address)}...")
-        finishCalibration = False
-        firstCalibration = False
-        #expected_gravity = np.array([1, 1 ,1])  # Assume gravity is in the negative z-axis is in g = 9.81 m/s²
-        adjustment_factor = 0.01  # Small adjustment factor for adaptive calibration
-        for _ in range(num_samples):
-            try:
-                accel_data_error = self.bus.read_i2c_block_data(address, 0x3B, 6)
-                gyro_data_error = self.bus.read_i2c_block_data(address, 0x43, 6)
-            except Exception as e:
-                self.get_logger().info(f'Error in read_sensor_data: {e}')
-                accel_data_error = [0, 0, 0, 0, 0, 0]
-                gyro_data_error = [0, 0, 0, 0, 0, 0]
-
-            accel_raw_data = accel_data_error 
-            gyro_raw_data = gyro_data_error
-
-            # Process accelerometer data
-            accel_x = self.convert_data(accel_raw_data[0], accel_raw_data[1])
-            accel_y = self.convert_data(accel_raw_data[2], accel_raw_data[3])
-            accel_z = self.convert_data(accel_raw_data[4], accel_raw_data[5])
-
-            # Process gyroscope data
-            gyro_x = self.convert_data(gyro_raw_data[0], gyro_raw_data[1])
-            gyro_y = self.convert_data(gyro_raw_data[2], gyro_raw_data[3])
-            gyro_z = self.convert_data(gyro_raw_data[4], gyro_raw_data[5])
-
-            
-
-            accel_x = self.low_pass_filter(accel_x, prev_accel_x)
-            accel_y = self.low_pass_filter(accel_y, prev_accel_y)
-            accel_z = self.low_pass_filter(accel_z, prev_accel_z)
-
-            gyro_x = self.low_pass_filter(gyro_x, prev_gyro_x)
-            gyro_y = self.low_pass_filter(gyro_y, prev_gyro_y)
-            gyro_z = self.low_pass_filter(gyro_z, prev_gyro_z)
-
-            accel_x_filtered = self.kf_accel_x.update(accel_x)
-            accel_y_filtered = self.kf_accel_y.update(accel_y)
-            accel_z_filtered = self.kf_accel_z.update(accel_z)
-
-            gyro_x_filtered = self.kf_gyro_x.update(gyro_x)
-            gyro_y_filtered = self.kf_gyro_y.update(gyro_y)
-            gyro_z_filtered = self.kf_gyro_z.update(gyro_z)
-            
-            # Update previous values for next iteration
-            prev_accel_x, prev_accel_y, prev_accel_z = accel_x_filtered, accel_y_filtered, accel_z_filtered
-            prev_gyro_x, prev_gyro_y, prev_gyro_z = gyro_x_filtered, gyro_y_filtered, gyro_z_filtered
-
-            #convert to acceleration in g and gyro dps
-            """
-            accel_x = (accel_x_filtered/(2.0**15.0))*ACCEL_SENSITIVITY
-            accel_y = (accel_y_filtered/(2.0**15.0))*ACCEL_SENSITIVITY
-            accel_z = (accel_z_filtered/(2.0**15.0))*ACCEL_SENSITIVITY
-
-            gyro_x = (gyro_x_filtered/(2.0**15.0))*GYRO_SENSITIVITY
-            gyro_y = (gyro_z_filtered/(2.0**15.0))*GYRO_SENSITIVITY
-            gyro_z = (gyro_z_filtered/(2.0**15.0))*GYRO_SENSITIVITY
-
-            """
-
-            accel_x = (accel_x_filtered/ACCEL_SENSITIVITY)*2
-            accel_y = (accel_y_filtered/ACCEL_SENSITIVITY)*2
-            accel_z = (accel_z_filtered/ACCEL_SENSITIVITY)*2
-
-            gyro_x = (gyro_x_filtered/GYRO_SENSITIVITY)*250
-            gyro_y = (gyro_y_filtered/GYRO_SENSITIVITY)*250
-            gyro_z = (gyro_z_filtered/GYRO_SENSITIVITY)*250
-            
-            accel_data.append([accel_x, accel_y, accel_z])
-            
-            gyro_data.append([gyro_x, gyro_y, gyro_z])
-
-            
-    
-        accel_data_array = np.array(accel_data)
-        gyro_data_array = np.array(gyro_data)
-        firstCalibration = True
-
-        # Accelerometer calibration (slope and offset calculation using linear regression)
-        accel_mean = np.mean(accel_data_array, axis=0)
-        accel_std = np.std (accel_data_array, axis=0)
-        accel_min = np.min(accel_data_array, axis=0)
-        accel_max = np.max(accel_data_array, axis=0)
-
-        accel_slope = np.ones(3)  # Slope should generally be near 1 for accelerometer
-        # Compute slope by comparing accelerometer values to expected values (e.g., 1g)
-        # Expected value is 9.81 m/s² when axis is aligned with gravity
-        # Dynamically adjust only the Z-axis expected gravity based on real-time measurements
-        #current_accel_z = np.mean(np.abs(accel_data[:, 2]))
-        
-        #expected_gravity[2] += adjustment_factor * (current_accel_z - np.abs(expected_gravity[2]))
-        expected_gravity = np.array([-1,-1,-1])
-        
-        accel_slope = expected_gravity / np.mean(np.abs(accel_data_array), axis=0)
-        accel_offset = accel_mean  # Use the mean as the offset
-        accel_offset = accel_mean  # Use the mean as the offset
-
-        # Gyroscope calibration (offset calculation)
-        gyro_offset = np.mean(gyro_data_array, axis=0)
-    
-        mul = 1
-        # Store calibration parameters
-        if key == 'mpu2':
-            mul = 1
-
-        calibration_data[key]["accel"]["slope"] = accel_slope
-        calibration_data[key]["accel"]["offset"] = (accel_offset*mul)
-        calibration_data[key]["gyro"]["offset"] = gyro_offset
-
-        # Log the standard deviation for diagnostic purposes
-        # You can also compute standard deviation and discard high variance data
-        accel_std = np.std(accel_data, axis=0)
-        gyro_std = np.std(gyro_data, axis=0)
-                
-
-
-            
-            
-        self.get_logger().info(f"Accel standard deviation: {accel_std}, Gyro standard deviation: {gyro_std}")
-
-        self.get_logger().info(f"Calibration completed for {key}. Accel offsets: {accel_offset}, Gyro offsets: {gyro_offset}")
+   
     
     def convert_data(self, high_byte, low_byte):
         """Converts high and low bytes into a signed integer"""
@@ -441,7 +306,8 @@ class MinimalPublisher(Node):
 
             
 
-
+ # Publish Acceleration data in g
+    # Publish data in dps
             
            
             

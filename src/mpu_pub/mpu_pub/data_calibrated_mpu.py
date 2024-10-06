@@ -99,7 +99,7 @@ class MinimalPublisher(Node):
     def __init__(self):
         super().__init__('data_calibrated_mpu')
         self.subscriber = self.create_subscription(Mpu, 'mpu_data_1',self.listener_callback, 10)
-        self.publisher_ = self.create_publisher(Mpu, 'mpu_data_2', 10)
+        self.publisher_ = self.create_publisher(Mpu, 'mpu_data_2', 10) # In gravity and degree*second
         # Kalman Filters for each axis of accelerometer and gyroscope
         self.kf_accel_x = KalmanFilter()
         self.kf_accel_y = KalmanFilter()
@@ -133,14 +133,7 @@ class MinimalPublisher(Node):
 
         self.calibrationTime = time.time()
         self.current_time = time.time()
-        
-
-        
-        
-        
-        
-
-       
+              
         timer_period = 1/2000   # seconds 50Hz
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.sendData = self.create_timer(timer_period, self.send_data)
@@ -170,6 +163,7 @@ class MinimalPublisher(Node):
         }
         
         self.dataCalibrated = False
+        self.get_logger().info(f"Calibrating MPU at address ...")
         self.current_accel,self.current_gyro = np.array([0,0,0]),np.array([0,0,0])
         self.current_accel2,self.current_gyro2 =np.array([0,0,0]),np.array([0,0,0]) 
    
@@ -217,21 +211,21 @@ class MinimalPublisher(Node):
         
         
 
-        accel_x = (accel_x_filtered/ACCEL_SENSITIVITY)*2
-        accel_y = (accel_y_filtered/ACCEL_SENSITIVITY)*2
-        accel_z = (accel_z_filtered/ACCEL_SENSITIVITY)*2
+        accel_x = (accel_x_filtered/ACCEL_SENSITIVITY)
+        accel_y = (accel_y_filtered/ACCEL_SENSITIVITY)
+        accel_z = (accel_z_filtered/ACCEL_SENSITIVITY)
 
-        gyro_x = (gyro_x_filtered/GYRO_SENSITIVITY)*250
-        gyro_y = (gyro_y_filtered/GYRO_SENSITIVITY)*250
-        gyro_z = (gyro_z_filtered/GYRO_SENSITIVITY)*250
+        gyro_x = (gyro_x_filtered/GYRO_SENSITIVITY)
+        gyro_y = (gyro_y_filtered/GYRO_SENSITIVITY)
+        gyro_z = (gyro_z_filtered/GYRO_SENSITIVITY)
 
-        accel_x2 = (accel_x_filtered2/ACCEL_SENSITIVITY)*2
-        accel_y2 = (accel_y_filtered2/ACCEL_SENSITIVITY)*2
-        accel_z2 = (accel_z_filtered2/ACCEL_SENSITIVITY)*2
+        accel_x2 = (accel_x_filtered2/ACCEL_SENSITIVITY)
+        accel_y2 = (accel_y_filtered2/ACCEL_SENSITIVITY)
+        accel_z2 = (accel_z_filtered2/ACCEL_SENSITIVITY)
 
-        gyro_x2 = (gyro_x_filtered2/GYRO_SENSITIVITY)*250
-        gyro_y2 = (gyro_y_filtered2/GYRO_SENSITIVITY)*250
-        gyro_z2 = (gyro_z_filtered2/GYRO_SENSITIVITY)*250
+        gyro_x2 = (gyro_x_filtered2/GYRO_SENSITIVITY)
+        gyro_y2 = (gyro_y_filtered2/GYRO_SENSITIVITY)
+        gyro_z2 = (gyro_z_filtered2/GYRO_SENSITIVITY)
 
         return accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z, accel_x2, accel_y2, accel_z2, gyro_x2, gyro_y2, gyro_z2
 
@@ -246,7 +240,7 @@ class MinimalPublisher(Node):
         prev_gyro_x, prev_gyro_y, prev_gyro_z = 0, 0, 0
 
        
-        self.get_logger().info(f"Calibrating MPU at address ...")
+        
         finishCalibration = False
         firstCalibration = False
         #expected_gravity = np.array([1, 1 ,1])  # Assume gravity is in the negative z-axis is in g = 9.81 m/s²
@@ -270,16 +264,16 @@ class MinimalPublisher(Node):
             accel_data_array2 = np.stack((accel_data_x2, accel_data_y2, accel_data_z2), axis=1)
 
             # Assuming your deques for accelerometer and gyroscope data
-            gyro_data_roll = np.array(self.gyro_buffers['acx'])
-            gyro_data_pitch = np.array(self.gyro_buffers['acy'])
-            gyro_data_yaw = np.array(self.gyro_buffers['acz'])
+            gyro_data_roll = np.array(self.gyro_buffers['roll'])
+            gyro_data_pitch = np.array(self.gyro_buffers['pitch'])
+            gyro_data_yaw = np.array(self.gyro_buffers['yaw2'])
 
             # Combine accelerometer data into one array for processing
             gyro_data_array = np.stack((gyro_data_roll, gyro_data_pitch, gyro_data_yaw), axis=1)
 
-            gyro_data_roll2 = np.array(self.gyro_buffers['acx2'])
-            gyro_data_pitch2 = np.array(self.gyro_buffers['acy2'])
-            gyro_data_yaw2 = np.array(self.gyro_buffers['acz2'])
+            gyro_data_roll2 = np.array(self.gyro_buffers['roll2'])
+            gyro_data_pitch2 = np.array(self.gyro_buffers['pitch2'])
+            gyro_data_yaw2 = np.array(self.gyro_buffers['yaw2'])
 
             # Combine accelerometer data into one array for processing
             gyro_data_array2 = np.stack((gyro_data_roll2, gyro_data_pitch2, gyro_data_yaw2), axis=1)
@@ -307,7 +301,7 @@ class MinimalPublisher(Node):
         #current_accel_z = np.mean(np.abs(accel_data[:, 2]))
         
         #expected_gravity[2] += adjustment_factor * (current_accel_z - np.abs(expected_gravity[2]))
-        expected_gravity = np.array([-1,-1,-1])
+        expected_gravity = np.array([0,0,-1])
         
         accel_slope = expected_gravity / np.mean(np.abs(accel_data_array), axis=0)
         accel_offset = accel_mean  # Use the mean as the offset
@@ -494,9 +488,7 @@ class MinimalPublisher(Node):
         accel_z_filtered = accel_z
 
         gyro_x_filtered =gyro_x
-
         gyro_y_filtered = gyro_y
-
         gyro_z_filtered = gyro_z
         """accel_x_filtered = self.kf_accel_x.update(accel_x)
         accel_y_filtered = self.kf_accel_y.update(accel_y)
@@ -533,13 +525,13 @@ class MinimalPublisher(Node):
 
             """
 
-        accel_x = (accel_x_filtered/ACCEL_SENSITIVITY)*2
-        accel_y = (accel_y_filtered/ACCEL_SENSITIVITY)*2
-        accel_z = (accel_z_filtered/ACCEL_SENSITIVITY)*2
+        accel_x = (accel_x_filtered/ACCEL_SENSITIVITY)
+        accel_y = (accel_y_filtered/ACCEL_SENSITIVITY)
+        accel_z = (accel_z_filtered/ACCEL_SENSITIVITY)
 
-        gyro_x = (gyro_x_filtered/GYRO_SENSITIVITY)*250
-        gyro_y = (gyro_y_filtered/GYRO_SENSITIVITY)*250
-        gyro_z = (gyro_z_filtered/GYRO_SENSITIVITY)*250
+        gyro_x = (gyro_x_filtered/GYRO_SENSITIVITY)
+        gyro_y = (gyro_y_filtered/GYRO_SENSITIVITY)
+        gyro_z = (gyro_z_filtered/GYRO_SENSITIVITY)
         # Apply calibration
         """
         accel_x = (accel_x - calibration_data[calibration_key]["accel"]["offset"][0])    + calibration_data[calibration_key]["accel"]["slope"][0]
@@ -562,6 +554,7 @@ class MinimalPublisher(Node):
 
         return accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z
 
+   
     
     def timer_callback(self):
         self.current_time = perf_counter()
@@ -607,10 +600,11 @@ class MinimalPublisher(Node):
         #finally:
             #self.get_logger().info('Exiting the system')
     def timer_callback2(self):
+        return
         self.get_logger().info(f"Accel_x: {self.prev_accel_x}, Accel_y: {self.prev_accel_y}, Accel_z: {self.prev_accel_z}")
         self.get_logger().info(f"Accel_x_2: {self.prev_accel_x2}, Accel_y_2: {self.prev_accel_y2}, Accel_z_2: {self.prev_accel_z2}")
         self.get_logger().info(f"delta time process  {self.dt }")
-        self.get_logger().info(f"delta time sen data {self.dt2 }")
+        #self.get_logger().info(f"delta time sen data {self.dt2 }")
     def send_data(self):
         self.current_time2 = perf_counter()
         
@@ -622,9 +616,9 @@ class MinimalPublisher(Node):
         self.msg2.acx = float(self.prev_accel_x)
         self.msg2.acy = float(self.prev_accel_y)
         self.msg2.acz = float(self.prev_accel_z)
-        self.msg2.gx = float(self.prev_gyro_x2)
-        self.msg2.gy = float(self.prev_gyro_x2)
-        self.msg2.gz = float(self.prev_gyro_x2)
+        self.msg2.gx = float(self.prev_gyro_x)
+        self.msg2.gy = float(self.prev_gyro_y)
+        self.msg2.gz = float(self.prev_gyro_z)
 
         
         
@@ -632,15 +626,15 @@ class MinimalPublisher(Node):
         self.msg2.acy2 = float(self.prev_accel_y2)
         self.msg2.acz2 = float(self.prev_accel_z2)
         self.msg2.gx2 = float(self.prev_gyro_x2)
-        self.msg2.gy2 = float(self.prev_gyro_x2)
-        self.msg2.gz2 = float(self.prev_gyro_x2)
+        self.msg2.gy2 = float(self.prev_gyro_y2)
+        self.msg2.gz2 = float(self.prev_gyro_z2)
         # Convert to Imu message and publish
         #imu_msg_1 = self.convert_mpu_to_imu(msg)  # First sensor
         #imu_msg_2 = self.convert_mpu_to_imu(msg2)  # Second sensor
 
         #self.imu_publisher_.publish(imu_msg_1)
         #self.imu_publisher_second.publish(imu_msg_2)
-        self.publisher_.publish(self.msg)
+        self.publisher_.publish(self.msg2)
 
 def main(args=None):
     

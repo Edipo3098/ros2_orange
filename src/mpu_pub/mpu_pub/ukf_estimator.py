@@ -136,7 +136,7 @@ class CalCOGFrame(Node):
 
     def __init__(self):
         super().__init__('ukf_estimator')
-        self.subscription_mpu = self.create_subscription(Mpu, 'mpu_data_1', self.listener_callback, 10)
+        self.subscription_mpu = self.create_subscription(Mpu, 'mpu_data_2', self.listener_callback, 10)
         
         
         self.publishKalmanFrame = self.create_publisher(COGframe, 'kalman_cog_frame_3', 10)
