@@ -562,8 +562,7 @@ class CalCOGFrame(Node):
             alpha * filtered_acz + (1 - alpha) * filtered_acz2
         ])*9.81   # Convert to m/s²
         self.quaternion
-        gyro_imu1 = np.array([self.mpu1_data.gx, self.mpu1_data.gy, self.mpu1_data.gz])
-        gyro_imu2 = np.array([self.mpu1_data.gx2, self.mpu1_data.gy2, self.mpu1_data.gz2])
+        
         # Use complementary filter to calculate orientation
         
         self.quaternion  = self.madgwick_filter.updateIMU(q=self.quaternion,gyr=gyroscope_data_filtered, acc=accelerometer_data_filtered)

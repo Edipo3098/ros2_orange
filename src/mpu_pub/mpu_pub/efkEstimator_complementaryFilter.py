@@ -558,8 +558,8 @@ class CalCOGFrame(Node):
             alpha * filtered_acz + (1 - alpha) * filtered_acz2
         ])*9.81   # Convert to m/s²
         self.quaternion
-        gyro_imu1 = np.array([self.mpu1_data.gx, self.mpu1_data.gy, self.mpu1_data.gz])
-        gyro_imu2 = np.array([self.mpu1_data.gx2, self.mpu1_data.gy2, self.mpu1_data.gz2])
+        gyro_imu1 = np.array([self.mpu1_data.gx, self.mpu1_data.gy, self.mpu1_data.gz])*np.pi/180
+        gyro_imu2 = np.array([self.mpu1_data.gx2, self.mpu1_data.gy2, self.mpu1_data.gz2])*np.pi/180
         # Use complementary filter to calculate orientation
         
         #self.quaternion  = self.madgwick_filter.updateIMU(q=self.quaternion,gyr=gyroscope_data_filtered, acc=accelerometer_data_filtered)
@@ -568,12 +568,10 @@ class CalCOGFrame(Node):
        
         # Compensate for gravity using the orientation from the Madgwick filter
         # Convert accelerometer readings to m/s² (if not already in m/s²)
-        
-        
-        accel_imu1 = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz]) 
-        accel_imu2 = np.array([self.mpu1_data.acx2, self.mpu1_data.acy2, self.mpu1_data.acz2]) 
-        accel_imu1filt = np.array([filtered_acx, filtered_acy, filtered_acz]) 
-        accel_imu2filt = np.array([filtered_acx2, filtered_acy2, filtered_acz2]) 
+        accel_imu1 = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz])*9.81
+        accel_imu2 = np.array([self.mpu1_data.acx2, self.mpu1_data.acy2, self.mpu1_data.acz2])*9.81
+        accel_imu1filt = np.array([filtered_acx, filtered_acy, filtered_acz])*9.81
+        accel_imu2filt = np.array([filtered_acx2, filtered_acy2, filtered_acz2])*9.81 
         
         # Fused measurement vector for EKF (acceleration from both IMUs)
         orientation = self.kf.complementary_filter(accel_imu1, accel_imu2, gyro_imu1, gyro_imu2, dt, self.prevOrientation )

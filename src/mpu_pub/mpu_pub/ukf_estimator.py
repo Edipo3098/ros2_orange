@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from robot_interfaces.msg import Mpu, COGframe
-from time import time
+from time import perf_counter
 import numpy as np
 from filterpy.kalman import ExtendedKalmanFilter
 from ahrs.filters import Madgwick  # Use Madgwick from ahrs package
@@ -187,8 +187,11 @@ class CalCOGFrame(Node):
         self.mpu2_data = None
         self.calibrated = False
 
-        self.prev_time = time()
+        self.prev_time = perf_counter()
         self.prevOrientation  = np.array([0.0, 0.0, 0.0])
+        self.timerPrint = self.create_timer(1, self.printData)
+        self.msg = COGframe()
+
 
     def listener_callback(self, msg):
         self.mpu1_data = msg
@@ -349,7 +352,7 @@ class CalCOGFrame(Node):
     def process_fusion(self):
         
 
-        current_time = time()
+        current_time = perf_counter()
         dt = current_time - self.prev_time
         if dt < 1e-6:
             dt = 1e-6  # Set a minimum time step threshold
@@ -372,23 +375,12 @@ class CalCOGFrame(Node):
         alpha = 0.6  # Weight for IMU1, 1 - alpha for IMU2
         
         # Weighted average for gyroscope data in
-        gyroscope_data = np.array([
-            alpha * self.mpu1_data.gx + (1 - alpha) * self.mpu1_data.gx2,
-            alpha * self.mpu1_data.gy + (1 - alpha) * self.mpu1_data.gy2,
-            alpha * self.mpu1_data.gz + (1 - alpha) * self.mpu1_data.gz2
-        ]) # already in rad/s
-
-        # Weighted average for accelerometer data
-        accelerometer_data = np.array([
-            alpha * self.mpu1_data.acx + (1 - alpha) * self.mpu1_data.acx2,
-            alpha * self.mpu1_data.acy + (1 - alpha) * self.mpu1_data.acy,
-            alpha * self.mpu1_data.acz + (1 - alpha) * self.mpu1_data.acz2
-        ])*9.81
+        
         gyroscope_data_filtered = np.array([
             alpha * self.mpu1_data.gx + (1 - alpha) * self.mpu1_data.gx2,
             alpha * self.mpu1_data.gy + (1 - alpha) * self.mpu1_data.gy2,
             alpha * self.mpu1_data.gz + (1 - alpha) * self.mpu1_data.gz2
-        ]) # already in rad/s
+        ])*np.pi/180 # already in rad/s
 
         # Weighted average for accelerometer data
         accelerometer_data_filtered = np.array([
@@ -404,25 +396,14 @@ class CalCOGFrame(Node):
         orientation = np.array([roll, pitch, yaw])
         
         # Compensate for gravity using the orientation from the Madgwick filter
-        # Convert accelerometer readings to m/s² (if not already in m/s²)
-        accel_imu1_raw = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz]) 
-        accel_imu2_raw = np.array([self.mpu1_data.acx2, self.mpu1_data.acy, self.mpu1_data.acz2]) 
-        accel_imu1 = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz]) 
-        accel_imu2 = np.array([self.mpu1_data.acx2, self.mpu1_data.acy, self.mpu1_data.acz2]) 
+        
 
         # ACY2 to much failed
 
         accel_imu1filt = np.array([filtered_acx, filtered_acy, filtered_acz]) 
         accel_imu2filt = np.array([filtered_acx2, filtered_acy, filtered_acz2]) 
 
-        accel_imu1_comp = self.compensate_gravity_with_quaternion(accel_imu1, self.quaternion)
-        accel_imu2_comp = self.compensate_gravity_with_quaternion(accel_imu2, self.quaternion)
-
-        accel_imu1_comp_filt = self.compensate_gravity_with_quaternion(accel_imu1filt, self.quaternion)
-        accel_imu2_comp_filt = self.compensate_gravity_with_quaternion(accel_imu2filt, self.quaternion)
-
-        gyro_imu1 = np.array([self.mpu1_data.gx, self.mpu1_data.gy, self.mpu1_data.gz])
-        gyro_imu2 = np.array([self.mpu1_data.gx2, self.mpu1_data.gy2, self.mpu1_data.gz2])
+       
         
         #orientation = self.kf.complementary_filter(accel_imu1, accel_imu2, gyro_imu1, gyro_imu2, dt, self.prevOrientation )
         #self.prevOrientation = orientation
@@ -431,7 +412,7 @@ class CalCOGFrame(Node):
         z_imu1 = accel_imu1filt
         z_imu2 = accel_imu2filt
             # Fuse the accelerations (average)
-        u_fused = alpha*z_imu1 + (1-alpha)*z_imu2
+        
         
         # Update the Kalman filter with
         # Prediction step
@@ -454,19 +435,18 @@ class CalCOGFrame(Node):
         msg.pos_x, msg.pos_y, msg.pos_z = float(pos[0]), float(pos[1]), float(pos[2])
         msg.roll, msg.pitch, msg.yaw = float(roll), float(pitch), float(yaw)
         self.publishKalmanFrame.publish(msg)
-        if ( not self.calibrated ):
-            if (accel_imu1_raw[0] < 0.1 and accel_imu1_raw[1] < 0.1 and accel_imu1_raw[2] < 0.1 and accel_imu2_raw[0] < 0.1 and accel_imu2_raw[1] < 0.1 and accel_imu2_raw[2] < 0.1):
-                self.calibrated = True
-                self.calibration_time = time()
-                self.get_logger().info("Calibration  done")
-            
-        else:
-            self.publishKalmanFrame.publish(msg)
-
         
-        self.get_logger().info(f"Pos X Y Z (meter): {float(pos[0])}, {float(pos[1])}, {float(pos[2])}")
-        self.get_logger().info(f"Roll pitch yaw madwick: {float(roll)}, {float(pitch)}, {float(yaw)}")
-        self.get_logger().info(f"Roll pitch yaw  kalman: {float(orient[0])}, {float(orient[1])}, {float(orient[2])}")
+
+    def printData(self):
+
+        #self.get_logger().info(f"Raw acc x y z: {float(self.mpu1_data.acx)}, {float(self.mpu1_data.acy)}, {float(self.mpu1_data.acz)}")
+        #self.get_logger().info(f"Raw acc x y z 2: {float(self.mpu1_data.acx2)}, {float(self.mpu1_data.acy2)}, {float(self.mpu1_data.acz2)}")
+        #self.get_logger().info(f"Raw gyro x y z: {float(self.mpu1_data.gx)}, {float(self.mpu1_data.gy)}, {float(self.mpu1_data.gz)}")
+        #self.get_logger().info(f"Raw gyro x y z 2: {float(self.mpu1_data.gx2)}, {float(self.mpu1_data.gy2)}, {float(self.mpu1_data.gz2)}")
+        self.get_logger().info(f"Pos X Y Z (meter) dt: {float(self.pos[0])}, {float(self.pos[1])}, {float(self.pos[2])},{1/self.kf.dt}")
+        self.get_logger().info(f"Roll pitch yaw  : {float(self.orient[0])}, {float(self.orient[1])}, {float(self.orient[2])}")
+        
+
 
 def main(args=None):
     rclpy.init(args=args)
