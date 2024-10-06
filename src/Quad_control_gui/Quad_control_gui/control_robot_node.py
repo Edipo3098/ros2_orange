@@ -328,9 +328,8 @@ class MyNode(Node):
         """
         Publishes a string message to the 'output_topic'.
         """
-        msg = String()
-        msg.data = message
-        self.publisher.publish(msg)
+        
+        self.publisher.publish(self.msg_move)
     def publish_joint_states(self):
         """
         Publishes joint states to the /joint_states topic
@@ -717,6 +716,7 @@ class MyWindow(QMainWindow):
                 self.ros_node.msg_move.angle =  float(self.ros_node.L_Back.getJoint(self.legJoint))
 
         self.update_joint_positions()
+        self.publishMessage()
     def update_joint_positions(self):
         # Update the arm joint positions
         position = [
@@ -771,6 +771,7 @@ class MyWindow(QMainWindow):
         self.ros_node.joint_states_pub.publish(self.ros_node.joint_state_msg)
 
     def publishMessage(self):
+        self.ros_node.msg_move.angle =  float(self.ros_node.msg_move.angle )*180/np.pi
         self.ros_node.publisher.publish(self.ros_node.msg_move)
 
     
