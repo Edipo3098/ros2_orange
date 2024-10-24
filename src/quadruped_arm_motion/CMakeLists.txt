@@ -1,11 +1,14 @@
 cmake_minimum_required(VERSION 3.5)
-project(mpu_pub)
+project(quadruped_arm_motion)
 
+# Find necessary packages
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
+find_package(xacro REQUIRED)  # Ensure xacro is found
 
-rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/Anglemotor.msg"
+# Install directories (URDF, Launch, RViz)
+install(DIRECTORY launch urdf rviz
+  DESTINATION share/${PROJECT_NAME}
 )
 
 ament_package()

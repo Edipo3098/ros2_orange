@@ -22,7 +22,23 @@ quad[2] = [2 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0]
 quad[3] = [3 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0]
 quad[4] = [4 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0]
 
+class RobotKynematics:
 
+    def __init__(self):
+        super().__init__()
+        self.IsArmMovement = False
+        self.armJoints = np.zeros((5))
+        self.legJoints = np.zeros((4, 3))
+        self.COG_pos = np.zeros(3)
+        self.COG_or = np.zeros(3)
+        self.L1 =  5/100
+        self.L2 = 25/100
+        self.L3 = 25/100
+        self.a = 0.6
+        self.b = 0.2
+        self.z_cog_offset = 0.4037
+        self.HomeArmJoint = np.zeros(3)
+        self.HomeQuadJoint = np.array([0,np.pi/4,-np.pi/2])
 class MinimalPublisher(Node):
 
     def __init__(self):
