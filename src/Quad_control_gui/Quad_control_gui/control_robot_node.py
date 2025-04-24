@@ -102,6 +102,7 @@ dh_Arm = [(0  ,     -np.pi/2,  a1 ,     0), #m0 a m1
           (a5 ,       0 ,  0,          0)]  #m4 a effector 
 
           """ 
+        # a, alpha, d, theta_offset
 dh_Arm = [          (0          , -np.pi/2      ,   a1      ,       0       ), #m0 a m1
                     (a2         ,  0            ,   0       ,       -np.pi/2),  # m1 a m2 Upper arm
                     (a3+a4+a5   , -np.pi/2      ,   0       ,       np.pi/2 ),  # m2 a m3 Lower arm
@@ -111,7 +112,7 @@ dh_Arm = [          (0          , -np.pi/2      ,   a1      ,       0       ), #
 
 dh_Right_leg = [  
                     (L1         ,     np.pi/2   ,  0       ,        0        ),  # Hip to knee
-                    (L2         ,     0         ,  0       ,        -0.275     ), # Knee to ankle
+                    (L2         ,     0         ,  0       ,        -0.6     ), # Knee to ankle
                     (L3         ,     0         ,  0       ,        1.7      )]  # Ankle to foot
 
 

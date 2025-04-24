@@ -210,7 +210,7 @@
   </joint>
 
   
-  <link name="M0_big"><inertial><mass value="0.15800" /><origin xyz="0 0 0" /><inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0" /></inertial><collision><geometry><cylinder radius="0.025" length="0.1" /></geometry></collision><visual><geometry><cylinder radius="0.025" length="0.1" /></geometry></visual></link>
+  <link name="M0_big"><inertial><mass value="0.670" /><origin xyz="0 0 0" /><inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0" /></inertial><collision><geometry><cylinder radius="0.025" length="0.1" /></geometry></collision><visual><geometry><cylinder radius="0.025" length="0.1" /></geometry></visual></link>
   <joint name="articulacion1" type="revolute">
     <parent link="Yaw_body" />
     <child link="M0_big" />
