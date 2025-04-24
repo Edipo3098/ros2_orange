@@ -67,18 +67,18 @@ class Joints(Enum):
     articulacion4 = 'articulacion4'
     articulacion5 = 'articulacion5'
 
-L1 = 0.1
-L2 = 25 / 100
-L3 = 25 / 100 
-a = 0.6
-b = 0.2
+L1 = 0.035
+L2 = 0.16
+L3 = 0.18
+a = 0.275
+b = 0.065
 
 
 a1 = 0.1
-a2 =  0.35
-a3 = 0.3
-a4 = 0.08
-a5 = 0.25
+a2 =  0.29
+a3 = 0.1
+a4 = 0.32
+a5 = 0.1
 
 """
 dh_Arm = [(0  ,     -np.pi/2,  a1 ,     0), #m0 a m1
@@ -102,6 +102,7 @@ dh_Arm = [(0  ,     -np.pi/2,  a1 ,     0), #m0 a m1
           (a5 ,       0 ,  0,          0)]  #m4 a effector 
 
           """ 
+        # a, alpha, d, theta_offset
 dh_Arm = [          (0          , -np.pi/2      ,   a1      ,       0       ), #m0 a m1
                     (a2         ,  0            ,   0       ,       -np.pi/2),  # m1 a m2 Upper arm
                     (a3+a4+a5   , -np.pi/2      ,   0       ,       np.pi/2 ),  # m2 a m3 Lower arm
