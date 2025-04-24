@@ -323,6 +323,8 @@ class MyNode(Node):
         """
         
         self.RobotReady = msg.ready
+        self.robotMoving = msg.robotmoving
+        self.armMoving = msg.armmoving
         
     def publish_message(self, message):
         """
@@ -409,9 +411,13 @@ class MyWindow(QMainWindow):
         self.ui.setMinus10.clicked.connect(self.on_minus_10_click)
         self.ui.setPLus10.clicked.connect(self.on_plus_10_click)
         self.ui.setMax.clicked.connect(self.on_set_max_click)
+        
+        self.ui.startGait.clicked.connect(self.on_start_gait_click)
+        self.ui.stopGait.clicked.connect(self.on_stop_gait_click)
                 
         # Reference to the ROS2 node for interacting with ROS topics
         self.robotMoving = False
+        self.armMoving = False
         
         self.armJoint = Joint_0
         self.leg = FL
@@ -494,13 +500,16 @@ class MyWindow(QMainWindow):
         """Update the indicator color or visibility based on some condition."""
         if self.robotMoving:
             self.indicator_quad.setStyleSheet("background-color: green")  # Change to green when moving
-            self.indicator_arm.setStyleSheet("background-color: green")  # Change to green when moving
+           
             self.indicator_leg.setStyleSheet("background-color: green")  # Change to green when moving
         else:
             self.indicator_quad.setStyleSheet("background-color: red")  # Change to red when stopped
-            self.indicator_arm.setStyleSheet("background-color: red")  # Change to red when stopped
+           
             self.indicator_leg.setStyleSheet("background-color: red")  # Change to red when stopped
-
+        if self.armMoving:
+            self.indicator_arm.setStyleSheet("background-color: green")
+        else:
+            self.indicator_arm.setStyleSheet("background-color: red")
     def plotFoots(self):
         self.update_indicator()
         try:
@@ -608,15 +617,27 @@ class MyWindow(QMainWindow):
         """
         print("Set 180º clicked")
         angle = 3.142
-        self.moveRobot(angle,True)
-    
+        self.moveRobot(angle,True)  
+        
+    def on_start_gait_click(self):
+        print("Set 180º clicked")
+        angle = 3.142
+        self.indicator_quad
+        self.ros_node.msg_move.robot = 'm4'
+        self.robotMoving = True
+        self.publishMessage()
+    def on_stop_gait_click(self):
+        self.robotMoving = False
+        self.ros_node.msg_move.robot = 'origin'
+        self.publishMessage()
     def moveRobot(self,angle,Force):
         currentAngle = 0
-        self.robotMoving = not self.robotMoving
+        
         
         if self.Robot == ARM:
             self.ros_node.msg_move.robot = "ARM"
             self.ros_node.msg_move.leg = "nn"
+            self.armMoving = True
             
             current_angle = self.ros_node.arm.getJoint(self.armJoint)
         
@@ -644,6 +665,7 @@ class MyWindow(QMainWindow):
             self.ros_node.msg_move.joint = str(self.armJoint)
             self.ros_node.msg_move.angle =  float(self.ros_node.arm.getJoint(self.armJoint) )
         elif self.Robot == QUAD:
+            self.robotMoving  = True
             self.ros_node.msg_move.robot = 'QUAD'
             
             if self.leg == FL:

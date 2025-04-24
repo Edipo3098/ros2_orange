@@ -34,8 +34,15 @@ class MinimalSubscriber(Node):
 
         self.msg_command = Command()
         self.msg_command.ready = True
+        self.msg_command.armmoving = False
+        self.msg_command.grippermoving = False
+        self.msg_command.gripperopen = False
+        self.msg_command.gripperclosed = False
+        self.msg_command.quadmoving = False
+
         self.publishers_.publish(self.msg_command)
         self.isARM  = False
+        self.isGait = False
         self.get_logger().info('Publish true')
     def timer_callback(self):
         self.publishers_.publish(self.msg_command)
@@ -49,6 +56,10 @@ class MinimalSubscriber(Node):
             self.get_logger().info('Joint "%s"' % msg.joint)
             self.get_logger().info('Z0 "%s"' % msg.angle)
             self.isARM = True
+            
+        elif msg.robot == "m4":
+            self.get_logger().info('is publishing static gait')
+            self.isGait = True
             
         else:
             self.get_logger().info('is publishing QUAD')
@@ -90,6 +101,21 @@ class MinimalSubscriber(Node):
                 ser.write(str(2).encode())
                 ser.write(B"\n")
                 time.sleep(0.5)
+                self.isARM = False
+                self.msg_command.armmoving = True
+                self.msg_command.grippermoving = False
+                self.msg_command.gripperopen = False
+                self.msg_command.gripperclosed = False
+                self.msg_command.quadmoving = False
+            elif (self.isGait):
+                ser.write(str(msg.robot).encode())
+                self.isGait = False
+                self.msg_command.armmoving = False
+                self.msg_command.grippermoving = False
+                self.msg_command.gripperopen = False
+                self.msg_command.gripperclosed = False
+                self.msg_command.quadmoving = True
+                
             else:
                 ser.write(str(msg.robot).encode())
                 ser.write(B"\n")
@@ -106,6 +132,11 @@ class MinimalSubscriber(Node):
                 ser.write(str(2).encode())
                 ser.write(B"\n")
                 time.sleep(0.5)
+                self.msg_command.armmoving = True
+                self.msg_command.grippermoving = False
+                self.msg_command.gripperopen = False
+                self.msg_command.gripperclosed = False
+                self.msg_command.quadmoving = False
             # Wait for a moment
             
             # Read response from the serial connection
@@ -121,6 +152,11 @@ class MinimalSubscriber(Node):
                     msg_command = Command()
                     msg_command.ready = True
                     self.publishers_.publish(msg_command)
+                    self.msg_command.armmoving = False
+                    self.msg_command.grippermoving = False
+                    self.msg_command.gripperopen = False
+                    self.msg_command.gripperclosed = False
+                    self.msg_command.quadooving = False
                 else:
                     msg_command = Command()
                     msg_command.ready = False
