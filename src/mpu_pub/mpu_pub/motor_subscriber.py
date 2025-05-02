@@ -87,28 +87,32 @@ class MinimalSubscriber(Node):
             
             
             if ( self.isARM):
-                
                 ser.write(str(msg.command).encode())
                 ser.write(B"\n")
                 time.sleep(0.2)
-                ser.write(str(msg.m0).encode())
-                ser.write(B"\n")
-                time.sleep(0.2)
-                ser.write(str(msg.m1).encode())
-                ser.write(B"\n")
-                time.sleep(0.2)
-                ser.write(str(msg.m2).encode())
-                ser.write(B"\n")
-                time.sleep(0.2)
-                ser.write(str(msg.m3).encode())
-                ser.write(B"\n")
-                time.sleep(0.2)
-                ser.write(str(msg.m4).encode())
-                ser.write(B"\n")
-                time.sleep(0.2)
-                ser.write(str(2).encode())
-                ser.write(B"\n")
-                time.sleep(0.2)
+                csv_line = f"{msg.m0},{msg.m1},{msg.m2},{msg.m3},{msg.m4},{2}\n"
+                ser.write(csv_line.encode()) 
+                # Send the command string over the serial connection
+                # ser.write(str(msg.command).encode())
+                # ser.write(B"\n")
+                # ser.write(str(msg.m0).encode())
+                # ser.write(B"\n")
+                # time.sleep(0.2)
+                # ser.write(str(msg.m1).encode())
+                # ser.write(B"\n")
+                # time.sleep(0.2)
+                # ser.write(str(msg.m2).encode())
+                # ser.write(B"\n")
+                # time.sleep(0.2)
+                # ser.write(str(msg.m3).encode())
+                # ser.write(B"\n")
+                # time.sleep(0.2)
+                # ser.write(str(msg.m4).encode())
+                # ser.write(B"\n")
+                # time.sleep(0.2)
+                # ser.write(str(2).encode())
+                # ser.write(B"\n")
+                # time.sleep(0.2)
                 self.isARM = False
                 self.msg_command.armmoving = True
                 self.msg_command.grippermoving = False
