@@ -81,13 +81,16 @@ class MinimalSubscriber(Node):
 
         ser = serial.Serial(serial_port, baud_rate, timeout=1)
 
-
+        counter = 0
         try:
             # Send data over the serial connection
             
             
             if ( self.isARM):
                 
+                ser.write(str(msg.command).encode())
+                ser.write(B"\n")
+                time.sleep(0.5)
                 ser.write(str(msg.m0).encode())
                 ser.write(B"\n")
                 time.sleep(0.5)
@@ -151,6 +154,13 @@ class MinimalSubscriber(Node):
                 msg_command = Command()
                 msg_command.ready = False
                 self.publishers_.publish(msg_command)
+                counter += 1
+                if counter > 10:
+                    self.get_logger().info('Received different than true: "%s"' % received_data)
+                    msg_command = Command()
+                    msg_command.ready = False
+                    self.publishers_.publish(msg_command)
+                    break
                 if received_data == "True":
                     self.get_logger().info('Received: "%s"' % received_data)
                     msg_command = Command()

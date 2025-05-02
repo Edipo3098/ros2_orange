@@ -132,17 +132,17 @@ class MyNode(Node):
         self.data2 = 0
         self.msg_move = Anglemotor()
         self.msg_move_robot = MoveRobot()
-        self.publisher = self.create_publisher(Anglemotor, 'motor_angles', 10)
+        self.publisher = self.create_publisher(Anglemotor, 'motor_angles2', 10)
         self.publisher_commandRobot = self.create_publisher(MoveRobot, 'motor_angles', 10)
         self.subscription = self.create_subscription(Command, 'command_robot', self.listener_callback, 10)
         self.joint_states_pub = self.create_publisher(JointState,'joint_states',10)
         self.subscription_cog = self.create_subscription(COGframe, 'kalman_cog_frame_3', self.cog_callback, 10)
-        self.msg_move_robot.m0 = 0
-        self.msg_move_robot.m1 = 0
-        self.msg_move_robot.m2 = 0
-        self.msg_move_robot.m3 = 0
-        self.msg_move_robot.m4 = 0
-        self.msg_move_robot.m5 = 0
+        self.msg_move_robot.m0 = float(0)
+        self.msg_move_robot.m1 = float(0)
+        self.msg_move_robot.m2 = float(0)
+        self.msg_move_robot.m3 = float(0)
+        self.msg_move_robot.m4 = float(0)
+        self.msg_move_robot.m5 = float(0)
         # Sample data storage for x, y, z, roll, pitch, yaw with 3 sources for each
         self.data_x = []
         self.data_y = []
@@ -340,11 +340,11 @@ class MyNode(Node):
         """
         
         self.publisher.publish(self.msg_move)
-        self.msg_move_robot.m0 = self.armJoint[0]
-        self.msg_move_robot.m1 = self.armJoint[1]
-        self.msg_move_robot.m2 = self.armJoint[2]
-        self.msg_move_robot.m3 = self.armJoint[3]
-        self.msg_move_robot.m4 = self.armJoint[4]
+        self.msg_move_robot.m0 = float(self.armJoint[0])
+        self.msg_move_robot.m1 = float(self.armJoint[1])
+        self.msg_move_robot.m2 = float(self.armJoint[2])
+        self.msg_move_robot.m3 = float(self.armJoint[3])
+        self.msg_move_robot.m4 = float(self.armJoint[4])
         #self.publisher_commandRobot.publish(self.msg_move_robot)
     def publish_joint_states(self):
         """
@@ -638,13 +638,13 @@ class MyWindow(QMainWindow):
         angle = 3.142
         self.indicator_quad
         self.ros_node.msg_move.robot = 'm4'
-        self.ros_node.msg_move_Robot.command = 'm4'
+        self.ros_node.msg_move_robot.command = 'm4'
         self.robotMoving = True
         self.publishMessage()
     def on_stop_gait_click(self):
         self.robotMoving = False
         self.ros_node.msg_move.robot = 'origin'
-        self.ros_node.msg_move_Robot.command = 'origin'
+        self.ros_node.msg_move_robot.command = 'origin'
         self.publishMessage()
     def moveRobot(self,angle,Force):
         currentAngle = 0
@@ -652,7 +652,7 @@ class MyWindow(QMainWindow):
         
         if self.Robot == ARM:
             self.ros_node.msg_move.robot = "ARM"
-            self.ros_node.msg_move_Robot.command = "ARM"
+            self.ros_node.msg_move_robot.command = "ARM"
             self.ros_node.msg_move.leg = "nn"
             self.armMoving = True
             
