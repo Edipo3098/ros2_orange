@@ -232,16 +232,16 @@ class IndicatorWidget(QWidget):
         self.setFixedSize(25, 25)  # Set the fixed size of the indicator widget
         self.greenColor = QColor(0, 255, 0)
         self.redColor = QColor(255, 0, 0)
-    
+        self.color = QColor(255, 0, 0)  # Default: red
+    def setColor(self, color_name):
+        self.color = QColor(color_name)
+        self.update()  # Trigger repaint
+
     def paintEvent(self, event):
-        """Override paintEvent to draw a red circle."""
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)  # Enable anti-aliasing for smooth edges
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setBrush(self.color)
+        painter.setPen(Qt.NoPen)
 
-        # Define the brush color and style
-        painter.setBrush(self.redColor)  # Red color
-        painter.setPen(Qt.NoPen)  # No outline for the circle
-
-        # Draw a filled circle in the center of the widget
         radius = min(self.width(), self.height()) // 2
         painter.drawEllipse(self.rect().center(), radius, radius)

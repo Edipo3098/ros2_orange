@@ -189,6 +189,9 @@ class MyNode(Node):
         # Set the current time for the header
         self.joint_state_msg.header.stamp = self.get_clock().now().to_msg()
 
+        self.RobotReady = False
+        self.robotMoving = False
+        self.armMoving = False
         # Publish the initial joint states
         
         self.get_logger().info('Initial joint states published.')
@@ -385,12 +388,12 @@ class MyWindow(QMainWindow):
         self.stacked_widget.update()
 
         # Add the indicator widget to the layout
-        self.indicator_quad = IndicatorWidget()  # Create the indicator widget
+        self.indicator_robot = IndicatorWidget()  # Create the indicator widget
         self.indicator_label = QLabel("Robot Status:")  # Create a label for the indicator
 
         self.ui.layout_indicator = QHBoxLayout(self.ui.quadMoving)  # Assuming you have a placeholder in the .ui file
         self.ui.layout_indicator.addWidget(self.indicator_label)
-        self.ui.layout_indicator.addWidget(self.indicator_quad)  
+        self.ui.layout_indicator.addWidget(self.indicator_robot)  
 
         self.indicator_arm= IndicatorWidget()  # Create the indicator widget
         self.indicator_label_arm = QLabel("Arm moving:")  # Create a label for the indicator
@@ -430,10 +433,7 @@ class MyWindow(QMainWindow):
         self.ui.startGait.clicked.connect(self.on_start_gait_click)
         self.ui.stopGait.clicked.connect(self.on_stop_gait_click)
                 
-        # Reference to the ROS2 node for interacting with ROS topics
-        self.robotMoving = self.ros_node.robotMoving
-        self.armMoving = self.ros_node.armMoving
-        self.RobotReady = self.ros_node.RobotReady
+        
         
         self.armJoint = Joint_0
         self.leg = FL
@@ -446,7 +446,10 @@ class MyWindow(QMainWindow):
         
 
         self.ros_node = ros_node
-
+        # Reference to the ROS2 node for interacting with ROS topics
+        self.robotMoving = self.ros_node.robotMoving
+        self.armMoving = self.ros_node.armMoving
+        self.RobotReady = self.ros_node.RobotReady
         # Create a canvas for each plot (x, y, z, roll, pitch, yaw)
         self.plot_canvas = MyMplCanvas(self, width=4, height=4, dpi=100)
         self.plot_canvas_2 = MyMplCanvas(self, width=4, height=4, dpi=100)
@@ -514,18 +517,30 @@ class MyWindow(QMainWindow):
     
     def update_indicator(self):
         """Update the indicator color or visibility based on some condition."""
-        if self.robotMoving:
-            self.indicator_quad.setStyleSheet("background-color: green")  # Change to green when moving
-           
-            self.indicator_leg.setStyleSheet("background-color: green")  # Change to green when moving
+        self.ros_node.get_logger().info(f"Robot moving: {self.robotMoving}")
+        self.ros_node.get_logger().info(f"Arm moving: {self.armMoving}")
+        self.ros_node.get_logger().info(f"Robot ready: {self.RobotReady}")
+        self.robotMoving = self.ros_node.robotMoving
+        self.armMoving = self.ros_node.armMoving
+        self.RobotReady = self.ros_node.RobotReady
+        if self.RobotReady:
+            self.indicator_robot.setColor("green")
+            self.indicator_leg.setColor("green")
         else:
-            self.indicator_quad.setStyleSheet("background-color: red")  # Change to red when stopped
-           
-            self.indicator_leg.setStyleSheet("background-color: red")  # Change to red when stopped
+            self.indicator_robot.setColor("red")
+            self.indicator_leg.setColor("red")
         if self.armMoving:
             self.indicator_arm.setStyleSheet("background-color: green")
         else:
             self.indicator_arm.setStyleSheet("background-color: red")
+            
+        self.indicator_robot.setAutoFillBackground(True)
+
+        self.indicator_robot.repaint()
+        self.indicator_arm.repaint()
+        self.indicator_leg.repaint()
+        self.indicator_robot.update()
+        self.indicator_leg.update()
     def plotFoots(self):
         self.update_indicator()
         try:
@@ -638,7 +653,7 @@ class MyWindow(QMainWindow):
     def on_start_gait_click(self):
         print("Set 180º clicked")
         angle = 3.142
-        self.indicator_quad
+        
         self.ros_node.msg_move.robot = 'm4'
         self.ros_node.msg_move_robot.command = 'm4'
         

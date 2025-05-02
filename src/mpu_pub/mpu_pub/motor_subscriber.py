@@ -152,6 +152,8 @@ class MinimalSubscriber(Node):
             # Wait for a moment
             
             # Read response from the serial connection
+            msg_command.ready = False
+            self.publishers_.publish(self.msg_command )
             received_data = "False"
             while received_data != "True":
                 received_data = ser.readline().decode().strip()
@@ -174,6 +176,11 @@ class MinimalSubscriber(Node):
                     msg_command.ready = False
                     
             self.msg_command.ready =  received_data == "True"
+            self.msg_command.armmoving = False
+            self.msg_command.grippermoving = False
+            self.msg_command.gripperopen = False
+            self.msg_command.gripperclosed = False
+            self.msg_command.quadmoving = False
             self.publishers_.publish(self.msg_command )
 
         except KeyboardInterrupt:
