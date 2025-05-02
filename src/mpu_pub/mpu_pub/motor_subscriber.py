@@ -120,7 +120,8 @@ class MinimalSubscriber(Node):
                 self.msg_command.gripperclosed = False
                 self.msg_command.quadmoving = False
             elif (self.isGait):
-                ser.write(str(msg.robot).encode())
+                ser.write(str(msg.command).encode())
+                ser.write(B"\n")
                 self.isGait = False
                 self.msg_command.armmoving = False
                 self.msg_command.grippermoving = False
