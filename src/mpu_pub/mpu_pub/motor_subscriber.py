@@ -14,7 +14,7 @@
 
 import rclpy
 from rclpy.node import Node
-from robot_interfaces.msg import Anglemotor
+from robot_interfaces.msg import Anglemotor,MoveRobot
 from robot_interfaces.msg import Command
 import time
 import serial
@@ -25,7 +25,7 @@ class MinimalSubscriber(Node):
     def __init__(self):
         super().__init__('motor_subscriber')
         #self.subscription = self.create_subscription(Anglemotor,'motor_angles', self.listener_callback,10) # connect to motor control
-        self.subscription = self.create_subscription(Anglemotor, 'motor_angles', self.listener_callback, 10)
+        self.subscription = self.create_subscription(MoveRobot, 'motor_angles', self.listener_callback, 10)
         self.subscription  # prevent unused variable warning
         self.publishers_ = self.create_publisher(Command, 'command_robot', 10)
         timer_period = 0.5  # seconds
@@ -50,14 +50,13 @@ class MinimalSubscriber(Node):
   
     def listener_callback(self, msg):
         
-        self.get_logger().info('SOMETHING HERE')
-        if msg.robot == "ARM":
-            self.get_logger().info('is publishing ARM')
-            self.get_logger().info('Joint "%s"' % msg.joint)
-            self.get_logger().info('Z0 "%s"' % msg.angle)
+        self.get_logger().info('Command "%s"' % msg.command)
+        if msg.command == "ARM":
+            self.get_logger().info('ARM')
             self.isARM = True
             
-        elif msg.robot == "m4":
+        elif msg.command == "m4":
+            msg.command = "m3"
             self.get_logger().info('is publishing static gait')
             self.isGait = True
             
@@ -89,13 +88,19 @@ class MinimalSubscriber(Node):
             
             if ( self.isARM):
                 
-                ser.write(str(msg.robot).encode())
+                ser.write(str(msg.m0).encode())
                 ser.write(B"\n")
                 time.sleep(0.5)
-                ser.write(str(msg.joint).encode())
+                ser.write(str(msg.m1).encode())
                 ser.write(B"\n")
                 time.sleep(0.5)
-                ser.write(str(msg.angle).encode())
+                ser.write(str(msg.m2).encode())
+                ser.write(B"\n")
+                time.sleep(0.5)
+                ser.write(str(msg.m3).encode())
+                ser.write(B"\n")
+                time.sleep(0.5)
+                ser.write(str(msg.m4).encode())
                 ser.write(B"\n")
                 time.sleep(0.5)
                 ser.write(str(2).encode())
@@ -117,26 +122,25 @@ class MinimalSubscriber(Node):
                 self.msg_command.quadmoving = True
                 
             else:
-                ser.write(str(msg.robot).encode())
+                ser.write(str(msg.m0).encode())
                 ser.write(B"\n")
                 time.sleep(0.5)
-                ser.write(str(msg.leg).encode())
+                ser.write(str(msg.m1).encode())
                 ser.write(B"\n")
                 time.sleep(0.5)
-                ser.write(str(msg.joint).encode())
+                ser.write(str(msg.m2).encode())
                 ser.write(B"\n")
                 time.sleep(0.5)
-                ser.write(str(msg.angle).encode())
+                ser.write(str(msg.m3).encode())
+                ser.write(B"\n")
+                time.sleep(0.5)
+                ser.write(str(msg.m4).encode())
                 ser.write(B"\n")
                 time.sleep(0.5)
                 ser.write(str(2).encode())
                 ser.write(B"\n")
                 time.sleep(0.5)
-                self.msg_command.armmoving = True
-                self.msg_command.grippermoving = False
-                self.msg_command.gripperopen = False
-                self.msg_command.gripperclosed = False
-                self.msg_command.quadmoving = False
+                self.isARM = False    
             # Wait for a moment
             
             # Read response from the serial connection
@@ -156,7 +160,7 @@ class MinimalSubscriber(Node):
                     self.msg_command.grippermoving = False
                     self.msg_command.gripperopen = False
                     self.msg_command.gripperclosed = False
-                    self.msg_command.quadooving = False
+                    self.msg_command.quadmoving = False
                 else:
                     msg_command = Command()
                     msg_command.ready = False

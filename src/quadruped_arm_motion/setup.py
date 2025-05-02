@@ -9,10 +9,8 @@ setup(
     version='0.0.0',
     packages=find_packages(exclude=['test']),
     data_files=[
-        # Required resource file for ROS2 package indexing
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
-        
         # Install the package.xml file
         ('share/' + package_name, ['package.xml']),
         
@@ -24,6 +22,12 @@ setup(
         
         # Install RViz config files (optional)
         (os.path.join('share', package_name, 'rviz'), glob('rviz/*')),
+        
+        # Install YAML  config files (optional)
+        (os.path.join('share', package_name, 'config'), glob('config/*')),  # <- esto incluye controllers.yaml
+        # Install YAML  config files (optional)
+        (os.path.join('share', package_name, 'meshes'), glob('meshes/*'))  # <- 
+        
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -37,6 +41,8 @@ setup(
             'motor_control = quadruped_arm_motion.motor_control:main',
             'motor_subscriber = quadruped_arm_motion.motor_subscriber:main',
             'trayectory_planning = quadruped_arm_motion.trayectory_planning:main',
+            'dynamic_simulation = quadruped_arm_motion.dynamic_simulation:main',
+            'echo_effort = quadruped_arm_motion.echo_effort:main',
         ],
     },
 )

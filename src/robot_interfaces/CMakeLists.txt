@@ -13,6 +13,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Anglemotor.msg"
   "msg/Command.msg"
   "msg/COGframe.msg"
+  "msg/MoveRobot.msg"
 )
 ament_export_dependencies(rosidl_default_runtime)
 ament_package()

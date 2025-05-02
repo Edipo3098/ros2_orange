@@ -6,8 +6,8 @@ find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(xacro REQUIRED)  # Ensure xacro is found
 
-# Install directories (URDF, Launch, RViz)
-install(DIRECTORY launch urdf rviz
+# Install directories (URDF, Launch, RViz, CONFIG)
+install(DIRECTORY launch urdf rviz config meshes
   DESTINATION share/${PROJECT_NAME}
 )
 

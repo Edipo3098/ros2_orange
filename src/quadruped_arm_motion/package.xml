@@ -7,6 +7,8 @@
   <maintainer email="felipe.porras.014@gmail.com">edipo</maintainer>
   <license>TODO: License declaration</license>
  <depend>robot_interfaces</depend>
+ <depend>kdl_parser</depend>
+  <depend>orocos_kdl</depend>
   <!-- Declare build and exec dependencies -->
   <build_depend>ament_cmake</build_depend>
   <build_depend>robot_state_publisher</build_depend>
@@ -14,7 +16,7 @@
   <build_depend>tf2_ros</build_depend>
   <build_depend>xacro</build_depend>
   <build_depend>rviz2</build_depend>
-
+  
   <exec_depend>robot_state_publisher</exec_depend>
   <exec_depend>joint_state_publisher</exec_depend>
   <exec_depend>tf2_ros</exec_depend>
@@ -27,6 +29,6 @@
   <test_depend>python3-pytest</test_depend>
 
   <export>
-    <build_type>ament_cmake</build_type>
+    <build_type>ament_python</build_type>
   </export>
 </package>

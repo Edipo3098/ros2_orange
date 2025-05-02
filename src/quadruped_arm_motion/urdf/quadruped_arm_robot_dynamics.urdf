@@ -2,72 +2,26 @@
 <robot name="quadruped_arm_robot">
 
   
-  <link name="base_link"><inertial><mass value="0.22857" /><origin xyz="0 0 0" /><inertia ixx="0.00023" iyy="0.00023" izz="0.00023" ixy="0" ixz="0" iyz="0" /></inertial><collision><geometry><box size="0.1 0.05 0.02" /></geometry></collision><visual><geometry><box size="0.1 0.05 0.02" /></geometry></visual></link>
-
+  <!-- =============================================================== -->
+  <!-- 1. BASE                                                         -->
+  <!-- =============================================================== -->
+  <link name="base_link">
+    <inertial>
+      <origin xyz="0 0 0"/>
+      <mass value="0.22857"/>
+      <inertia ixx="0.00023" iyy="0.00023" izz="0.00023" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+    <visual   ><geometry><box size="0.1 0.05 0.02"/></geometry></visual>
+    <collision><geometry><box size="0.1 0.05 0.02"/></geometry></collision>
+  </link>
   
-  <link name="COG"><inertial><mass value="0.22857" /><origin xyz="0 0 0" /><inertia ixx="0.00023" iyy="0.00023" izz="0.00023" ixy="0" ixz="0" iyz="0" /></inertial><collision><geometry><box size="0.1 0.05 0.02" /></geometry></collision><visual><geometry><box size="0.1 0.05 0.02" /></geometry></visual></link>
-  <joint name="X_joint" type="prismatic">
-    <parent link="base_link" />
-    <child link="COG" />
-    <origin xyz="0 0 0" rpy="0 0 0" />
-    <axis xyz="1 0 0" />
-    <limit lower="-3.0" upper="3.0" effort="100" velocity="1.0" />
-  </joint>
-
-  
-  <link name="Y_body"><inertial><mass value="0.22857" /><origin xyz="0 0 0" /><inertia ixx="0.00023" iyy="0.00023" izz="0.00023" ixy="0" ixz="0" iyz="0" /></inertial><collision><geometry><box size="0.1 0.05 0.02" /></geometry></collision><visual><geometry><box size="0.1 0.05 0.02" /></geometry></visual></link>
-  <joint name="Y_joint" type="prismatic">
-    <parent link="COG" />
-    <child link="Y_body" />
-    <origin xyz="0 0 0" rpy="0 0 0" />
-    <axis xyz="0 1 0" />
-    <limit lower="-3.0" upper="3.0" effort="100" velocity="1.0" />
-  </joint>
-
-  
-  <link name="Z_body"><inertial><mass value="0.22857" /><origin xyz="0 0 0" /><inertia ixx="0.00023" iyy="0.00023" izz="0.00023" ixy="0" ixz="0" iyz="0" /></inertial><collision><geometry><box size="0.1 0.05 0.02" /></geometry></collision><visual><geometry><box size="0.1 0.05 0.02" /></geometry></visual></link>
-  <joint name="Z_joint" type="prismatic">
-    <parent link="Y_body" />
-    <child link="Z_body" />
-    <origin xyz="0 0 0.4037" rpy="0 0 0" />
-    <axis xyz="0 0 1" />
-    <limit lower="-3.0" upper="3.0" effort="100" velocity="1.0" />
-  </joint>
-
-  
-  <link name="Roll_body"><inertial><mass value="0.22857" /><origin xyz="0 0 0" /><inertia ixx="0.00023" iyy="0.00023" izz="0.00023" ixy="0" ixz="0" iyz="0" /></inertial><collision><geometry><box size="0.1 0.05 0.02" /></geometry></collision><visual><geometry><box size="0.1 0.05 0.02" /></geometry></visual></link>
-  <joint name="Roll_joint" type="revolute">
-    <parent link="Z_body" />
-    <child link="Roll_body" />
-    <origin xyz="0 0 0" rpy="0 0 0" />
-    <axis xyz="1 0 0" />
-    <limit lower="-3.14" upper="3.14" effort="5.8842" velocity="1.0" />
-  </joint>
-
-  
-  <link name="Pitch_body"><inertial><mass value="0.22857" /><origin xyz="0 0 0" /><inertia ixx="0.00023" iyy="0.00023" izz="0.00023" ixy="0" ixz="0" iyz="0" /></inertial><collision><geometry><box size="0.1 0.05 0.02" /></geometry></collision><visual><geometry><box size="0.1 0.05 0.02" /></geometry></visual></link>
-  <joint name="Pitch_joint" type="revolute">
-    <parent link="Roll_body" />
-    <child link="Pitch_body" />
-    <origin xyz="0 0 0" rpy="0 0 0" />
-    <axis xyz="0 1 0" />
-    <limit lower="-3.14" upper="3.14" effort="5.8842" velocity="1.0" />
-  </joint>
-
-  
-  <link name="Yaw_body"><inertial><mass value="0.22857" /><origin xyz="0 0 0" /><inertia ixx="0.00023" iyy="0.00023" izz="0.00023" ixy="0" ixz="0" iyz="0" /></inertial><collision><geometry><box size="0.1 0.05 0.02" /></geometry></collision><visual><geometry><box size="0.1 0.05 0.02" /></geometry></visual></link>
-  <joint name="Yaw_joint" type="revolute">
-    <parent link="Pitch_body" />
-    <child link="Yaw_body" />
-    <origin xyz="0 0 0" rpy="0 0 0" />
-    <axis xyz="0 0 1" />
-    <limit lower="-3.14" upper="3.14" effort="5.8842" velocity="1.0" />
-  </joint>
-
+  <!-- =============================================================== -->
+  <!-- 2. PIERNAS (4×)                                                 -->
+  <!-- =============================================================== -->
   
   <link name="frontLeft_hip_motor"><inertial><mass value="0.15800" /><origin xyz="0 0 0" /><inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0" /></inertial><collision><geometry><cylinder radius="0.025" length="0.1" /></geometry></collision><visual><geometry><cylinder radius="0.025" length="0.1" /></geometry></visual></link>
   <joint name="frontLeft_hip_motor_joint" type="revolute">
-    <parent link="Yaw_body" />
+    <parent link="base_link" />
     <child link="frontLeft_hip_motor" />
     <origin xyz="0.275 0.065 0" rpy="0 1.5708  0" />
     <axis xyz="0 0 1" />
@@ -104,7 +58,7 @@
 
   <link name="frontRight_hip_motor"><inertial><mass value="0.15800" /><origin xyz="0 0 0" /><inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0" /></inertial><collision><geometry><cylinder radius="0.025" length="0.1" /></geometry></collision><visual><geometry><cylinder radius="0.025" length="0.1" /></geometry></visual></link>
   <joint name="frontRight_hip_motor_joint" type="revolute">
-    <parent link="Yaw_body" />
+    <parent link="base_link" />
     <child link="frontRight_hip_motor" />
     <origin xyz="0.275 -0.065 0" rpy="0 1.5708  0" />
     <axis xyz="0 0 1" />
@@ -141,7 +95,7 @@
 
   <link name="backLeft_hip_motor"><inertial><mass value="0.15800" /><origin xyz="0 0 0" /><inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0" /></inertial><collision><geometry><cylinder radius="0.025" length="0.1" /></geometry></collision><visual><geometry><cylinder radius="0.025" length="0.1" /></geometry></visual></link>
   <joint name="backLeft_hip_motor_joint" type="revolute">
-    <parent link="Yaw_body" />
+    <parent link="base_link" />
     <child link="backLeft_hip_motor" />
      <origin xyz="-0.275 0.065 0" rpy="0 1.5708  0" />
     <axis xyz="0 0 1" />
@@ -177,7 +131,7 @@
 
   <link name="backRight_hip_motor"><inertial><mass value="0.15800" /><origin xyz="0 0 0" /><inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0" /></inertial><collision><geometry><cylinder radius="0.025" length="0.1" /></geometry></collision><visual><geometry><cylinder radius="0.025" length="0.1" /></geometry></visual></link>
   <joint name="backRight_hip_motor_joint" type="revolute">
-    <parent link="Yaw_body" />
+    <parent link="base_link" />
     <child link="backRight_hip_motor" />
     <origin xyz="-0.275 -0.065 0" rpy="0 1.5708  0" />
     <axis xyz="0 0 1" />
@@ -212,7 +166,7 @@
   
   <link name="M0_big"><inertial><mass value="0.670" /><origin xyz="0 0 0" /><inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0" /></inertial><collision><geometry><cylinder radius="0.025" length="0.1" /></geometry></collision><visual><geometry><cylinder radius="0.025" length="0.1" /></geometry></visual></link>
   <joint name="articulacion1" type="revolute">
-    <parent link="Yaw_body" />
+    <parent link="base_link" />
     <child link="M0_big" />
     <origin xyz="0 0 0.085" rpy="0 0 0" />
     <axis xyz="0 0 1" />
@@ -255,14 +209,272 @@
     <axis xyz="0 0 1" />
     <limit lower="-3.14" upper="3.14" effort="5.8842" velocity="1.0" />
   </joint>
-
+  
+ 
   <link name="endEfector"><inertial><mass value="0.03000" /><origin xyz="0 0 0" /><inertia ixx="0.00003" iyy="0.00003" izz="0.00003" ixy="0" ixz="0" iyz="0" /></inertial><collision><geometry><box size="0.04 0.04 0.04" /></geometry></collision><visual><geometry><box size="0.04 0.04 0.04" /></geometry></visual></link>
   <joint name="endEfectorJoin" type="fixed">
     <parent link="M4_50" />
     <child link="endEfector" />
-    <origin xyz="0.0 0 1" rpy="0 0 0" />
+    <origin xyz="0.0 0 0.1" rpy="0 0 0" />
   </joint>
+  <!-- Plugin para Gazebo ROS 2 Control -->
+  
+  <!-- Bloque ros2_control -->
+  <ros2_control name="QuadrupedArmHardware" type="system">
+    <hardware>
+      <plugin>gazebo_ros2_control/GazeboSystem</plugin>
+    </hardware>
 
+    <!-- Interfaces de todas las articulaciones (piernas + brazo) -->
+    <joint name="frontLeft_hip_motor_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="frontLeft_knee_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="frontLeft_ankle_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="frontRight_hip_motor_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="frontRight_knee_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="frontRight_ankle_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="backLeft_hip_motor_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="backLeft_knee_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="backLeft_ankle_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="backRight_hip_motor_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="backRight_knee_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="backRight_ankle_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="articulacion1">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="articulacion2">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="articulacion3">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="articulacion4">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="articulacion5">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+  </ros2_control>
+<!-- Pierna frontal izquierda -->
+  <transmission name="frontLeft_hip_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="frontLeft_hip_motor_joint">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="frontLeft_hip_motor_actuator">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+  <transmission name="frontLeft_knee_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="frontLeft_knee_joint">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="frontLeft_knee_actuator">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+  <transmission name="frontLeft_ankle_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="frontLeft_ankle_joint">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="frontLeft_ankle_actuator">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
 
+  <!-- Pierna frontal derecha -->
+  <transmission name="frontRight_hip_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="frontRight_hip_motor_joint">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="frontRight_hip_motor_actuator">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+  <transmission name="frontRight_knee_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="frontRight_knee_joint">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="frontRight_knee_actuator">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+  <transmission name="frontRight_ankle_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="frontRight_ankle_joint">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="frontRight_ankle_actuator">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
 
+  <!-- Pierna trasera izquierda -->
+  <transmission name="backLeft_hip_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="backLeft_hip_motor_joint">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="backLeft_hip_motor_actuator">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+  <transmission name="backLeft_knee_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="backLeft_knee_joint">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="backLeft_knee_actuator">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+  <transmission name="backLeft_ankle_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="backLeft_ankle_joint">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="backLeft_ankle_actuator">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <!-- Pierna trasera derecha -->
+  <transmission name="backRight_hip_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="backRight_hip_motor_joint">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="backRight_hip_motor_actuator">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+  <transmission name="backRight_knee_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="backRight_knee_joint">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="backRight_knee_actuator">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+  <transmission name="backRight_ankle_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="backRight_ankle_joint">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="backRight_ankle_actuator">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <!-- Brazo -->
+  <transmission name="arm_joint1_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="articulacion1">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="arm_joint1_actuator">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+  <transmission name="arm_joint2_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="articulacion2">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="arm_joint2_actuator">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+  <transmission name="arm_joint3_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="articulacion3">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="arm_joint3_actuator">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+  <transmission name="arm_joint4_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="articulacion4">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="arm_joint4_actuator">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+  <transmission name="arm_joint5_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="articulacion5">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="arm_joint5_actuator">
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+  <gazebo>
+    <plugin filename="libgazebo_ros2_control.so" name="gazebo_ros2_control"/>
+  </gazebo>
 </robot>
