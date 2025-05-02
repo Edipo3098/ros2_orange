@@ -525,15 +525,20 @@ class MyWindow(QMainWindow):
         self.RobotReady = self.ros_node.RobotReady
         if self.RobotReady:
             self.indicator_robot.setColor("green")
-            self.indicator_leg.setColor("green")
+            
         else:
             self.indicator_robot.setColor("red")
-            self.indicator_leg.setColor("red")
-        if self.armMoving:
-            self.indicator_arm.setStyleSheet("background-color: green")
-        else:
-            self.indicator_arm.setStyleSheet("background-color: red")
             
+        if self.armMoving:
+            self.indicator_arm.setColor("green")
+        else:
+            self.indicator_arm.setColor("red")
+            
+        if self.robotMoving:
+            self.indicator_leg.setColor("green")
+        else:
+            self.indicator_leg.setColor("red")
+                
         self.indicator_robot.setAutoFillBackground(True)
 
         self.indicator_robot.repaint()

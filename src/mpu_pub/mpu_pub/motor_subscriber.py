@@ -68,9 +68,7 @@ class MinimalSubscriber(Node):
             self.isARM = False
                 
 
-        #time.sleep(5)
-        self.msg_command = Command()
-        self.msg_command.ready = False
+        
         
 
         
@@ -152,28 +150,28 @@ class MinimalSubscriber(Node):
             # Wait for a moment
             
             # Read response from the serial connection
-            msg_command.ready = False
+            self.msg_command.ready = False
             self.publishers_.publish(self.msg_command )
             received_data = "False"
             while received_data != "True":
                 received_data = ser.readline().decode().strip()
                 self.get_logger().info('Received different than true: "%s"' % received_data)
-                msg_command = Command()
+                
                 
                 counter += 1
                 if counter > 10:
                     self.get_logger().info('Received different than true: "%s"' % received_data)
-                    msg_command = Command()
-                    msg_command.ready = False
-                    self.publishers_.publish(msg_command)
+                    
+                    self.msg_command.ready = False
+                    
                     break
                 if received_data == "True":
                     self.get_logger().info('Received: "%s"' % received_data)
-                    msg_command = Command()
-                    msg_command.ready = True
+                    
+                    self.msg_command.ready = True
                 else:
-                    msg_command = Command()
-                    msg_command.ready = False
+                    
+                    self.msg_command.ready = False
                     
             self.msg_command.ready =  received_data == "True"
             self.msg_command.armmoving = False
