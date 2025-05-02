@@ -157,8 +157,7 @@ class MinimalSubscriber(Node):
                 received_data = ser.readline().decode().strip()
                 self.get_logger().info('Received different than true: "%s"' % received_data)
                 msg_command = Command()
-                msg_command.ready = False
-                self.publishers_.publish(msg_command)
+                
                 counter += 1
                 if counter > 10:
                     self.get_logger().info('Received different than true: "%s"' % received_data)
@@ -170,17 +169,12 @@ class MinimalSubscriber(Node):
                     self.get_logger().info('Received: "%s"' % received_data)
                     msg_command = Command()
                     msg_command.ready = True
-                    self.publishers_.publish(msg_command)
-                    self.msg_command.armmoving = False
-                    self.msg_command.grippermoving = False
-                    self.msg_command.gripperopen = False
-                    self.msg_command.gripperclosed = False
-                    self.msg_command.quadmoving = False
                 else:
                     msg_command = Command()
                     msg_command.ready = False
-                    self.publishers_.publish(msg_command)
-                    self.get_logger().info('Received wrong:  "%s"' % received_data)
+                    
+            self.msg_command.ready =  received_data == "True"
+            self.publishers_.publish(self.msg_command )
 
         except KeyboardInterrupt:
             # If Ctrl+C is pressed, break out of the loop

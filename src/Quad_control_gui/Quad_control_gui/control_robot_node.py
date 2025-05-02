@@ -193,7 +193,7 @@ class MyNode(Node):
         
         self.get_logger().info('Initial joint states published.')
         self.joint_states_pub.publish(self.joint_state_msg)
-        self.RobotReady = False
+
     def add_data(self, msg, index):
         """Add received data to the corresponding lists."""
         self.data_x.append(msg.pos_x)
@@ -331,8 +331,9 @@ class MyNode(Node):
         """
         
         self.RobotReady = msg.ready
-        self.robotMoving = msg.armmoving
+        self.robotMoving = msg.quadmoving
         self.armMoving = msg.armmoving
+        
         
     def publish_message(self, message):
         """
@@ -430,8 +431,9 @@ class MyWindow(QMainWindow):
         self.ui.stopGait.clicked.connect(self.on_stop_gait_click)
                 
         # Reference to the ROS2 node for interacting with ROS topics
-        self.robotMoving = False
-        self.armMoving = False
+        self.robotMoving = self.ros_node.robotMoving
+        self.armMoving = self.ros_node.armMoving
+        self.RobotReady = self.ros_node.RobotReady
         
         self.armJoint = Joint_0
         self.leg = FL
@@ -639,10 +641,10 @@ class MyWindow(QMainWindow):
         self.indicator_quad
         self.ros_node.msg_move.robot = 'm4'
         self.ros_node.msg_move_robot.command = 'm4'
-        self.robotMoving = True
+        
         self.publishMessage()
     def on_stop_gait_click(self):
-        self.robotMoving = False
+        
         self.ros_node.msg_move.robot = 'origin'
         self.ros_node.msg_move_robot.command = 'origin'
         self.publishMessage()
@@ -682,7 +684,7 @@ class MyWindow(QMainWindow):
             self.ros_node.msg_move.joint = str(self.armJoint)
             self.ros_node.msg_move.angle =  float(self.ros_node.arm.getJoint(self.armJoint) )
         elif self.Robot == QUAD:
-            self.robotMoving  = True
+            
             self.ros_node.msg_move.robot = 'QUAD'
             self.ros_node.msg_move_robot = 'QUAD'
             
