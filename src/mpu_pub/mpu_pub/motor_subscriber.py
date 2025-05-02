@@ -28,7 +28,7 @@ class MinimalSubscriber(Node):
         self.subscription = self.create_subscription(MoveRobot, 'motor_angles', self.listener_callback, 10)
         self.subscription  # prevent unused variable warning
         self.publishers_ = self.create_publisher(Command, 'command_robot', 10)
-        timer_period = 0.5  # seconds
+        timer_period = 0.2  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
         #self.checkCommunication_Arduino()
 
@@ -90,25 +90,25 @@ class MinimalSubscriber(Node):
                 
                 ser.write(str(msg.command).encode())
                 ser.write(B"\n")
-                time.sleep(0.5)
+                time.sleep(0.2)
                 ser.write(str(msg.m0).encode())
                 ser.write(B"\n")
-                time.sleep(0.5)
+                time.sleep(0.2)
                 ser.write(str(msg.m1).encode())
                 ser.write(B"\n")
-                time.sleep(0.5)
+                time.sleep(0.2)
                 ser.write(str(msg.m2).encode())
                 ser.write(B"\n")
-                time.sleep(0.5)
+                time.sleep(0.2)
                 ser.write(str(msg.m3).encode())
                 ser.write(B"\n")
-                time.sleep(0.5)
+                time.sleep(0.2)
                 ser.write(str(msg.m4).encode())
                 ser.write(B"\n")
-                time.sleep(0.5)
+                time.sleep(0.2)
                 ser.write(str(2).encode())
                 ser.write(B"\n")
-                time.sleep(0.5)
+                time.sleep(0.2)
                 self.isARM = False
                 self.msg_command.armmoving = True
                 self.msg_command.grippermoving = False
@@ -127,22 +127,22 @@ class MinimalSubscriber(Node):
             else:
                 ser.write(str(msg.m0).encode())
                 ser.write(B"\n")
-                time.sleep(0.5)
+                time.sleep(0.2)
                 ser.write(str(msg.m1).encode())
                 ser.write(B"\n")
-                time.sleep(0.5)
+                time.sleep(0.2)
                 ser.write(str(msg.m2).encode())
                 ser.write(B"\n")
-                time.sleep(0.5)
+                time.sleep(0.2)
                 ser.write(str(msg.m3).encode())
                 ser.write(B"\n")
-                time.sleep(0.5)
+                time.sleep(0.2)
                 ser.write(str(msg.m4).encode())
                 ser.write(B"\n")
-                time.sleep(0.5)
+                time.sleep(0.2)
                 ser.write(str(2).encode())
                 ser.write(B"\n")
-                time.sleep(0.5)
+                time.sleep(0.2)
                 self.isARM = False    
             # Wait for a moment
             

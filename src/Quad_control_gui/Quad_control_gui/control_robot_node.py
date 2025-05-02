@@ -331,7 +331,7 @@ class MyNode(Node):
         """
         
         self.RobotReady = msg.ready
-        self.robotMoving = msg.robotmoving
+        self.robotMoving = msg.armmoving
         self.armMoving = msg.armmoving
         
     def publish_message(self, message):
@@ -340,12 +340,12 @@ class MyNode(Node):
         """
         
         self.publisher.publish(self.msg_move)
-        self.msg_move_robot.m0 = float(self.armJoint[0])
-        self.msg_move_robot.m1 = float(self.armJoint[1])
-        self.msg_move_robot.m2 = float(self.armJoint[2])
-        self.msg_move_robot.m3 = float(self.armJoint[3])
-        self.msg_move_robot.m4 = float(self.armJoint[4])
-        #self.publisher_commandRobot.publish(self.msg_move_robot)
+        self.msg_move_robot.m0 =    float(self.arm.getJoint(Joint_0)),  # Update ARM
+        self.msg_move_robot.m1 =    float(self.arm.getJoint(Joint_1)),  # Update 'joint_0' of the FL leg
+        self.msg_move_robot.m2 =    float(self.arm.getJoint(Joint_2)),  # Update 'joint_0' of the FL leg
+        self.msg_move_robot.m3 =    float(self.arm.getJoint(Joint_3)) ,  # Update 'joint_0' of the FL leg
+        self.msg_move_robot.m4 =    float(self.arm.getJoint(Joint_4))  # Update 'joint_0' of the FL leg
+        self.publisher_commandRobot.publish(self.msg_move_robot)
     def publish_joint_states(self):
         """
         Publishes joint states to the /joint_states topic
@@ -812,6 +812,13 @@ class MyWindow(QMainWindow):
 
     def publishMessage(self):
         self.ros_node.msg_move.angle =  float(self.ros_node.msg_move.angle )*180/np.pi
+        
+        self.ros_node.msg_move_robot.m0 =    round(float(self.ros_node.arm.getJoint(Joint_0))*180/np.pi ,2)
+        self.ros_node.msg_move_robot.m1 =    round(float(self.ros_node.arm.getJoint(Joint_1))*180/np.pi ,2)
+        self.ros_node.msg_move_robot.m2 =    round(float(self.ros_node.arm.getJoint(Joint_2))*180/np.pi ,2)
+        self.ros_node.msg_move_robot.m3 =    round(float(self.ros_node.arm.getJoint(Joint_3))*180/np.pi ,2)
+        self.ros_node.msg_move_robot.m4 =    round(float(self.ros_node.arm.getJoint(Joint_4))*180/np.pi,2)
+        
         self.ros_node.publisher_commandRobot.publish(self.ros_node.msg_move_robot)
 
     
