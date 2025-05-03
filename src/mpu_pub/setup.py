@@ -35,6 +35,7 @@ setup(
             'efk_estimator_2 = mpu_pub.efkEstimator_complementaryFilter:main',
             'ukf_estimator_pf = mpu_pub.ukf_estimator_pf:main',
             'motor_subscriber = mpu_pub.motor_subscriber:main',
+            'motor_subscriber2 = mpu_pub.motor_subscriber2:main',
             'data_calibrated_mpu = mpu_pub.data_calibrated_mpu:main',
         ],
     },

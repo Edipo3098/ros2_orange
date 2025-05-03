@@ -31,7 +31,7 @@ class SerialReader(asyncio.Protocol):
 class MinimalSubscriber(Node):
 
     def __init__(self):
-        super().__init__('motor_subscriber')
+        super().__init__('motor_subscriber2')
         self.subscription = self.create_subscription(MoveRobot, 'motor_angles', self.listener_callback, 10)
         self.publisher_ = self.create_publisher(Command, 'command_robot', 10)
         self.msg_command = Command()
