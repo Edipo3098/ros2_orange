@@ -50,18 +50,48 @@ class MinimalSubscriber(Node):
         self.get_logger().info('Publish true')
         
     def checkCommunication_Arduino(self):
-        if self.Sending:
-            return
+        
         serial_port = '/dev/ttyS5'
         baud_rate = 115200
 
         ser = serial.Serial(serial_port, baud_rate, timeout=1)
+        received_data = ser.readline().decode().strip()
+        if self.Sending:
+            if received_data == "move":
+                    self.get_logger().info('moving: "%s"' % received_data)
+            if received_data == "FL":
+                self.get_logger().info('FL: "%s"' % received_data)
+            if received_data == "FR":
+                self.get_logger().info('FR: "%s"' % received_data)     
+            if received_data == "BL":
+                self.get_logger().info('BL: "%s"' % received_data)
+            if received_data == "BR":
+                self.get_logger().info('BR: "%s"' % received_data)   
+            
+            if received_data == "True":
+                self.get_logger().info('Received: "%s"' % received_data)
+
+                self.msg_command.ready = True
+                self.Sending = False
+            else:
+
+                self.msg_command.ready = False
+                    
+            
+            self.msg_command.armmoving = False
+            self.msg_command.grippermoving = False
+            self.msg_command.gripperopen = False
+            self.msg_command.gripperclosed = False
+            self.msg_command.quadmoving = False
+            self.publishers_.publish(self.msg_command )
+            return
+       
 
         # Send data over the serial connection
         ser.write(str('check').encode())
         ser.write(B"\n")
         time.sleep(0.2)
-        received_data = ser.readline().decode().strip()
+        
         self.get_logger().info('Received: "%s"' % received_data)
         
         if received_data == "check":
@@ -142,48 +172,15 @@ class MinimalSubscriber(Node):
             self.msg_command.ready = False
             self.publishers_.publish(self.msg_command )
             received_data = "False"
-            while received_data != "True":
-                received_data = ser.readline().decode().strip()
-                if received_data == "move":
-                    self.get_logger().info('moving: "%s"' % received_data)
-                if received_data == "FL":
-                    self.get_logger().info('FL: "%s"' % received_data)
-                if received_data == "FR":
-                    self.get_logger().info('FR: "%s"' % received_data)     
-                if received_data == "BL":
-                    self.get_logger().info('BL: "%s"' % received_data)
-                if received_data == "BR":
-                    self.get_logger().info('BR: "%s"' % received_data)   
-                else:
-                    counter += 1
-                    if counter > 20:
-                        self.get_logger().info('Received different than true: "%s"' % received_data)
-                        self.msg_command.ready = False
-                        
-                        break
-                if received_data == "True":
-                    self.get_logger().info('Received: "%s"' % received_data)
-                    
-                    self.msg_command.ready = True
-                else:
-                    
-                    self.msg_command.ready = False
-                    
-            
-            self.msg_command.armmoving = False
-            self.msg_command.grippermoving = False
-            self.msg_command.gripperopen = False
-            self.msg_command.gripperclosed = False
-            self.msg_command.quadmoving = False
-            self.publishers_.publish(self.msg_command )
-
+            ser.close()
+            self.Sending = False
         except KeyboardInterrupt:
             # If Ctrl+C is pressed, break out of the loop
             print("Keyboard interrupt detected. Exiting...")
         finally:
             # Close the serial port, even if an exception occurs
             ser.close()
-        self.Sending = False
+        
         
         
 
