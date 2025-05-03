@@ -58,6 +58,7 @@ class MinimalSubscriber(Node):
 
         ser = serial.Serial(serial_port, baud_rate, timeout=1)
         received_data = ser.readline().decode().strip()
+        self.get_logger().info('Received: "%s"' % received_data)
         if self.Sending:
             if self.sendCommand:
                 if ( self.isARM):
@@ -77,6 +78,7 @@ class MinimalSubscriber(Node):
                     self.get_logger().info('moving: GAIT ')
                     ser.write(str(self.msg_move.command).encode())
                     ser.write(B"\n")
+                    time.sleep(0.2)
                     self.isGait = False
                     self.msg_command.armmoving = False
                     self.msg_command.grippermoving = False
@@ -88,6 +90,8 @@ class MinimalSubscriber(Node):
                     self.get_logger().info('moving: ORIGIN ')
                     ser.write(str(self.msg_move.command).encode())
                     ser.write(B"\n")
+                    
+                    time.sleep(0.2)
                     self.isARM = False 
                 self.sendCommand = False 
             if received_data == "move":
