@@ -95,7 +95,7 @@ class MinimalSubscriber(Node):
         self.get_logger().info('Received: "%s"' % received_data)
         
         if received_data == "check":
-            self.get_logger().info('Communication with Arduino is OK')
+            self.get_logger().info('Arduino is OK')
             self.msg_command.ready = True
             self.publishers_.publish(self.msg_command)
             self.tryng_coommunication = 0
@@ -103,7 +103,7 @@ class MinimalSubscriber(Node):
         else:
             self.tryng_coommunication += 1
             if self.tryng_coommunication == 15:
-                self.get_logger().info('Communication with Arduino is NOT OK')
+                self.get_logger().info('Arduino is NOT OK')
                 self.msg_command.ready = False
                 self.publishers_.publish(self.msg_command)
                 
@@ -173,7 +173,7 @@ class MinimalSubscriber(Node):
             self.publishers_.publish(self.msg_command )
             received_data = "False"
             ser.close()
-            self.Sending = False
+            
         except KeyboardInterrupt:
             # If Ctrl+C is pressed, break out of the loop
             print("Keyboard interrupt detected. Exiting...")
