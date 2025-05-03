@@ -57,9 +57,12 @@ class MinimalSubscriber(Node):
         ser = serial.Serial(serial_port, baud_rate, timeout=1)
 
         # Send data over the serial connection
-        ser.write(str('check').encode())
-        ser.write(B"\n")
-        time.sleep(0.2)
+        #ser.write(str('check\n').encode())
+        #ser.write(B"\n")
+        
+        csv_line = f"{'check'}\n"
+        ser.write(csv_line.encode()) 
+        
         received_data = ser.readline().decode().strip()
         self.get_logger().info('Received: "%s"' % received_data)
         
@@ -116,8 +119,10 @@ class MinimalSubscriber(Node):
                 self.msg_command.gripperclosed = False
                 self.msg_command.quadmoving = False
             elif (self.isGait):
-                ser.write(str(msg.command).encode())
-                ser.write(B"\n")
+                csv_line = f"{msg.command}\n"
+                ser.write(csv_line.encode()) 
+                #ser.write(str(msg.command).encode())
+                #ser.write(B"\n")
                 self.isGait = False
                 self.msg_command.armmoving = False
                 self.msg_command.grippermoving = False
