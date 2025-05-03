@@ -61,10 +61,9 @@ class MinimalSubscriber(Node):
             self.isGait = True
             
         else:
-            self.get_logger().info('is publishing QUAD')
-            self.get_logger().info('Leg "%s"' % msg.leg)
-            self.get_logger().info('Joint "%s"' % msg.joint)
-            self.get_logger().info('P0 Z0 "%s"' % msg.angle)
+            msg.command = "origin"
+            self.get_logger().info('is stoping gait')
+            
             self.isARM = False
                 
 
