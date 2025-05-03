@@ -77,6 +77,7 @@ class MinimalSubscriber(Node):
   
     def listener_callback(self, msg):
         self.Sending = True
+        self.timer_communication.cancel()
         self.get_logger().info('Command "%s"' % msg.command)
         if msg.command == "ARM":
             self.get_logger().info('ARM')
@@ -166,7 +167,9 @@ class MinimalSubscriber(Node):
         finally:
             # Close the serial port, even if an exception occurs
             ser.close()
+            self.timer_communication.cancel()
         self.Sending = False
+        self.timer_communication = self.create_timer(2, self.checkCommunication_Arduino)
         
         
 
