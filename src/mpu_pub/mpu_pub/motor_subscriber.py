@@ -30,7 +30,7 @@ class MinimalSubscriber(Node):
         self.publishers_ = self.create_publisher(Command, 'command_robot', 10)
         timer_period = 0.2  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
-        self.timer_communication = self.create_timer(0.1, self.checkCommunication_Arduino)
+        self.timer_communication = self.create_timer(1, self.checkCommunication_Arduino)
         self.Sending = False
         self.tryng_coommunication = 0
         
