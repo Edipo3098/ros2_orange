@@ -30,10 +30,8 @@ class MinimalSubscriber(Node):
         self.publishers_ = self.create_publisher(Command, 'command_robot', 10)
         timer_period = 0.2  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
-        self.timer_communication = self.create_timer(1, self.checkCommunication_Arduino)
+        self.timer_communication = self.create_timer(2, self.checkCommunication_Arduino)
         self.Sending = False
-        self.tryng_coommunication = 0
-        self.msg_move = MoveRobot()
         
         #self.checkCommunication_Arduino()
 
@@ -46,115 +44,38 @@ class MinimalSubscriber(Node):
         self.msg_command.quadmoving = False
 
         self.publishers_.publish(self.msg_command)
-        self.sendCommand = False
         self.isARM  = False
         self.isGait = False
         self.get_logger().info('Publish true')
         
     def checkCommunication_Arduino(self):
-        
+        if self.Sending:
+            return
         serial_port = '/dev/ttyS5'
         baud_rate = 115200
 
         ser = serial.Serial(serial_port, baud_rate, timeout=1)
-        received_data = ser.readline().decode().strip()
-        self.get_logger().info('Received: "%s"' % received_data)
-        if self.Sending:
-            if self.sendCommand:
-                if ( self.isARM):
-                    self.get_logger().info('moving: ARM ')
-                    ser.write(str(self.msg_move.command).encode())
-                    ser.write(B"\n")
-                    time.sleep(0.2)
-                    csv_line = f"{self.msg_move.m0},{self.msg_move.m1},{self.msg_move.m2},{self.msg_move.m3},{self.msg_move.m4},{2}\n"
-                    ser.write(csv_line.encode()) 
-                    self.isARM = False
-                    self.msg_command.armmoving = True
-                    self.msg_command.grippermoving = False
-                    self.msg_command.gripperopen = False
-                    self.msg_command.gripperclosed = False
-                    self.msg_command.quadmoving = False
-                elif (self.isGait):
-                    self.get_logger().info('moving: GAIT ')
-                    ser.write(str(self.msg_move.command).encode())
-                    ser.write(B"\n")
-                    time.sleep(0.2)
-                    self.isGait = False
-                    self.msg_command.armmoving = False
-                    self.msg_command.grippermoving = False
-                    self.msg_command.gripperopen = False
-                    self.msg_command.gripperclosed = False
-                    self.msg_command.quadmoving = True
-                    
-                else:
-                    self.get_logger().info('moving: ORIGIN ')
-                    ser.write(str(self.msg_move.command).encode())
-                    ser.write(B"\n")
-                    
-                    time.sleep(0.2)
-                    self.isARM = False 
-                self.sendCommand = False 
-            if received_data == "move":
-                    self.get_logger().info('moving: "%s"' % received_data)
-            if received_data == "FL":
-                self.get_logger().info('FL: "%s"' % received_data)
-            if received_data == "FR":
-                self.get_logger().info('FR: "%s"' % received_data)     
-            if received_data == "BL":
-                self.get_logger().info('BL: "%s"' % received_data)
-            if received_data == "BR":
-                self.get_logger().info('BR: "%s"' % received_data)   
-            
-            if received_data == "True":
-                self.get_logger().info('Received: "%s"' % received_data)
 
-                self.msg_command.ready = True
-                
-                self.Sending = False
-            else:
-
-                self.msg_command.ready = False
-                    
-            
-            self.msg_command.armmoving = False
-            self.msg_command.grippermoving = False
-            self.msg_command.gripperopen = False
-            self.msg_command.gripperclosed = False
-            self.msg_command.quadmoving = False
-            self.publishers_.publish(self.msg_command )
-            ser.close()
-            return
-       
-
-        # Send data over the serial connection IF NOT COMMAND
+        # Send data over the serial connection
         ser.write(str('check').encode())
         ser.write(B"\n")
         time.sleep(0.2)
-        
+        received_data = ser.readline().decode().strip()
         self.get_logger().info('Received: "%s"' % received_data)
         
         if received_data == "check":
-            self.get_logger().info('Arduino is OK')
+            self.get_logger().info('Communication with Arduino is OK')
             self.msg_command.ready = True
             self.publishers_.publish(self.msg_command)
-            self.tryng_coommunication = 0
             
         else:
-            self.tryng_coommunication += 1
-            if self.tryng_coommunication == 15:
-                self.get_logger().info('Arduino is NOT OK')
-                self.msg_command.ready = False
-                self.publishers_.publish(self.msg_command)
-        ser.close()
-                
-            
+            self.get_logger().info('Communication with Arduino is NOT OK')
             
     def timer_callback(self):
         self.publishers_.publish(self.msg_command)
         
   
     def listener_callback(self, msg):
-        self.sendCommand = True
         self.Sending = True
         self.get_logger().info('Command "%s"' % msg.command)
         if msg.command == "ARM":
@@ -171,9 +92,81 @@ class MinimalSubscriber(Node):
             self.get_logger().info('is stoping gait')
             
             self.isARM = False
-        self.msg_move  = msg
-        self.msg_command.ready = False
-           
+        serial_port = '/dev/ttyS5'
+        baud_rate = 115200
+
+        ser = serial.Serial(serial_port, baud_rate, timeout=1)
+
+        counter = 0
+        try:
+            # Send data over the serial connection
+            
+            
+            if ( self.isARM):
+                ser.write(str(msg.command).encode())
+                ser.write(B"\n")
+                time.sleep(0.2)
+                csv_line = f"{msg.m0},{msg.m1},{msg.m2},{msg.m3},{msg.m4},{2}\n"
+                ser.write(csv_line.encode()) 
+                self.isARM = False
+                self.msg_command.armmoving = True
+                self.msg_command.grippermoving = False
+                self.msg_command.gripperopen = False
+                self.msg_command.gripperclosed = False
+                self.msg_command.quadmoving = False
+            elif (self.isGait):
+                ser.write(str(msg.command).encode())
+                ser.write(B"\n")
+                self.isGait = False
+                self.msg_command.armmoving = False
+                self.msg_command.grippermoving = False
+                self.msg_command.gripperopen = False
+                self.msg_command.gripperclosed = False
+                self.msg_command.quadmoving = True
+                
+            else:
+                ser.write(str(msg.command).encode())
+                ser.write(B"\n")
+                self.isARM = False    
+            # Wait for a moment
+            
+            # Read response from the serial connection
+            self.msg_command.ready = False
+            self.publishers_.publish(self.msg_command )
+            received_data = "False"
+            while received_data != "True":
+                received_data = ser.readline().decode().strip()
+                self.get_logger().info('Received different than true: "%s"' % received_data)
+                counter += 1
+                if counter > 25:
+                    self.get_logger().info('Received different than true: "%s"' % received_data)
+                    
+                    self.msg_command.ready = False
+                    
+                    break
+                if received_data == "True":
+                    self.get_logger().info('Received: "%s"' % received_data)
+                    
+                    self.msg_command.ready = True
+                else:
+                    
+                    self.msg_command.ready = False
+                    
+            self.msg_command.ready =  received_data == "True"
+            self.msg_command.armmoving = False
+            self.msg_command.grippermoving = False
+            self.msg_command.gripperopen = False
+            self.msg_command.gripperclosed = False
+            self.msg_command.quadmoving = False
+            self.publishers_.publish(self.msg_command )
+
+        except KeyboardInterrupt:
+            # If Ctrl+C is pressed, break out of the loop
+            print("Keyboard interrupt detected. Exiting...")
+        finally:
+            # Close the serial port, even if an exception occurs
+            ser.close()
+        self.Sending = False
         
         
 
