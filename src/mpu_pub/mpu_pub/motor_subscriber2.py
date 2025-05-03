@@ -136,5 +136,8 @@ async def main_async():
         if transport:
             transport.close()
 
-if __name__ == '__main__':
+def main():
     asyncio.run(main_async())
+
+if __name__ == '__main__':
+    main()
