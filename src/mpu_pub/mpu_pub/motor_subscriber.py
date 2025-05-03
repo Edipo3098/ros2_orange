@@ -127,24 +127,8 @@ class MinimalSubscriber(Node):
                 self.msg_command.quadmoving = True
                 
             else:
-                ser.write(str(msg.m0).encode())
+                ser.write(str(msg.command).encode())
                 ser.write(B"\n")
-                time.sleep(0.2)
-                ser.write(str(msg.m1).encode())
-                ser.write(B"\n")
-                time.sleep(0.2)
-                ser.write(str(msg.m2).encode())
-                ser.write(B"\n")
-                time.sleep(0.2)
-                ser.write(str(msg.m3).encode())
-                ser.write(B"\n")
-                time.sleep(0.2)
-                ser.write(str(msg.m4).encode())
-                ser.write(B"\n")
-                time.sleep(0.2)
-                ser.write(str(2).encode())
-                ser.write(B"\n")
-                time.sleep(0.2)
                 self.isARM = False    
             # Wait for a moment
             
