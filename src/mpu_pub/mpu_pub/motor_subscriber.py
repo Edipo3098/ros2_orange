@@ -147,13 +147,11 @@ class MinimalSubscriber(Node):
                 if received_data == "move":
                     self.get_logger().info('moving: "%s"' % received_data)
                     
-                    break
+                    
                 else:
-                    self.get_logger().info('Received different than true: "%s"' % received_data)
                     counter += 1
                     if counter > 20:
                         self.get_logger().info('Received different than true: "%s"' % received_data)
-                        
                         self.msg_command.ready = False
                         
                         break
