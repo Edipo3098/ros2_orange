@@ -30,6 +30,7 @@ class MinimalSubscriber(Node):
         self.publishers_ = self.create_publisher(Command, 'command_robot', 10)
         timer_period = 0.2  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
+        self.checkCommunication_Arduino()
         #self.checkCommunication_Arduino()
 
         self.msg_command = Command()
@@ -44,6 +45,30 @@ class MinimalSubscriber(Node):
         self.isARM  = False
         self.isGait = False
         self.get_logger().info('Publish true')
+        
+    def checkCommunication_Arduino(self):
+        serial_port = '/dev/ttyS5'
+        baud_rate = 115200
+
+        ser = serial.Serial(serial_port, baud_rate, timeout=1)
+
+        # Send data over the serial connection
+        ser.write(str('check').encode())
+        ser.write(B"\n")
+        time.sleep(0.2)
+        received_data = ser.readline().decode().strip()
+        self.get_logger().info('Received: "%s"' % received_data)
+        
+        if received_data == "check":
+            self.get_logger().info('Communication with Arduino is OK')
+            self.msg_command.ready = True
+            self.publishers_.publish(self.msg_command)
+            
+        else:
+            self.get_logger().info('Communication with Arduino is NOT OK')
+            self.msg_command.ready = False
+            self.publishers_.publish(self.msg_command)
+            
     def timer_callback(self):
         self.publishers_.publish(self.msg_command)
         
@@ -65,14 +90,6 @@ class MinimalSubscriber(Node):
             self.get_logger().info('is stoping gait')
             
             self.isARM = False
-                
-
-        
-        
-
-        
-
-
         serial_port = '/dev/ttyS5'
         baud_rate = 115200
 
@@ -89,27 +106,6 @@ class MinimalSubscriber(Node):
                 time.sleep(0.2)
                 csv_line = f"{msg.m0},{msg.m1},{msg.m2},{msg.m3},{msg.m4},{2}\n"
                 ser.write(csv_line.encode()) 
-                # Send the command string over the serial connection
-                # ser.write(str(msg.command).encode())
-                # ser.write(B"\n")
-                # ser.write(str(msg.m0).encode())
-                # ser.write(B"\n")
-                # time.sleep(0.2)
-                # ser.write(str(msg.m1).encode())
-                # ser.write(B"\n")
-                # time.sleep(0.2)
-                # ser.write(str(msg.m2).encode())
-                # ser.write(B"\n")
-                # time.sleep(0.2)
-                # ser.write(str(msg.m3).encode())
-                # ser.write(B"\n")
-                # time.sleep(0.2)
-                # ser.write(str(msg.m4).encode())
-                # ser.write(B"\n")
-                # time.sleep(0.2)
-                # ser.write(str(2).encode())
-                # ser.write(B"\n")
-                # time.sleep(0.2)
                 self.isARM = False
                 self.msg_command.armmoving = True
                 self.msg_command.grippermoving = False
@@ -139,10 +135,8 @@ class MinimalSubscriber(Node):
             while received_data != "True":
                 received_data = ser.readline().decode().strip()
                 self.get_logger().info('Received different than true: "%s"' % received_data)
-                
-                
                 counter += 1
-                if counter > 10:
+                if counter > 20:
                     self.get_logger().info('Received different than true: "%s"' % received_data)
                     
                     self.msg_command.ready = False
