@@ -30,7 +30,9 @@ class MinimalSubscriber(Node):
         self.publishers_ = self.create_publisher(Command, 'command_robot', 10)
         timer_period = 0.2  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
-        self.checkCommunication_Arduino()
+        self.timer_communication = self.create_timer(2, self.checkCommunication_Arduino)
+        self.Sending = False
+        
         #self.checkCommunication_Arduino()
 
         self.msg_command = Command()
@@ -47,6 +49,8 @@ class MinimalSubscriber(Node):
         self.get_logger().info('Publish true')
         
     def checkCommunication_Arduino(self):
+        if self.Sending:
+            return
         serial_port = '/dev/ttyS5'
         baud_rate = 115200
 
@@ -74,7 +78,7 @@ class MinimalSubscriber(Node):
         
   
     def listener_callback(self, msg):
-        
+        self.Sending = True
         self.get_logger().info('Command "%s"' % msg.command)
         if msg.command == "ARM":
             self.get_logger().info('ARM')
@@ -164,6 +168,7 @@ class MinimalSubscriber(Node):
         finally:
             # Close the serial port, even if an exception occurs
             ser.close()
+        self.Sending = False
         
         
 
