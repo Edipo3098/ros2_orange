@@ -72,6 +72,7 @@ class MinimalSubscriber(Node):
                 self.get_logger().info('Received: "%s"' % received_data)
 
                 self.msg_command.ready = True
+                ser.close()
                 self.Sending = False
             else:
 
@@ -106,6 +107,7 @@ class MinimalSubscriber(Node):
                 self.get_logger().info('Arduino is NOT OK')
                 self.msg_command.ready = False
                 self.publishers_.publish(self.msg_command)
+        ser.close()
                 
             
             
