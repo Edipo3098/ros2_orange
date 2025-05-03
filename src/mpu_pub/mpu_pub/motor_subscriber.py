@@ -32,6 +32,7 @@ class MinimalSubscriber(Node):
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.timer_communication = self.create_timer(2, self.checkCommunication_Arduino)
         self.Sending = False
+        self.tryng_coommunication
         
         #self.checkCommunication_Arduino()
 
@@ -67,11 +68,16 @@ class MinimalSubscriber(Node):
             self.get_logger().info('Communication with Arduino is OK')
             self.msg_command.ready = True
             self.publishers_.publish(self.msg_command)
+            self.tryng_coommunication = 0
             
         else:
-            self.get_logger().info('Communication with Arduino is NOT OK')
-            self.msg_command.ready = False
-            self.publishers_.publish(self.msg_command)
+            self.tryng_coommunication += 1
+            if self.tryng_coommunication == 15:
+                self.get_logger().info('Communication with Arduino is NOT OK')
+                self.msg_command.ready = False
+                self.publishers_.publish(self.msg_command)
+                
+            
             
     def timer_callback(self):
         self.publishers_.publish(self.msg_command)
