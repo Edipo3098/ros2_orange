@@ -30,7 +30,7 @@ class MinimalSubscriber(Node):
         self.publishers_ = self.create_publisher(Command, 'command_robot', 10)
         timer_period = 0.2  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
-        self.timer_communication = self.create_timer(2, self.checkCommunication_Arduino)
+        self.timer_communication = self.create_timer(0.1, self.checkCommunication_Arduino)
         self.Sending = False
         self.tryng_coommunication = 0
         
@@ -146,8 +146,14 @@ class MinimalSubscriber(Node):
                 received_data = ser.readline().decode().strip()
                 if received_data == "move":
                     self.get_logger().info('moving: "%s"' % received_data)
-                    
-                    
+                if received_data == "FL":
+                    self.get_logger().info('FL: "%s"' % received_data)
+                if received_data == "FR":
+                    self.get_logger().info('FR: "%s"' % received_data)     
+                if received_data == "BL":
+                    self.get_logger().info('BL: "%s"' % received_data)
+                if received_data == "BR":
+                    self.get_logger().info('BR: "%s"' % received_data)   
                 else:
                     counter += 1
                     if counter > 20:
