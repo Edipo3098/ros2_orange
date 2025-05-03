@@ -32,7 +32,7 @@ class MinimalSubscriber(Node):
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.timer_communication = self.create_timer(2, self.checkCommunication_Arduino)
         self.Sending = False
-        self.tryng_coommunication
+        self.tryng_coommunication = 0
         
         #self.checkCommunication_Arduino()
 
