@@ -49,30 +49,41 @@ class MinimalSubscriber(Node):
         self.get_logger().info('Publish true')
         
     def checkCommunication_Arduino(self):
-        if self.Sending:
-            return
-        serial_port = '/dev/ttyS5'
-        baud_rate = 115200
+        try:
+            serial_port = '/dev/ttyS5'
+            baud_rate = 115200
 
-        ser = serial.Serial(serial_port, baud_rate, timeout=1)
+            ser = serial.Serial(serial_port, baud_rate, timeout=1)
+            if self.Sending:
+                return
+            serial_port = '/dev/ttyS5'
+            baud_rate = 115200
 
-        # Send data over the serial connection
-        #ser.write(str('check\n').encode())
-        #ser.write(B"\n")
-        
-        csv_line = f"{'check'}\n"
-        ser.write(csv_line.encode()) 
-        
-        received_data = ser.readline().decode().strip()
-        self.get_logger().info('Received: "%s"' % received_data)
-        
-        if received_data == "check":
-            self.get_logger().info('Communication with Arduino is OK')
-            self.msg_command.ready = True
-            self.publishers_.publish(self.msg_command)
+            ser = serial.Serial(serial_port, baud_rate, timeout=1)
+
+            # Send data over the serial connection
+            #ser.write(str('check\n').encode())
+            #ser.write(B"\n")
             
-        else:
-            self.get_logger().info('Communication with Arduino is NOT OK')
+            csv_line = f"{'check'}\n"
+            ser.write(csv_line.encode()) 
+            
+            received_data = ser.readline().decode().strip()
+            self.get_logger().info('Received: "%s"' % received_data)
+            
+            if received_data == "check":
+                self.get_logger().info('Communication with Arduino is OK')
+                self.msg_command.ready = True
+                self.publishers_.publish(self.msg_command)
+                
+            else:
+                self.get_logger().info('Communication with Arduino is NOT OK')
+        except KeyboardInterrupt:
+            # If Ctrl+C is pressed, break out of the loop
+            print("Keyboard interrupt detected. Exiting...")
+        finally:
+            # Close the serial port, even if an exception occurs
+            ser.close()
             
     def timer_callback(self):
         self.publishers_.publish(self.msg_command)
