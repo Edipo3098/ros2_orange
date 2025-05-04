@@ -143,7 +143,7 @@ class MinimalSubscriber(Node):
             # Close the serial port, even if an exception occurs
             ser.reset_input_buffer()
             ser.close()
-            self.timer_communication.cancel()
+            #self.timer_communication.cancel()
         self.Sending = False
         #self.timer_communication = self.create_timer(2, self.checkCommunication_Arduino)
            
