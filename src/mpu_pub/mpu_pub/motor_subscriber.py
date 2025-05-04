@@ -31,7 +31,7 @@ class MinimalSubscriber(Node):
         timer_period = 0.2  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
         #self.timer_communication = self.create_timer(2, self.checkCommunication_Arduino)
-        self.timer_comm = self.create_timer(0.5, self.communicacion_arduino)
+        self.timer_comm = self.create_timer(0.1, self.communicacion_arduino)
         self.Sending = False
         
         #self.checkCommunication_Arduino()
@@ -207,8 +207,11 @@ class MinimalSubscriber(Node):
         
   
     def listener_callback(self, msg):
-        self.Sending = True
-        self.robot_command = msg
+        if not self.Sending:
+            self.get_logger().info('Received: "%s"' % msg)
+            self.get_logger().info
+            self.Sending = True
+            self.robot_command = msg
         
         
 
