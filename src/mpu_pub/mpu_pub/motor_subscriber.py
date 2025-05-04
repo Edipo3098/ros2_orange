@@ -152,8 +152,10 @@ class MinimalSubscriber(Node):
                 print("Keyboard interrupt detected. Exiting...")
             finally:
                 # Close the serial port, even if an exception occurs
+                self.ser = serial.Serial(self.serial_port, self.baud_rate, timeout=1)
                 self.ser.reset_input_buffer()
                 self.ser.close()
+                self.ser = serial.Serial(self.serial_port, self.baud_rate, timeout=1)
                 #self.timer_communication.cancel()
             
         #self.timer_communication = self.create_timer(2, self.checkCommunication_Arduino)
