@@ -138,6 +138,12 @@ class MinimalSubscriber(Node):
                     else:
                         
                         self.msg_command.ready = False
+                elif self.received_data  == "True" and self.command_sended:
+                    self.get_logger().info('Received: "%s"' % self.received_data )
+                    self.msg_command.ready = False
+                    self.Sending = False
+                    self.command_sended = False
+                    self.received_data  = "False"
                 ser.reset_input_buffer()   
 
             except KeyboardInterrupt:
