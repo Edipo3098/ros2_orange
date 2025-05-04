@@ -66,6 +66,9 @@ class Ui_RobotControl(object):
         self.changeLeg.addItem("")
         self.changeLeg.addItem("")
         self.changeLeg.addItem("")
+        self.setEF = QtWidgets.QPushButton(self.controlBasic)
+        self.setEF.setGeometry(QtCore.QRect(257, 404, 107, 71))
+        self.setEF.setObjectName("setEF")
         RobotControl.addWidget(self.controlBasic)
         self.controlQuad = QtWidgets.QWidget()
         self.controlQuad.setObjectName("controlQuad")
@@ -165,7 +168,7 @@ class Ui_RobotControl(object):
         RobotControl.addWidget(self.controlArm)
 
         self.retranslateUi(RobotControl)
-        RobotControl.setCurrentIndex(1)
+        RobotControl.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(RobotControl)
 
     def retranslateUi(self, RobotControl):
@@ -192,6 +195,7 @@ class Ui_RobotControl(object):
         self.changeLeg.setItemText(1, _translate("RobotControl", "Front Right Leg"))
         self.changeLeg.setItemText(2, _translate("RobotControl", "Back Right Leg"))
         self.changeLeg.setItemText(3, _translate("RobotControl", "Back Left Leg"))
+        self.setEF.setText(_translate("RobotControl", "Toggle EF"))
         self.prevButtom2.setText(_translate("RobotControl", "Previous Page"))
         self.nextPage2.setText(_translate("RobotControl", "Next Page"))
         self.startGait.setText(_translate("RobotControl", "Start"))
