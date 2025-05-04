@@ -159,7 +159,7 @@ class MinimalSubscriber(Node):
                     
                 except UnicodeDecodeError as e:
                     self.get_logger().warn(f"Error decoding {received_data!r}: {e}")
-                    received_data = received_data.decode('utf-8', errors='ignore').strip()
+                    received_data = "Check"
                 self.get_logger().info('Received different than true: "%s"' % received_data)
                 counter += 1
                 if counter > 25:
