@@ -175,6 +175,34 @@ class MinimalSubscriber(Node):
                 else:
                     
                     self.msg_command.ready = False
+                if ( self.isARM):
+                    ser.write(str(msg.command).encode())
+                    ser.write(B"\n")
+                    time.sleep(0.2)
+                    csv_line = f"{msg.m0},{msg.m1},{msg.m2},{msg.m3},{msg.m4},{msg.m5}\n"
+                    ser.write(csv_line.encode()) 
+                    self.isARM = False
+                    self.msg_command.armmoving = True
+                    self.msg_command.grippermoving = False
+                    self.msg_command.gripperopen = False
+                    self.msg_command.gripperclosed = False
+                    self.msg_command.quadmoving = False
+                elif (self.isGait):
+                    csv_line = f"{msg.command}\n"
+                    ser.write(csv_line.encode()) 
+                    #ser.write(str(msg.command).encode())
+                    #ser.write(B"\n")
+                    self.isGait = False
+                    self.msg_command.armmoving = False
+                    self.msg_command.grippermoving = False
+                    self.msg_command.gripperopen = False
+                    self.msg_command.gripperclosed = False
+                    self.msg_command.quadmoving = True
+                    
+                else:
+                    ser.write(str(msg.command).encode())
+                    ser.write(B"\n")
+                    self.isARM = False  
                     
             self.msg_command.ready =  received_data == "True"
             self.msg_command.armmoving = False
