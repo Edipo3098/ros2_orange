@@ -125,12 +125,12 @@ class MinimalSubscriber(Node):
             
             
             if ( self.isARM):
-                #ser.write(str(msg.command).encode())
-                #ser.write(B"\n")
+                ser.write(str(msg.command).encode())
+                ser.write(B"\n")
                
-                csv_line = f"{str(msg.command).encode(),int(msg.m0)},{int(msg.m1)},{int(msg.m2)},{int(msg.m3)},{int(msg.m4)},{int(msg.m5)}\n"
+                csv_line = f"{int(msg.m0)},{int(msg.m1)},{int(msg.m2)},{int(msg.m3)},{int(msg.m4)},{int(msg.m5)}\n"
                 ser.write(csv_line.encode()) 
-                
+                self.get_logger().info('Sended: "%s"' % csv_line)
                 self.msg_command.armmoving = True
                 self.msg_command.grippermoving = False
                 self.msg_command.gripperopen = False
