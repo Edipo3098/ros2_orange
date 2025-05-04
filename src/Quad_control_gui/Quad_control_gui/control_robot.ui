@@ -227,14 +227,27 @@
    <widget class="QPushButton" name="setEF">
     <property name="geometry">
      <rect>
-      <x>257</x>
-      <y>404</y>
+      <x>260</x>
+      <y>400</y>
       <width>107</width>
       <height>71</height>
      </rect>
     </property>
     <property name="text">
      <string>Toggle EF</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="setEF_2">
+    <property name="geometry">
+     <rect>
+      <x>450</x>
+      <y>400</y>
+      <width>107</width>
+      <height>71</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Reset move</string>
     </property>
    </widget>
   </widget>

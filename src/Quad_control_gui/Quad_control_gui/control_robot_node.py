@@ -425,6 +425,7 @@ class MyWindow(QMainWindow):
         self.ui.nextPage3.clicked.connect(self.nextPage)
         self.ui.prevButtom3.clicked.connect(self.prevPage)
         self.ui.setEF.clicked.connect(self.toggle_EF)
+        self.ui.setEF_2.clicked.connect(self.restart)
         self.currentIdx = 0
         # Connect buttons to corresponding functions
         self.ui.setCero.clicked.connect(self.on_set_zero_click)
@@ -516,6 +517,22 @@ class MyWindow(QMainWindow):
         self.update_joint_positions()
         # Update the indicator based on conditions
         self.update_indicator()
+        
+    def restart(self):
+        self.ros_node.msg_move_robot.m0 = 0.0
+        self.ros_node.msg_move_robot.m1 = 0.0
+        self.ros_node.msg_move_robot.m2 = 0.0
+        self.ros_node.msg_move_robot.m3 = 0.0
+        self.ros_node.msg_move_robot.m4 = 0.0
+        self.ros_node.msg_move_robot.m5 = 0.0
+        self.ros_node.arm.setJoint(Joint_0, 0.0)
+        self.ros_node.arm.setJoint(Joint_1, 0.0)
+        self.ros_node.arm.setJoint(Joint_2, 0.0)
+        self.ros_node.arm.setJoint(Joint_3, 0.0)
+        self.ros_node.arm.setJoint(Joint_4, 0.0)
+        self.ros_node.get_logger().info(f"Updated Arm Joint {Joint_5} Angle: {self.ros_node.msg_move_robot.m5}")
+        self.update_joint_positions()
+        self.publishMessage()
     def toggle_EF(self):
         current_angle = self.ros_node.msg_move_robot.m5
         if current_angle == 0:
@@ -530,10 +547,10 @@ class MyWindow(QMainWindow):
         self.publishMessage()
         
     def update_indicator(self):
-        """Update the indicator color or visibility based on some condition."""
+        """Update the indicator color or visibility based on some condition.
         self.ros_node.get_logger().info(f"Robot moving: {self.robotMoving}")
         self.ros_node.get_logger().info(f"Arm moving: {self.armMoving}")
-        self.ros_node.get_logger().info(f"Robot ready: {self.RobotReady}")
+        self.ros_node.get_logger().info(f"Robot ready: {self.RobotReady}") """
         self.robotMoving = self.ros_node.robotMoving
         self.armMoving = self.ros_node.armMoving
         self.RobotReady = self.ros_node.RobotReady
