@@ -1,568 +1,342 @@
+import math
+import numpy as np
 import rclpy
+from time import perf_counter
 from rclpy.node import Node
 from robot_interfaces.msg import Mpu, COGframe
-from time import time
-import numpy as np
-from filterpy.kalman import ExtendedKalmanFilter
-from ahrs.filters import Madgwick  # Use Madgwick from ahrs package
-from collections import deque
-from filterpy.kalman import UnscentedKalmanFilter as UKF
-from filterpy.kalman import MerweScaledSigmaPoints
-import numpy as np
-import scipy.stats
+from message_filters import Subscriber, ApproximateTimeSynchronizer
 
-class ParticleFilter:
-    def __init__(self, N, dt):
-        self.N = N  # Number of particles
-        self.dt = dt  # Time step
-        # Particle state: [pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, roll, pitch, yaw]
-        self.particles = np.random.uniform(low=-1, high=1, size=(N, 9))
-        self.weights = np.ones(N) / N
-
-    def predict(self, acceleration, angular_displacement):
-        for i in range(self.N):
-            self.particles[i, :3] += self.particles[i, 3:6] * self.dt + 0.5 * acceleration * self.dt**2
-            self.particles[i, 3:6] += acceleration * self.dt
-            self.particles[i, 6:9] += angular_displacement  # Update orientation
-
-    def update(self, z, R):
-        """
-        Update particle weights based on the likelihood of the measurements.
-        :param z: array of measurements (9,) [ax, ay, az, ax2, ay2, az2, roll, pitch, yaw]
-        :param R: measurement noise covariance matrix
-        """
-        for i in range(self.N):
-            # Particle velocity (used for comparison with acceleration measurements)
-            vel = self.particles[i, 3:6]
-            # Particle orientation (roll, pitch, yaw)
-            orientation = self.particles[i, 6:9]
-
-            # Concatenate velocity and orientation to compare with measurements
-            state_pred = np.hstack((vel, vel, orientation))  # Predicted measurement for both IMUs and orientation
-            
-            # Calculate the likelihood of the actual measurements given the particle's state
-            likelihood = scipy.stats.multivariate_normal.pdf(z, mean=state_pred, cov=R)
-            self.weights[i] *= likelihood
-
-        self.weights += 1.e-300  # Avoid division by zero
-
-    def resample(self):
-        indices = self.systematic_resample(self.weights)
-        self.particles = self.particles[indices]
-        self.weights.fill(1.0 / self.N)
-
-    def estimate(self):
-        return np.average(self.particles, weights=self.weights, axis=0)
-
-    @staticmethod
-    def systematic_resample(weights):
-        N = len(weights)
-        positions = (np.arange(N) + np.random.uniform()) / N
-        indices = np.zeros(N, dtype=int)
-        cumulative_sum = np.cumsum(weights)
-        cumulative_sum[-1] = 1.0  # Ensure the last cumulative sum is exactly 1.0 to prevent out-of-bounds errors
-        i, j = 0, 0
-        while i < N:
-            if positions[i] < cumulative_sum[j]:
-                indices[i] = j
-                i += 1
-            else:
-                j += 1
-        return indices
-
-class IMUFusionUKF:
-    def __init__(self, dt):
-        # Define the UKF parameters
-        self.dt = dt
-        self.points = MerweScaledSigmaPoints(9, alpha=0.1, beta=2.0, kappa=0.0)
-        self.ukf =  UKF(dim_x=9, dim_z=9, dt=self.dt, fx=self.fx, hx=self.hx, points=self.points)
-        # Initial state vector [pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, roll, pitch, yaw]
-        self.ukf.x = np.zeros(9)
-        # Covariances (initial)
-        self.ukf.P = np.eye(9) * 0.1  # State covariance matrix with low initial uncertainty
-
-        self.ukf.Q = np.eye(9) * 0.01  # Process noise covariance matrix
-        # Measurement noise covariance matrix
-        # 3 Accelerometer measurements MPU 1 (x, y, z) 
-        self.ukf.R = np.eye(9) * 0.1   # Measurement noise covariance matrix 3 Accele
-
-        self.complementary_alpha = 0.98
-        self.mul = 1000
-        self.mulR = 0.001
-        self.mulQ = 0.001
-        
-    # Define state transition function for UKF
-    def fx(self, x, dt):
-        # x = [pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, roll, pitch, yaw]
-        # Update position based on velocity and acceleration
-        pos = x[:3] + x[3:6] * dt + 0.5 * x[6:] * dt**2
-        
-        # Update velocity based on acceleration
-        vel = x[3:6] + x[6:] * dt
-        
-        # Orientation (roll, pitch, yaw) remains unchanged as we're not modeling its dynamics here
-        orientation = x[6:]  
-        
-        # Return full state vector [pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, roll, pitch, yaw]
-        return np.hstack((pos, vel, orientation))
-
-
-
-    # Define measurement function for UKF
-    def hx(self, x):
-        # Return the predicted accelerations and orientation (roll, pitch, yaw)
-        acc_imu1_pred = x[3:6]  # From velocity state, representing accelerations
-        acc_imu2_pred = x[3:6]  # Assuming similar accelerations for IMU 2
-        orientation_pred = x[6:]  # roll, pitch, yaw from the state vector
-
-        # Return combined predictions for accelerations and orientation
-        return np.hstack((acc_imu1_pred, acc_imu2_pred, orientation_pred))
-    
-    def complementary_filter(self, accel1, accel2, gyro1, gyro2, dt, prev_orientation):
-        """
-        Implements a complementary filter for two MPUs to fuse accelerometer and gyroscope data.
-        :param accel1: Accelerometer data from MPU1 [acc_x1, acc_y1, acc_z1]
-        :param accel2: Accelerometer data from MPU2 [acc_x2, acc_y2, acc_z2]
-        :param gyro1: Gyroscope data from MPU1 [gyro_x1, gyro_y1, gyro_z1]
-        :param gyro2: Gyroscope data from MPU2 [gyro_x2, gyro_y2, gyro_z2]
-        :param dt: time step
-        :param prev_orientation: previous orientation [roll, pitch, yaw]
-        :return: fused [roll, pitch, yaw]
-        """
-        # Fuse accelerometer and gyroscope data from both MPUs (e.g., using a weighted average)
-        alpha = 0.5  # Assuming equal weight for both MPUs
-
-        accel_fused = alpha * accel1 + (1 - alpha) * accel2
-        gyro_fused = alpha * gyro1 + (1 - alpha) * gyro2
-
-        # Gyroscope integration for short-term orientation (high-pass)
-        roll_gyro = prev_orientation[0] + gyro_fused[0] * dt
-        pitch_gyro = prev_orientation[1] + gyro_fused[1] * dt
-        yaw_gyro = prev_orientation[2] + gyro_fused[2] * dt
-
-        # Accelerometer for long-term orientation (low-pass)
-        roll_acc = np.arctan2(accel_fused[1], np.sqrt(accel_fused[0] ** 2 + accel_fused[2] ** 2))
-        pitch_acc = np.arctan2(-accel_fused[0], np.sqrt(accel_fused[1] ** 2 + accel_fused[2] ** 2))
-        yaw_acc = prev_orientation[2]  # Cannot determine yaw from accelerometer
-
-        # Complementary filter to combine the two estimates
-        roll = self.complementary_alpha * roll_gyro + (1 - self.complementary_alpha) * roll_acc
-        pitch = self.complementary_alpha * pitch_gyro + (1 - self.complementary_alpha) * pitch_acc
-        yaw = yaw_gyro  # Yaw primarily from gyroscope
-
-        return np.array([roll, pitch, yaw])
-    def update_noise_covariances(self, accel_data, accel_data2, gyro_data, predicted_state):
-        """
-        Dynamically adjust the process noise covariance (Q) and measurement noise covariance (R) 
-        based on the variance of accelerometer, gyroscope data, and the predicted state (position, velocity, orientation).
-        
-        predicted_state: The predicted state vector [p_x, p_y, p_z, v_x, v_y, v_z, roll, pitch, yaw].
-        """
-        # Convert to a numpy array
-        
-        accel_variance = np.array(list(accel_data.values()))
-        accel_variance2 = np.array(list(accel_data2.values()))
-        gyro_variance =np.array(list(gyro_data.values()))
-        
-        stateVariance = np.array(list(predicted_state.values()))
-        # Variance from the predicted state (position, velocity, orientation)
-        position_variance = stateVariance[0:3]
-        velocity_variance =  stateVariance[3:6]
-        orientation_variance = stateVariance[6:9]
-        
-
-        # Update process noise covariance Q dynamically based on state prediction variances
-        self.ukf.Q = np.diag([position_variance[0], position_variance[1], position_variance[2],
-                            velocity_variance[0], velocity_variance[1], velocity_variance[2],
-                            orientation_variance[0], orientation_variance[1], orientation_variance[2]])*self.mulQ
-        
-
-        # Update measurement noise covariance R dynamically based on accelerometer and gyroscope variances
-        self.ukf.R = np.diag([accel_variance[0], accel_variance[1], accel_variance[2],
-                            accel_variance2[0], accel_variance2[1], accel_variance2[2],
-                            gyro_variance[0], gyro_variance[1], gyro_variance[2]])*self.mulR
-
-
-
-    
-   
-class CalCOGFrame(Node):
-
+class ImuFusionNode(Node):
     def __init__(self):
-        super().__init__('ukf_estimator_pf')
-        self.subscription_mpu = self.create_subscription(Mpu, 'mpu_data_1', self.listener_callback, 10)
-        
-        
-        self.publishKalmanFrame = self.create_publisher(COGframe, 'kalman_cog_frame_3', 10)
-        self.publishTrapezFrame = self.create_publisher(COGframe, 'trapez_cog_frame_3', 10)
+        super().__init__('imu_fusion_node')
+        # Suscripción a dos IMUs con sincronización aproximada por timestamp
+        self.sub_imu1 = Subscriber(self, Mpu, 'mpu_data_2')
+        #self.sub_imu2 = Subscriber(self, Mpu, 'mpu_data_2')
+        self.sync = ApproximateTimeSynchronizer([self.sub_imu1], queue_size=10, slop=0.02,allow_headerless=True)
+        self.sync.registerCallback(self.imu_callback)
+        # Publicador del marco COG fusionado
+        self.pub_cog = self.create_publisher(COGframe, 'kalman_cog_frame_3', 10)
 
-        self.alpha = 0.2  # Lower alpha = more smoothing, higher alpha = faster response
-         # Initial values for filtered accelerometer data
-        self.filtered_acc = {'acx': 0.0, 'acy': 0.0, 'acz': 0.0}
-        self.quaternion = np.array([1.0, 0.0, 0.0, 0.0])  # Initial quaternion representing no rotation
-        # Initialize the measurement buffers for sliding window (store last N measurements)
-        self.window_size = 100  # Number of recent measurements to consider
-        self.acc_buffers = {
-            'acx': deque(maxlen=self.window_size),
-            'acy': deque(maxlen=self.window_size),
-            'acz': deque(maxlen=self.window_size),
-        }
-        self.gyro_buffers = {
-            'roll': deque(maxlen=self.window_size),
-            'pitch': deque(maxlen=self.window_size),
-            'yaw': deque(maxlen=self.window_size),
-        }
-        self.acc_buffers2 = {
-            'acx': deque(maxlen=self.window_size),
-            'acy': deque(maxlen=self.window_size),
-            'acz': deque(maxlen=self.window_size),
-        }
-        self.statePredictions = {
-            'posX' : deque(maxlen=self.window_size),
-            'posY' : deque(maxlen=self.window_size),
-            'posZ' : deque(maxlen=self.window_size),
-            'velX' : deque(maxlen=self.window_size),
-            'velY' : deque(maxlen=self.window_size),
-            'velZ' : deque(maxlen=self.window_size),
-            'roll' : deque(maxlen=self.window_size),
-            'pitch' : deque(maxlen=self.window_size),
-            'yaw' : deque(maxlen=self.window_size),
-        }
-        # Kalman filter for fusing data from both MPUs
-        self.frec = 100
-        self.kf = IMUFusionUKF(dt=1/self.frec )
+        # Inicialización del estado del filtro Kalman
+        # Estado orientación como cuaternión (w,x,y,z) y bias giroscópico (bx,by,bz)
+        self.q = np.array([1.0, 0.0, 0.0, 0.0])   # cuaternión unitario inicial
+        self.b_gyro = np.array([0.0, 0.0, 0.0])   # bias giroscopio inicial (rad/s)
+        # Covarianza de estado inicial
+        self.P = np.eye(7) * 0.0
+        self.P[0:4, 0:4] *= 0.01    # incertidumbre inicial pequeña en orientación
+        self.P[4:7, 4:7] *= 0.01    # incertidumbre inicial en bias giroscopio
 
-        
-        self.N = 1000  # Number of particles
-        self.dt = 1/self.frec  # Time step
-        self.pf = ParticleFilter(N=self.N, dt=self.dt)
-        # Madgwick filter initialization
-        self.madgwick_filter = Madgwick(frequency=self.frec ,gain=0.003)  # Adjust sample period as needed
-        """
-        If your IMU data is noisy, a lower beta value may help reduce jitter, though you will need to balance this with the slower data rate.
-        """
-        # Buffers to hold the last measurements from each MPU
-        self.mpu1_data = None
-        self.mpu2_data = None
-        self.calibrated = False
+        # Matrices de ruido (asumidos diagonales para simplicidad)
+        self.g = 9.80665  # gravedad (m/s^2)
+        self.R_meas = np.eye(3) * (0.5 ** 2)  # varianza del acelerómetro (~0.5 m/s^2 desviación estándar)
+        self.Q_gyro = np.eye(3) * (0.02 ** 2)  # varianza proceso para ruido giros (rad/s)
+        self.Q_bias = np.eye(3) * (0.001 ** 2) # varianza proceso para deriva lenta de bias
 
-        self.prev_time = time()
-        self.prevOrientation  = np.array([0.0, 0.0, 0.0])
+        # Vectores de posición relativa de cada IMU respecto al COG (en marco del cuerpo)
+        # Estos deben ajustarse según la ubicación física de las IMUs en el robot.
+        self.r1 = np.array([0.0, 0.0, 0.0])  # Offset IMU1 desde COG (ejemplo: en metros)
+        self.r2 = np.array([0.0, 0.0, 0.0])  # Offset IMU2 desde COG (ejemplo: colocar valores reales)
 
-    def listener_callback(self, msg):
-        self.mpu1_data = msg
-        self.mpu1_data.acy = self.mpu1_data.acy*0.01
-        self.mpu1_data.acy2 = self.mpu1_data.acy2*0.01
-        self.process_fusion()
-        
-    def listener_callback2(self, msg):
-        self.mpu2_data = msg
-        self.process_fusion()
-    def low_pass_filter(self, axis, raw_data):
-            """
-            Apply an exponential moving average (EMA) low-pass filter to accelerometer data.
-            axis: 'acx', 'acy', or 'acz'
-            raw_data: new raw accelerometer reading
-            """
-            # Update the filtered value using EMA formula
-            self.filtered_acc[axis] = self.alpha * raw_data + (1 - self.alpha) * self.filtered_acc[axis]
-            
-            # Return the filtered value
-            return self.filtered_acc[axis]
-    def update_measurement_noise(self):
-        """
-        Calculate new measurement noise covariance matrix R based on sliding window variance.
-        """
-        # Compute variance for accelerometer
-        self.acc_variance = {
-            axis: np.var(self.acc_buffers[axis]) if len(self.acc_buffers[axis]) > 1 else 1.0
-            for axis in ['acx', 'acy', 'acz']
-        }
+        # Variables para integración de posición
+        self.velocity = np.zeros(3)  # [vx, vy, vz] en marco mundial (m/s)
+        self.position = np.zeros(3)  # [x, y, z] en marco mundial (m)
+        self.last_time = None
 
-        # Compute variance for gyroscope
-        self.gyro_variance = {
-            axis: np.var(self.gyro_buffers[axis]) if len(self.gyro_buffers[axis]) > 1 else 1.0
-            for axis in ['roll', 'pitch', 'yaw']
-        }
-         # Compute variance for accelerometer
-        self.acc_variance2 = {
-            axis: np.var(self.acc_buffers2[axis]) if len(self.acc_buffers2[axis]) > 1 else 1.0
-            for axis in ['acx', 'acy', 'acz']
-        }
+        # Fase de calibración inicial
+        self.calibrating = True
+        self.calib_samples = []
+        self.prev_time = perf_counter()
+        self.get_logger().info("Calibrando biases de las IMUs... espere unos segundos sin mover el dispositivo.")
 
-        self.state_variance = {
-            axis: np.var(self.statePredictions[axis]) if len(self.statePredictions[axis]) > 1 else 1.0
-            for axis in ['posX', 'posY', 'posZ','velX','velY','velZ','roll','pitch','yaw']
-        }
-        
- 
-    def add_measurement_to_buffers(self, imu_data,orientation,statesEstimatos):
-        """
-        Add new IMU data to the sliding window buffers for noise calculation.
-        """
-        self.acc_buffers['acx'].append(imu_data.acx)
-        self.acc_buffers['acy'].append(imu_data.acy)
-        self.acc_buffers['acz'].append(imu_data.acz)
-        self.gyro_buffers['roll'].append(orientation[0])
-        self.gyro_buffers['pitch'].append(orientation[1])
-        self.gyro_buffers['yaw'].append(orientation[2])
+    def imu_callback(self, imu1_msg: Mpu):
+        # Sincronizado: ambos mensajes corresponden aproximadamente al mismo instante
+        # Extraer lecturas de acelerómetro y giroscopio de cada Mpu (asumiendo campos ax, ay, az, gx, gy, gz)
+        a1 = np.array([imu1_msg.acx, imu1_msg.acy, imu1_msg.acz], dtype=float)
+        w1 = np.array([imu1_msg.gx, imu1_msg.gy, imu1_msg.gz], dtype=float)
+        a2 = np.array([imu1_msg.acx2, imu1_msg.acy2, imu1_msg.acz2], dtype=float)
+        w2 = np.array([imu1_msg.gx2, imu1_msg.gy2, imu1_msg.gz2], dtype=float)
 
-        self.acc_buffers2['acx'].append(imu_data.acx2)
-        self.acc_buffers2['acz'].append(imu_data.acz2)
-        self.acc_buffers2['acy'].append(imu_data.acy2)
+        # Convertir unidades a SI (si no lo estuvieran ya). Suponemos que:
+        # - aceleración viene en m/s^2
+        # - velocidad angular viene en rad/s (de no ser así, convertir grados/s -> rad/s)
+        # (Ajustar según la definición real de robot_interfaces/Mpu)
 
+        # Acumular datos para calibración inicial de bias (asume dispositivo quieto al iniciar)
+        if self.calibrating:
+            self.calib_samples.append((w1, w2, a1, a2))
+            # Calibrar por ~100 muestras (~1 seg a 100 Hz) antes de empezar filtro
+            if len(self.calib_samples) < 100:
+                return
+            # Calculo de biases promedio tras recopilar suficientes muestras
+            w1_avg = np.mean([s[0] for s in self.calib_samples], axis=0)
+            w2_avg = np.mean([s[1] for s in self.calib_samples], axis=0)
+            # Bias de giroscopio inicial para cada IMU (promedio estático)
+            b1 = w1_avg
+            b2 = w2_avg
+            # Usamos el promedio de ambos biases como bias inicial global (asumiendo similares)
+            self.b_gyro = (b1 + b2) / 2.0
+            # Orientación inicial estimada a partir del acelerómetro promedio (asumiendo sin movimiento)
+            a1_avg = np.mean([s[2] for s in self.calib_samples], axis=0)
+            a2_avg = np.mean([s[3] for s in self.calib_samples], axis=0)
+            a_avg = (a1_avg + a2_avg) / 2.0
+            # Determinar roll y pitch inicial a partir de la dirección de la gravedad medida
+            # Suponemos ejes del cuerpo: X adelante, Y izquierda, Z arriba (ENU típico)
+            ax, ay, az = a_avg
+            # Remover componente de gravedad en magnitud para calcular ángulos
+            # (Normalizamos vector gravedad medido)
+            norm_a = math.sqrt(ax*ax + ay*ay + az*az)
+            if norm_a > 1e-6:
+                ax_n, ay_n, az_n = ax/norm_a, ay/norm_a, az/norm_a
+            else:
+                ax_n, ay_n, az_n = ax, ay, az
+            # Calcular ángulos (Tait-Bryan Z-Y-X intrínsecos: yaw, pitch, roll)
+            pitch0 = math.asin(-ax_n)  # inclinación adelante/atrás
+            roll0  = math.atan2(ay_n, az_n)  # inclinación lateral
+            yaw0   = 0.0  # desconocido sin magnetómetro, se inicializa a 0
+            # Convertir ángulos iniciales a cuaternión
+            cy = math.cos(yaw0 * 0.5);    sy = math.sin(yaw0 * 0.5)
+            cp = math.cos(pitch0 * 0.5); sp = math.sin(pitch0 * 0.5)
+            cr = math.cos(roll0 * 0.5);  sr = math.sin(roll0 * 0.5)
+            qw = cr*cp*cy + sr*sp*sy
+            qx = sr*cp*cy - cr*sp*sy
+            qy = cr*sp*cy + sr*cp*sy
+            qz = cr*cp*sy - sr*sp*cy
+            self.q = np.array([qw, qx, qy, qz], dtype=float)
+            self.q = self._normalize_quaternion(self.q)
+            self.calibrating = False
+            self.get_logger().info("Calibración completada. Bias giroscopio estimado: {}".format(self.b_gyro))
+            return
 
-        self.statePredictions['posX'].append(statesEstimatos[0])
-        self.statePredictions['posY'].append(statesEstimatos[1])
-        self.statePredictions['posZ'].append(statesEstimatos[2])
-        self.statePredictions['velX'].append(statesEstimatos[3])
-        self.statePredictions['velY'].append(statesEstimatos[4])
-        self.statePredictions['velZ'].append(statesEstimatos[5])
-        self.statePredictions['roll'].append(statesEstimatos[6])
-        self.statePredictions['pitch'].append(statesEstimatos[7])
-        self.statePredictions['yaw'].append(statesEstimatos[8])
-    
-    def quaternion_to_euler_angles(self, q):
-        """
-        Convert a quaternion into Euler angles (roll, pitch, yaw)
-        q: quaternion as [w, x, y, z]
-        """
-        w, x, y, z = q
-        t0 = +2.0 * (w * x + y * z)
-        t1 = +1.0 - 2.0 * (x * x + y * y)
-        roll = np.arctan2(t0, t1)
-
-        t2 = +2.0 * (w * y - z * x)
-        t2 = np.clip(t2, -1.0, 1.0)
-        pitch = np.arcsin(t2)
-
-        t3 = +2.0 * (w * z + x * y)
-        t4 = +1.0 - 2.0 * (y * y + z * z)
-        yaw = np.arctan2(t3, t4)
-
-        return roll, pitch, yaw
-
-    def compensate_gravity(self,accel, roll, pitch):
-        """
-        Compensate for the gravitational component in the accelerometer reading
-        using the roll and pitch from the Madgwick filter.
-
-        accel: 3D vector of accelerometer data [ax, ay, az] (in m/s²)
-        roll: roll angle in radians
-        pitch: pitch angle in radians
-        """
-        # Gravity vector in the sensor frame
-        g = np.array([0, 0, -9.81])  # Gravity in m/s²
-
-        # Calculate the rotation matrix from the roll and pitch
-        # Note: Yaw isn't needed for gravity compensation
-        R_x = np.array([[1, 0, 0],
-                        [0, np.cos(roll), -np.sin(roll)],
-                        [0, np.sin(roll), np.cos(roll)]])  # Rotation matrix for roll
-        
-        R_y = np.array([[np.cos(pitch), 0, np.sin(pitch)],
-                        [0, 1, 0],
-                        [-np.sin(pitch), 0, np.cos(pitch)]])  # Rotation matrix for pitch
-        
-        # Rotate gravity into the sensor frame
-        g_sensor = R_x @ R_y @ g
-
-        # Subtract the gravity vector from the accelerometer readings
-        accel_compensated = accel - g_sensor
-
-        return accel_compensated
-    import numpy as np
-
-    def euler_to_quaternion(self,roll, pitch, yaw):
-        """
-        Convert Euler angles (roll, pitch, yaw) to a quaternion (w, x, y, z).
-        roll, pitch, yaw are in radians.
-        """
-        qx = np.sin(roll / 2) * np.cos(pitch / 2) * np.cos(yaw / 2) - np.cos(roll / 2) * np.sin(pitch / 2) * np.sin(yaw / 2)
-        qy = np.cos(roll / 2) * np.sin(pitch / 2) * np.cos(yaw / 2) + np.sin(roll / 2) * np.cos(pitch / 2) * np.sin(yaw / 2)
-        qz = np.cos(roll / 2) * np.cos(pitch / 2) * np.sin(yaw / 2) - np.sin(roll / 2) * np.sin(pitch / 2) * np.cos(yaw / 2)
-        qw = np.cos(roll / 2) * np.cos(pitch / 2) * np.cos(yaw / 2) + np.sin(roll / 2) * np.sin(pitch / 2) * np.sin(yaw / 2)
-
-        return np.array([qw, qx, qy, qz])
-
-    
-
-    def compensate_gravity_with_quaternion(self, accel, q):
-        """
-        Compensate for the gravitational component in the accelerometer reading
-        using the quaternion from the Madgwick filter to avoid singularities.
-        
-        Parameters:
-        - accel: 3D vector of accelerometer data [ax, ay, az] (in m/s²)
-        - q: quaternion as [w, x, y, z]
-
-        Returns:
-        - accel_compensated: gravity-compensated acceleration vector
-        """
-        # Quaternion components
-        w, x, y, z = q
-
-        # Gravity vector in the global frame (assuming Z points upwards)
-        gravity = np.array([0, 0, -9.81])
-
-        # Convert quaternion to rotation matrix to rotate gravity vector
-        # This is the rotation matrix derived from the quaternion
-        R = np.array([
-            [1 - 2*(y**2 + z**2), 2*(x*y - z*w),     2*(x*z + y*w)],
-            [2*(x*y + z*w),     1 - 2*(x**2 + z**2), 2*(y*z - x*w)],
-            [2*(x*z - y*w),     2*(y*z + x*w),     1 - 2*(x**2 + y**2)]
-        ])
-
-        # Rotate the gravity vector into the sensor frame
-        gravity_sensor_frame = R @ gravity
-
-        # Subtract the gravity vector from the accelerometer readings
-        accel_compensated = accel - gravity_sensor_frame
-
-        return accel_compensated
-    
-    def process_fusion(self):
-        
-
-        current_time = time()
+        # Si ya calibrado, continuamos con el filtro
+        # Obtener timestamp actual y calcular dt
+        current_time = perf_counter()
         dt = current_time - self.prev_time
         if dt < 1e-6:
             dt = 1e-6  # Set a minimum time step threshold
          # Apply low-pass filter to the raw accelerometer data
 
-        filtered_acx = self.low_pass_filter('acx', self.mpu1_data.acx)
-        filtered_acy = self.low_pass_filter('acy', self.mpu1_data.acy)
-        filtered_acz = self.low_pass_filter('acz', self.mpu1_data.acz)
-        filtered_acx2 = self.low_pass_filter('acx', self.mpu1_data.acx2)
-        filtered_acy2 = self.low_pass_filter('acy', self.mpu1_data.acy)
-        filtered_acz2 = self.low_pass_filter('acz', self.mpu1_data.acz2)
-        #self.kf.change_dt(dt)
-        self.prev_time = current_time  # Update previous time
-        # Add new measurement data to the buffers
-        
-        # Create the measurement vector with data from both IMUs
-        
-        # In process_fusion:
-        
-        alpha = 0.6  # Weight for IMU1, 1 - alpha for IMU2
-        
-        # Weighted average for gyroscope data in
-        gyroscope_data = np.array([
-            alpha * self.mpu1_data.gx + (1 - alpha) * self.mpu1_data.gx2,
-            alpha * self.mpu1_data.gy + (1 - alpha) * self.mpu1_data.gy2,
-            alpha * self.mpu1_data.gz + (1 - alpha) * self.mpu1_data.gz2
-        ]) # already in rad/s
+        # Paso de **predicción** del EKF (propagación de orientación y bias)
+        # Combinar lecturas de giroscopio: asumimos el cuerpo es rígido, por lo que la velocidad angular es común.
+        # Tomamos el promedio de ambas IMUs para reducir ruido.
+        w_mean = 0.5 * (w1 + w2)
+        # Restar bias de giroscopio actual del estado
+        w_body = w_mean - self.b_gyro
+        # Integrar pequeña rotación en dt para actualizar el cuaternión de orientación
+        dq = self._rotation_vector_to_quaternion(w_body * dt)
+        # Actualizar cuaternión: q_new = q_old * dq  (composición de rotación)
+        self.q = self._quat_multiply(self.q, dq)
+        self.q = self._normalize_quaternion(self.q)
+        # Bias giroscopio se modela constante (sin cambio en predicción)
+        # Actualizar covarianza de estado P = F * P * F^T + Q
+        # Para simplificar, aproximamos F linealmente y usamos adición de ruido proceso:
+        # Actualizar submatrices covarianza:
+        # - Orientación: incremento de incertidumbre por ruido de gyro
+        G = self._gyro_noise_jacobian(self.q, dt)   # matriz Jacobiana de entrada gyro
+        # Ensamblar matriz de covarianza proceso 7x7
+        Q_process = np.zeros((7,7))
+        # Ruido del giro (convertido a varianza de cuaternión)
+        Q_theta = self.Q_gyro * dt**2  # varianza de integración de giro en este paso
+        # Proyectar Q_theta en espacio cuaternión via jacobiano G
+        Q_quat = G.dot(Q_theta).dot(G.T)
+        Q_process[0:4, 0:4] = Q_quat
+        # Ruido de bias (random walk)
+        Q_process[4:7, 4:7] = self.Q_bias * dt
+        # Jacobiano de transición F (aproximado):
+        F = np.eye(7)
+        # (Orientación-bias están débilmente acoplados; ignoramos términos pequeños off-diagonal para F)
+        # Actualizar P
+        self.P = F.dot(self.P).dot(F.T) + Q_process
 
-        # Weighted average for accelerometer data
-        accelerometer_data = np.array([
-            alpha * self.mpu1_data.acx + (1 - alpha) * self.mpu1_data.acx2,
-            alpha * self.mpu1_data.acy + (1 - alpha) * self.mpu1_data.acy,
-            alpha * self.mpu1_data.acz + (1 - alpha) * self.mpu1_data.acz2
-        ])*9.81
-        gyroscope_data_filtered = np.array([
-            alpha * self.mpu1_data.gx + (1 - alpha) * self.mpu1_data.gx2,
-            alpha * self.mpu1_data.gy + (1 - alpha) * self.mpu1_data.gy2,
-            alpha * self.mpu1_data.gz + (1 - alpha) * self.mpu1_data.gz2
-        ]) # already in rad/s
+        # Paso de **corrección** del EKF usando acelerómetros de ambas IMUs
+        # Convertir cuaternión a matriz de rotación del cuerpo al mundo
+        R_body_to_world = self._quat_to_rot_matrix(self.q)
+        # Primera medición (IMU1):
+        self._update_orientation(a1, R_body_to_world)
+        # Segunda medición (IMU2):
+        self._update_orientation(a2, R_body_to_world)
+        # (Después de estas dos actualizaciones secuenciales, la orientación self.q y bias self.b_gyro quedan corregidos)
 
-        # Weighted average for accelerometer data
-        accelerometer_data_filtered = np.array([
-            alpha * filtered_acx + (1 - alpha) * filtered_acx2,
-            alpha * filtered_acy + (1 - alpha) * filtered_acy2,
-            alpha * filtered_acz + (1 - alpha) * filtered_acz2
-        ])*9.81   # Convert to m/s²
-        self.quaternion
-        self.quaternion  = self.madgwick_filter.updateIMU(q=self.quaternion,gyr=gyroscope_data_filtered, acc=accelerometer_data_filtered)
+        # **Cálculo de aceleración lineal del COG** (compensando rotación):
+        # Expresar ω (velocidad ang) y α (aceleración ang) en marco del cuerpo
+        omega = w_body  # velocidad angular cuerpo (rad/s) tras bias
+        # Estimar aceleración angular α = Δω/dt (diferencia de vel ang entre iteraciones)
+        # Guardar ω para la próxima iteración:
+        if not hasattr(self, 'omega_prev'):
+            self.omega_prev = omega
+        alpha = (omega - self.omega_prev) / dt
+        self.omega_prev = omega
+        # Remover componente de gravedad de cada acelerómetro (pasar a aceleración propia en marco cuerpo)
+        # La gravedad en marco del cuerpo es la inversa de rotación: g_body = R_world_to_body * [0,0,-g]
+        R_world_to_body = R_body_to_world.T
+        gravity_body = R_world_to_body.dot(np.array([0, 0, -self.g]))
+        a1_body = a1 - gravity_body  # aceleración lineal medida por IMU1 en coords cuerpo
+        a2_body = a2 - gravity_body  # aceleración lineal medida por IMU2 en coords cuerpo
+        # Calcular aceleración del COG estimada por cada sensor: a_cog = a_sensor - (α × r + ω × (ω × r))
+        a_cog1_body = a1_body - (np.cross(alpha, self.r1) + np.cross(omega, np.cross(omega, self.r1)))
+        a_cog2_body = a2_body - (np.cross(alpha, self.r2) + np.cross(omega, np.cross(omega, self.r2)))
+        # Promediar ambas estimaciones para reducir ruido
+        a_cog_body = 0.5 * (a_cog1_body + a_cog2_body)
+        # Transformar aceleración del COG al marco mundial
+        a_cog_world = R_body_to_world.dot(a_cog_body)
 
-       
-        roll, pitch, yaw = self.quaternion_to_euler_angles(self.quaternion)  # in rads
-        orientation = np.array([roll, pitch, yaw])
-        
-        # Compensate for gravity using the orientation from the Madgwick filter
-        # Convert accelerometer readings to m/s² (if not already in m/s²)
-        
-        accel_imu1 = np.array([self.mpu1_data.acx, self.mpu1_data.acy, self.mpu1_data.acz]) 
-        accel_imu2 = np.array([self.mpu1_data.acx2, self.mpu1_data.acy, self.mpu1_data.acz2]) 
-        # ACY2 to much failed
-        accel_imu1filt = np.array([filtered_acx, filtered_acy, filtered_acz]) 
-        accel_imu2filt = np.array([filtered_acx2, filtered_acy, filtered_acz2]) 
-        
-        accel_imu1_comp_filt = self.compensate_gravity_with_quaternion(accel_imu1filt, self.quaternion)
-        accel_imu2_comp_filt = self.compensate_gravity_with_quaternion(accel_imu2filt, self.quaternion)
-
-        gyro_imu1 = np.array([self.mpu1_data.gx, self.mpu1_data.gy, self.mpu1_data.gz])
-        gyro_imu2 = np.array([self.mpu1_data.gx2, self.mpu1_data.gy2, self.mpu1_data.gz2])
-        # Fused IMU data (weighted average)
-        alpha = 0.6
-        
-        # Fused measurement vector for EKF (acceleration from both IMUs)
-        z_imu1 = accel_imu1_comp_filt
-        z_imu2 = accel_imu2_comp_filt
-        accel_fused = alpha * z_imu1 + (1 - alpha) * z_imu2
-        gyro_fused = alpha * gyro_imu1 + (1 - alpha) * gyro_imu2
-        # Complementary filter for orientation
-        #orientation = self.kf.complementary_filter(z_imu1, z_imu2, gyro_imu1, gyro_imu2, dt, self.prevOrientation )
-        #self.prevOrientation = orientation
-        #self.quaternion = self.euler_to_quaternion(orientation[0], orientation[1], orientation[2])
-
-        # Prediction step in UKF
-        
-        
-        # Update the Kalman filter with
-        # Prediction step
-        self.kf.ukf.predict()
-        # Particle Filter Prediction (for nonlinearities)
-        self.pf.predict(accel_fused,orientation)
-        # Particle Filter Update
-        measurements = np.hstack((z_imu1, z_imu2, orientation))  # Correct the usage of np.hstack
-        R = np.eye(9) * 0.1  # Measurement noise
-        
-        self.pf.update(measurements, R)
-        self.pf.resample()
-        
-
-        # Get Particle Filter estimates (position, velocity, orientation)
-        pf_estimate = self.pf.estimate()
-         # Ensure measurement vector for UKF has the correct shape (9,)
-        # Concatenating position estimate and orientation from Particle Filter
-        fused_measurements = np.hstack((accel_imu1filt,accel_imu2filt, pf_estimate[6:9]))
-
-        # Use UKF for main state estimation (position, velocity) and orientation
-        self.kf.ukf.update(fused_measurements)
-        pos, vel, orient = self.kf.ukf.x[:3], self.kf.ukf.x[3:6], self.kf.ukf.x[6:9]
-
-        self.add_measurement_to_buffers(self.mpu1_data,orientation,self.kf.ukf.x)
-        self.update_measurement_noise()
-        self.kf.update_noise_covariances(self.acc_variance, self.acc_variance2, self.gyro_variance, self.state_variance)
-
-        # Publish results
-
-        
-        # Publish the Kalman filter output
-        msg = COGframe()
-        msg.pos_x, msg.pos_y, msg.pos_z = float(pos[0]), float(pos[1]), float(pos[2])
-        msg.roll, msg.pitch, msg.yaw = float(orient[0]), float(orient[1]), float(orient[2])
-        self.publishKalmanFrame.publish(msg)
-        if ( not self.calibrated ):
-            if (accel_imu1[0] < 0.1 and accel_imu1[1] < 0.1 and accel_imu1[2] < 0.1 and accel_imu2[0] < 0.1 and accel_imu2[1] < 0.1 and accel_imu2[2] < 0.1):
-                self.calibrated = True
-                self.calibration_time = time()
-                self.get_logger().info("Calibration  done")
-            
+        # **Integración de velocidad y posición**
+        # Si se detecta reposo (aceleración ~ gravedad, sin rotación), aplicar Zero-Velocity Update
+        if np.linalg.norm(a_cog_body) < 0.1 and np.linalg.norm(omega) < math.radians(5):
+            # Consideramos que está prácticamente quieto
+            self.velocity[:] = 0.0
         else:
-            self.publishKalmanFrame.publish(msg)
+            # Integrar velocidad
+            self.velocity += a_cog_world * dt
+        # Integrar posición
+        self.position += self.velocity * dt
 
-        
-        self.get_logger().info(f"Pos X Y Z (meter): {float(pos[0])}, {float(pos[1])}, {float(pos[2])}")
-        self.get_logger().info(f"Roll pitch yaw rad: {float(orient[0])}, {float(orient[1])}, {float(orient[2])}")
+        # Publicar el mensaje de salida COGframe
+        cog_msg = COGframe()
+        # Rellenar campos de orientación en grados y posición en metros
+        roll, pitch, yaw = self._quat_to_euler(self.q)  # en radianes
+        cog_msg.roll = math.degrees(roll)
+        cog_msg.pitch = math.degrees(pitch)
+        cog_msg.yaw = math.degrees(yaw)
+        cog_msg.pos_x = float(self.position[0])
+        cog_msg.pos_y = float(self.position[1])
+        cog_msg.pos_z = float(self.position[2])
+        self.pub_cog.publish(cog_msg)
 
-        
+    # Funciones auxiliares de cálculo:
+
+    def _normalize_quaternion(self, q):
+        # Normaliza un cuaternión numpy array de tamaño 4
+        norm = math.sqrt(np.dot(q, q))
+        if norm == 0:
+            return np.array([1.0, 0.0, 0.0, 0.0])
+        return q / norm
+
+    def _quat_multiply(self, q1, q2):
+        # Multiplica cuaterniones q1*q2 (cada uno array [w,x,y,z])
+        w0, x0, y0, z0 = q1
+        w1, x1, y1, z1 = q2
+        return np.array([
+            w0*w1 - x0*x1 - y0*y1 - z0*z1,
+            w0*x1 + x0*w1 + y0*z1 - z0*y1,
+            w0*y1 - x0*z1 + y0*w1 + z0*x1,
+            w0*z1 + x0*y1 - y0*x1 + z0*w1
+        ], dtype=float)
+
+    def _rotation_vector_to_quaternion(self, rv):
+        # Convierte un vector de rotación (rad) en un cuaternión [w,x,y,z]
+        # (rv = ω*dt con ω en rad/s, pequeño ángulo de rotación en este intervalo)
+        theta = np.linalg.norm(rv)
+        if theta < 1e-8:
+            # Rotación muy pequeña: aproximar cuaternión (w≈1, vector ≈ mitad del ángulo)
+            return np.array([1.0, 0.5*rv[0], 0.5*rv[1], 0.5*rv[2]], dtype=float)
+        axis = rv / theta
+        half = theta / 2.0
+        w = math.cos(half)
+        sin_half = math.sin(half)
+        x, y, z = axis * sin_half
+        return np.array([w, x, y, z], dtype=float)
+
+    def _quat_to_rot_matrix(self, q):
+        # Convierte cuaternión en matriz de rotación 3x3 (de marco cuerpo a marco mundo)
+        qw, qx, qy, qz = q
+        # Fórmulas de rotación (convención Hamilton: [w,x,y,z])
+        # Rotación activa: v_world = R * v_body
+        xx = qx*qx; yy = qy*qy; zz = qz*qz
+        xy = qx*qy; xz = qx*qz; yz = qy*qz
+        wx = qw*qx; wy = qw*qy; wz = qw*qz
+        return np.array([
+            [1 - 2*(yy+zz),  2*(xy - wz),    2*(xz + wy)],
+            [2*(xy + wz),    1 - 2*(xx+zz),  2*(yz - wx)],
+            [2*(xz - wy),    2*(yz + wx),    1 - 2*(xx+yy)]
+        ], dtype=float)
+
+    def _quat_to_euler(self, q):
+        # Convierte cuaternión a ángulos Euler (roll, pitch, yaw)
+        qw, qx, qy, qz = q
+        # Usamos convención Z-Y-X intrínseca (yaw-pitch-roll)
+        # roll (X)
+        sinr_cosp = 2 * (qw*qx + qy*qz)
+        cosr_cosp = 1 - 2 * (qx*qx + qy*qy)
+        roll = math.atan2(sinr_cosp, cosr_cosp)
+        # pitch (Y)
+        sinp = 2 * (qw*qy - qz*qx)
+        if abs(sinp) >= 1:
+            pitch = math.copysign(math.pi/2, sinp)  # uso de 90° si fuera fuera de rango
+        else:
+            pitch = math.asin(sinp)
+        # yaw (Z)
+        siny_cosp = 2 * (qw*qz + qx*qy)
+        cosy_cosp = 1 - 2 * (qy*qy + qz*qz)
+        yaw = math.atan2(siny_cosp, cosy_cosp)
+        return roll, pitch, yaw
+
+    def _gyro_noise_jacobian(self, q, dt):
+        # Calcula jacobiano de entrada (W) para propagación de incertidumbre del giro sobre el cuaternión:contentReference[oaicite:9]{index=9}
+        # (Aproximamos linealmente para pequeñas rotaciones)
+        qw, qx, qy, qz = q
+        return (dt/2.0) * np.array([
+            [-qx, -qy, -qz],
+            [ qw, -qz,  qy],
+            [ qz,  qw, -qx],
+            [-qy,  qx,  qw]
+        ], dtype=float)
+
+    def _update_orientation(self, acc_meas, R_body_to_world):
+        # Actualización EKF de la orientación con una medición de acelerómetro (de una IMU)
+        # Normalizar aceleración medida para obtener dirección de gravedad observada
+        acc = acc_meas.copy()
+        norm = np.linalg.norm(acc)
+        if norm < 1e-6:
+            return  # medición inválida o muy pequeña
+        acc_norm = acc / norm
+        # Vector de gravedad esperado en marco del cuerpo según el estado (orientación actual)
+        # En el marco mundial, gravedad = [0, 0, -1] (dirección normalizada hacia abajo)
+        g_world_unit = np.array([0.0, 0.0, -1.0])
+        # Gravedad predicha en cuerpo = R^T * g_world (usando R del cuerpo a mundo)
+        R_world_to_body = R_body_to_world.T
+        pred_acc_body = R_world_to_body.dot(g_world_unit)
+        # Residuo (innovación) entre medido (dirección) y predicho
+        y = acc_norm - pred_acc_body
+        # Jacobiano de observación H (derivada de pred_acc_body respecto a estado [quat,bias])
+        # Como la observación solo depende de la orientación (no directamente del bias de gyro en este instante),
+        # H = [∂(g_body)/∂(quat), 0_{3x3}] 
+        # Usamos derivadas aproximadas:contentReference[oaicite:10]{index=10}:
+        qw, qx, qy, qz = self.q
+        H_quat = 2 * self.g * np.array([
+            [ qy, -qz,  qw, -qx],
+            [-qx, -qw, -qz, -qy],
+            [-qw,  qx,  qy, -qz]
+        ], dtype=float)
+        # Adaptar H_quat para la dirección normalizada (g simplificada a 1g):
+        H_quat = 2 * np.array([
+            [ qy, -qz,  qw, -qx],
+            [-qx, -qw, -qz, -qy],
+            [-qw,  qx,  qy, -qz]
+        ], dtype=float)
+        H = np.zeros((3, 7))
+        H[:, 0:4] = H_quat
+        # Innovación covarianza S = H * P * H^T + R
+        S = H.dot(self.P).dot(H.T) + self.R_meas
+        # Ganancia de Kalman K = P * H^T * S^{-1}
+        K = self.P.dot(H.T).dot(np.linalg.inv(S))
+        # Actualizar estado: x = x + K*y
+        delta_x = K.dot(y)
+        # Aplicar actualización al cuaternión y bias:
+        dq = np.array([1.0, 0.5*delta_x[0], 0.5*delta_x[1], 0.5*delta_x[2]])  # cuaternión pequeño a partir de delta rotación
+        self.q = self._quat_multiply(self.q, dq)
+        self.q = self._normalize_quaternion(self.q)
+        # Actualizar bias giroscopio (los últimos 3 elementos del delta_x)
+        self.b_gyro += delta_x[4:7]
+        # Actualizar covarianza: P = (I - K*H) * P
+        I = np.eye(7)
+        self.P = (I - K.dot(H)).dot(self.P)
+
 def main(args=None):
     rclpy.init(args=args)
-    ukf_estimator_pf = CalCOGFrame()
-    rclpy.spin(ukf_estimator_pf)
-    ukf_estimator_pf.destroy_node()
-    rclpy.shutdown()
+    node = ImuFusionNode()
+    try:
+        rclpy.spin(node)
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
 
-if __name__ == '__main__':
-    main()

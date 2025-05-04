@@ -13,8 +13,8 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         # Add the launch and config directories to be installed
-        (os.path.join('share', package_name, 'launch'), glob('launch/*.py')),
-        (os.path.join('share', package_name, 'config'), glob('config/*.yaml')),
+        (os.path.join('share', package_name, 'launch'), glob('launch/*')),
+        (os.path.join('share', package_name, 'config'), glob('config/*')),  # <- esto incluye controllers.yaml
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -31,12 +31,14 @@ setup(
             'efk_estimator_double = mpu_pub.efk_estimator_double:main',
             'efk_estimator = mpu_pub.efk_estimator:main',
             'ukf_estimator = mpu_pub.ukf_estimator:main',
+            'ukf_estimator2 = mpu_pub.ukf_estimator2:main',
             'particle_filter = mpu_pub.particle_filter:main',
             'efk_estimator_2 = mpu_pub.efkEstimator_complementaryFilter:main',
             'ukf_estimator_pf = mpu_pub.ukf_estimator_pf:main',
             'motor_subscriber = mpu_pub.motor_subscriber:main',
             'motor_subscriber2 = mpu_pub.motor_subscriber2:main',
             'data_calibrated_mpu = mpu_pub.data_calibrated_mpu:main',
+            'imu_bridge = mpu_pub.imu_bridge:main',
         ],
     },
 )

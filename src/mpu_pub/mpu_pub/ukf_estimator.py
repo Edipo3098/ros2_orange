@@ -192,7 +192,7 @@ class CalCOGFrame(Node):
 
         self.prev_time = perf_counter()
         self.prevOrientation  = np.array([0.0, 0.0, 0.0])
-        self.timerPrint = self.create_timer(1, self.printData)
+        #self.timerPrint = self.create_timer(1, self.printData)
         self.msg = COGframe()
         self.pos = np.array([0.0, 0.0, 0.0])
         self.orient = np.array([0.0, 0.0, 0.0])
@@ -200,8 +200,8 @@ class CalCOGFrame(Node):
 
     def listener_callback(self, msg):
         self.mpu1_data = msg
-        self.mpu1_data.acy = self.mpu1_data.acy*0.01
-        self.mpu1_data.acy2 = self.mpu1_data.acy2*0.01
+        self.mpu1_data.acy = self.mpu1_data.acy
+        self.mpu1_data.acy2 = self.mpu1_data.acy2
         self.process_fusion()
         
     def listener_callback2(self, msg):

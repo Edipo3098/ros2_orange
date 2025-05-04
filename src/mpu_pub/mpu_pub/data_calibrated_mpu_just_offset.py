@@ -78,8 +78,8 @@ GYRO_SENSITIVITY = GYRO_SENSITIVITY_RAW
 class KalmanFilter:
     def __init__(self, Q=0.0001, R=0.01):
         # Process noise covariance (Q) and measurement noise covariance (R)
-        self.Q = 1e-6
-        self.R = (0.008)**2
+        self.Q = Q
+        self.R = R
         self.x = 0.0  # State estimate
         self.P = 1.0  # Estimate covariance
 
@@ -101,11 +101,20 @@ class MinimalPublisher(Node):
         self.subscriber = self.create_subscription(Mpu, 'mpu_data_1',self.listener_callback, 10)
         self.publisher_ = self.create_publisher(Mpu, 'mpu_data_2', 10) # In gravity and degree*second
         # Kalman Filters for each axis of accelerometer and gyroscope
-        
-        self.kf_a1 = {ax: KalmanFilter(Q=1e-6, R=6.4e-5) for ax in 'xyz'}  # acelerómetro MPU-1
-        self.kf_g1 = {ax: KalmanFilter(Q=1e-6, R=2.5e-4) for ax in 'xyz'}  # giróscopo   MPU-1
-        self.kf_a2 = {ax: KalmanFilter(Q=1e-6, R=6.4e-5) for ax in 'xyz'}  # acelerómetro MPU-2
-        self.kf_g2 = {ax: KalmanFilter(Q=1e-6, R=2.5e-4) for ax in 'xyz'}  # giróscopo   MPU-2
+        self.kf_accel_x = KalmanFilter()
+        self.kf_accel_y = KalmanFilter()
+        self.kf_accel_z = KalmanFilter()
+        self.kf_gyro_x = KalmanFilter()
+        self.kf_gyro_y = KalmanFilter()
+        self.kf_gyro_z = KalmanFilter()
+
+        # Kalman Filters for second MPU
+        self.kf_accel_x2 = KalmanFilter()
+        self.kf_accel_y2 = KalmanFilter()
+        self.kf_accel_z2 = KalmanFilter()
+        self.kf_gyro_x2 = KalmanFilter()
+        self.kf_gyro_y2 = KalmanFilter()
+        self.kf_gyro_z2 = KalmanFilter()
 
         self.current_time = perf_counter()
         self.prevTime = perf_counter()
@@ -161,6 +170,21 @@ class MinimalPublisher(Node):
    # Filter data using kalman filter
 # Convert raw data to g and dps
     def convertDate(self,msg):
+        accel_x_filtered = self.kf_accel_x.update(msg.acx)
+        accel_y_filtered = self.kf_accel_y.update(msg.acy)
+        accel_z_filtered = self.kf_accel_z.update(msg.acz)
+
+        gyro_x_filtered = self.kf_gyro_x.update(msg.gx)
+        gyro_y_filtered = self.kf_gyro_y.update(msg.gy)
+        gyro_z_filtered = self.kf_gyro_z.update(msg.gz)
+
+        accel_x_filtered2 = self.kf_accel_x.update(msg.acx2)
+        accel_y_filtered2 = self.kf_accel_y.update(msg.acy2)
+        accel_z_filtered2 = self.kf_accel_z.update(msg.acz2)
+
+        gyro_x_filtered2 = self.kf_gyro_x.update(msg.gx2)
+        gyro_y_filtered2 = self.kf_gyro_y.update(msg.gy2)
+        gyro_z_filtered2 = self.kf_gyro_z.update(msg.gz2)
         
         accel_x_filtered = msg.acx
         accel_y_filtered = msg.acy
@@ -194,7 +218,6 @@ class MinimalPublisher(Node):
         gyro_x2 = (gyro_x_filtered2/GYRO_SENSITIVITY)
         gyro_y2 = (gyro_y_filtered2/GYRO_SENSITIVITY)
         gyro_z2 = (gyro_z_filtered2/GYRO_SENSITIVITY)
-        
 
         return accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z, accel_x2, accel_y2, accel_z2, gyro_x2, gyro_y2, gyro_z2
 
@@ -409,7 +432,6 @@ class MinimalPublisher(Node):
     def low_pass_filter(self, current_value, previous_value, alpha=None):
         if alpha is None:
             alpha = self.dynamic_alpha_calculation(current_value, previous_value)
-            alpha = 0.24  
         return alpha * current_value + (1 - alpha) * previous_value
     
     def dynamic_alpha_calculation(self, current_value, previous_value):
@@ -468,9 +490,15 @@ class MinimalPublisher(Node):
         gyro_y = gyro[1]
         gyro_z = gyro[2]
         # Apply Kalman filter to smooth data
-        
-        
-        
+        """
+        accel_x = self.low_pass_filter(accel_x, prev[0])
+        accel_y = self.low_pass_filter(accel_y, prev[1])
+        accel_z = self.low_pass_filter(accel_z, prev[2])
+
+        gyro_x = self.low_pass_filter(gyro_x, prev[3])
+        gyro_y = self.low_pass_filter(gyro_y, prev[4])
+        gyro_z = self.low_pass_filter(gyro_z, prev[5])
+        """
 
         accel_y_filtered = accel_y
         accel_x_filtered = accel_x
@@ -531,33 +559,7 @@ class MinimalPublisher(Node):
         gyro_z =  gyro_z -calibration_data[calibration_key]["gyro"]["offset"][2]
         log_data2 = f"After calibration Accel: {round(accel_x,3)}, {round(accel_y,3)}, {round(accel_z,3)}, Gyro: {round(gyro_x,3)}, {round(gyro_y,3)}, {round(gyro_z,3)}"
         # Log the data for debugging
-        """
-        accel_x = self.low_pass_filter(accel_x, prev[0])
-        accel_y = self.low_pass_filter(accel_y, prev[1])
-        accel_z = self.low_pass_filter(accel_z, prev[2])
-
-        gyro_x = self.low_pass_filter(gyro_x, prev[3])
-        gyro_y = self.low_pass_filter(gyro_y, prev[4])
-        gyro_z = self.low_pass_filter(gyro_z, prev[5])
-        """
-        # 3. Kalman *por eje y por sensor*
-        if calibration_key == 'mpu1':
-            accel_x = self.kf_a1['x'].update(accel_x)
-            accel_y = self.kf_a1['y'].update(accel_y)
-            accel_z = self.kf_a1['z'].update(accel_z)
-
-            gyro_x = self.kf_g1['x'].update(gyro_x)
-            gyro_y = self.kf_g1['y'].update(gyro_y)
-            gyro_z = self.kf_g1['z'].update(gyro_z)
-        else:            # key == 'mpu2'
-            accel_x = self.kf_a2['x'].update(accel_x)
-            accel_y = self.kf_a2['y'].update(accel_y)
-            accel_z = self.kf_a2['z'].update(accel_z)
-
-            gyro_x = self.kf_g2['x'].update(gyro_x)
-            gyro_y = self.kf_g2['y'].update(gyro_y)
-            gyro_z = self.kf_g2['z'].update(gyro_z)    
-        show = False
+        show = True
         if show:
             self.get_logger().info(log_data)
             self.get_logger().info(log_data2)
