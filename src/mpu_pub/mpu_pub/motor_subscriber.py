@@ -57,6 +57,18 @@ class MinimalSubscriber(Node):
     def communicacion_arduino(self):
         if not self.Sending:
             self.get_logger().info('No new data"')
+            decoded= ""
+            try:
+                self.received_data  = self.ser.readline().decode().strip()
+                raw = self.ser.readline()
+                decoded = raw.decode('ascii', errors='ignore').strip()
+                        
+            except UnicodeDecodeError as e:
+                self.get_logger().warn(f"Error decoding {self.received_data !r}: {e}")
+                
+            self.get_logger().info('Waiting callback true: "%s"' % self.received_data)
+            self.get_logger().info('Waiting callback true2 : "%s"' % decoded)
+            
         if self.Sending == True:
             msg = self.robot_command
             self.get_logger().info('Received: "%s"' % msg)
@@ -122,6 +134,7 @@ class MinimalSubscriber(Node):
                 self.publishers_.publish(self.msg_command )
                 
                 if self.received_data  != "True" and self.command_sended:
+                    decoded= ""
                     try:
                         self.received_data  = self.ser.readline().decode().strip()
                         raw = self.ser.readline()
