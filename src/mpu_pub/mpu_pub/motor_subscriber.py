@@ -50,6 +50,10 @@ class MinimalSubscriber(Node):
         self.command_sended = False
         self.received_data = "False"
         self.get_logger().info('Publish true')
+        self.serial_port = '/dev/ttyS5'
+        self.baud_rate = 115200
+
+        self.ser = serial.Serial(self.serial_port, self.baud_rate, timeout=1)
     def communicacion_arduino(self):
         if not self.Sending:
             self.get_logger().info('No new data"')
@@ -73,21 +77,18 @@ class MinimalSubscriber(Node):
                 self.get_logger().info('is stoping gait')
                 
                 self.isARM = False
-            serial_port = '/dev/ttyS5'
-            baud_rate = 115200
-
-            ser = serial.Serial(serial_port, baud_rate, timeout=1)
+            
 
             counter = 0
             try:
                 # Send data over the serial connection
                 if not self.command_sended:
                     if ( self.isARM):
-                        ser.write(str(msg.command).encode())
-                        ser.write(B"\n")
+                        self.ser.write(str(msg.command).encode())
+                        self.ser.write(B"\n")
                     
                         csv_line = f"{int(msg.m0)},{int(msg.m1)},{int(msg.m2)},{int(msg.m3)},{int(msg.m4)},{int(msg.m5)}\n"
-                        ser.write(csv_line.encode()) 
+                        self.ser.write(csv_line.encode()) 
                         self.get_logger().info('Sended: "%s"' % csv_line)
                         self.msg_command.armmoving = True
                         self.msg_command.grippermoving = False
@@ -97,10 +98,10 @@ class MinimalSubscriber(Node):
                         self.command_sended = True
                     elif (self.isGait):
                         csv_line = f"{msg.command}\n"
-                        ser.write(csv_line.encode()) 
+                        self.ser.write(csv_line.encode()) 
                         self.command_sended = True
-                        #ser.write(str(msg.command).encode())
-                        #ser.write(B"\n")
+                        #self.ser.write(str(msg.command).encode())
+                        #self.ser.write(B"\n")
                         
                         self.msg_command.armmoving = False
                         self.msg_command.grippermoving = False
@@ -109,8 +110,8 @@ class MinimalSubscriber(Node):
                         self.msg_command.quadmoving = True
                         
                     else:
-                        ser.write(str(msg.command).encode())
-                        ser.write(B"\n")
+                        self.ser.write(str(msg.command).encode())
+                        self.ser.write(B"\n")
                         self.get_logger().info('Sended: "%s"' % msg.command)
                         self.command_sended = True
                     
@@ -122,7 +123,7 @@ class MinimalSubscriber(Node):
                 
                 if self.received_data  != "True" and self.command_sended:
                     try:
-                        self.received_data  = ser.readline().decode().strip()
+                        self.received_data  = self.ser.readline().decode().strip()
                         
                     except UnicodeDecodeError as e:
                         self.get_logger().warn(f"Error decoding {self.received_data !r}: {e}")
@@ -144,15 +145,15 @@ class MinimalSubscriber(Node):
                     self.Sending = False
                     self.command_sended = False
                     self.received_data  = "False"
-                ser.reset_input_buffer()   
+                self.ser.reset_input_buffer()   
 
             except KeyboardInterrupt:
                 # If Ctrl+C is pressed, break out of the loop
                 print("Keyboard interrupt detected. Exiting...")
             finally:
                 # Close the serial port, even if an exception occurs
-                ser.reset_input_buffer()
-                ser.close()
+                self.ser.reset_input_buffer()
+                self.ser.close()
                 #self.timer_communication.cancel()
             
         #self.timer_communication = self.create_timer(2, self.checkCommunication_Arduino)
@@ -163,20 +164,20 @@ class MinimalSubscriber(Node):
             serial_port = '/dev/ttyS5'
             baud_rate = 115200
 
-            ser = serial.Serial(serial_port, baud_rate, timeout=1)
+            self.ser = serial.Serial(serial_port, baud_rate, timeout=1)
             if self.Sending:
                 return
             
 
             # Send data over the serial connection
-            #ser.write(str('check\n').encode())
-            #ser.write(B"\n")
+            #self.ser.write(str('check\n').encode())
+            #self.ser.write(B"\n")
             
             csv_line = f"{'check'}\n"
-            ser.write(csv_line.encode()) 
+            self.ser.write(csv_line.encode()) 
             
             try:
-                received_data = ser.readline().decode().strip()
+                received_data = self.ser.readline().decode().strip()
                     
             except UnicodeDecodeError as e:
                 self.get_logger().warn(f"Error decoding {received_data!r}: {e}")
@@ -190,14 +191,14 @@ class MinimalSubscriber(Node):
                 
             else:
                 self.get_logger().info('Communication with Arduino is NOT OK')
-                ser.reset_input_buffer()
+                self.ser.reset_input_buffer()
         except KeyboardInterrupt:
             # If Ctrl+C is pressed, break out of the loop
             print("Keyboard interrupt detected. Exiting...")
         finally:
             # Close the serial port, even if an exception occurs
-            ser.reset_input_buffer()
-            ser.close()
+            self.ser.reset_input_buffer()
+            self.ser.close()
             
     def timer_callback(self):
         self.publishers_.publish(self.msg_command)
