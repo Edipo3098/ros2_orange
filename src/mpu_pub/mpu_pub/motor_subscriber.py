@@ -145,7 +145,7 @@ class MinimalSubscriber(Node):
             ser.close()
             self.timer_communication.cancel()
         self.Sending = False
-        self.timer_communication = self.create_timer(2, self.checkCommunication_Arduino)
+        #self.timer_communication = self.create_timer(2, self.checkCommunication_Arduino)
            
     def checkCommunication_Arduino(self):
         
