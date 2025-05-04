@@ -143,6 +143,7 @@ class MyNode(Node):
         self.msg_move_robot.m3 = float(0)
         self.msg_move_robot.m4 = float(0)
         self.msg_move_robot.m5 = float(0)
+        
         # Sample data storage for x, y, z, roll, pitch, yaw with 3 sources for each
         self.data_x = []
         self.data_y = []
@@ -516,23 +517,15 @@ class MyWindow(QMainWindow):
         # Update the indicator based on conditions
         self.update_indicator()
     def toggle_EF(self):
-        current_angle = self.ros_node.arm.getJoint(Joint_5) 
+        current_angle = self.ros_node.msg_move_robot.m5
         if current_angle == 0:
-            self.ros_node.arm.setJoint(Joint_5, 3.14)
+            self.ros_node.msg_move_robot.m5 = 3.14
             new_angle = 3.14
         else:
-            self.ros_node.arm.setJoint(Joint_5, 0)
+            self.ros_node.msg_move_robot.m5 = 0.0
             new_angle = 0
-            
-        # Set updated joint angle
-        self.ros_node.arm.setJoint(Joint_5, new_angle)
-
-        # Log updated joint angle for debugging
-        updated_angle = self.ros_node.arm.getJoint(Joint_5)
-        self.ros_node.get_logger().info(f"Updated Arm Joint {Joint_5} Angle: {updated_angle}")
-
-        self.ros_node.msg_move.joint = str(Joint_5)
-        self.ros_node.msg_move.angle =  float(self.ros_node.arm.getJoint(Joint_5) )
+        self.ros_node.msg_move_robot.command = "ARM"
+        self.ros_node.get_logger().info(f"Updated Arm Joint {Joint_5} Angle: {self.ros_node.msg_move_robot.m5}")
         self.update_joint_positions()
         self.publishMessage()
         
@@ -866,7 +859,7 @@ class MyWindow(QMainWindow):
         self.ros_node.msg_move_robot.m2 =    round(float(self.ros_node.arm.getJoint(Joint_2))*180/np.pi ,2)
         self.ros_node.msg_move_robot.m3 =    round(float(self.ros_node.arm.getJoint(Joint_3))*180/np.pi ,2)
         self.ros_node.msg_move_robot.m4 =    round(float(self.ros_node.arm.getJoint(Joint_4))*180/np.pi,2)
-        self.ros_node.msg_move_robot.m5 =    round(float(self.ros_node.arm.getJoint(Joint_5))*180/np.pi,2)
+        #self.ros_node.msg_move_robot.m5 =    round(float(self.ros_node.arm.getJoint(Joint_5))*180/np.pi,2)
         self.ros_node.publisher_commandRobot.publish(self.ros_node.msg_move_robot)
 
     
