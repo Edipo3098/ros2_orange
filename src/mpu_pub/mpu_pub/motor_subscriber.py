@@ -49,6 +49,7 @@ class MinimalSubscriber(Node):
         self.get_logger().info('Publish true')
         
     def checkCommunication_Arduino(self):
+        
         try:
             serial_port = '/dev/ttyS5'
             baud_rate = 115200
@@ -80,11 +81,13 @@ class MinimalSubscriber(Node):
                 
             else:
                 self.get_logger().info('Communication with Arduino is NOT OK')
+                ser.reset_input_buffer()
         except KeyboardInterrupt:
             # If Ctrl+C is pressed, break out of the loop
             print("Keyboard interrupt detected. Exiting...")
         finally:
             # Close the serial port, even if an exception occurs
+            ser.reset_input_buffer()
             ser.close()
             
     def timer_callback(self):
@@ -122,10 +125,10 @@ class MinimalSubscriber(Node):
             
             
             if ( self.isARM):
-                ser.write(str(msg.command).encode())
-                ser.write(B"\n")
+                #ser.write(str(msg.command).encode())
+                #ser.write(B"\n")
                
-                csv_line = f"{int(msg.m0)},{int(msg.m1)},{int(msg.m2)},{int(msg.m3)},{int(msg.m4)},{int(msg.m5)}\n"
+                csv_line = f"{str(msg.command).encode(),int(msg.m0)},{int(msg.m1)},{int(msg.m2)},{int(msg.m3)},{int(msg.m4)},{int(msg.m5)}\n"
                 ser.write(csv_line.encode()) 
                 
                 self.msg_command.armmoving = True
@@ -168,6 +171,7 @@ class MinimalSubscriber(Node):
                     self.get_logger().info('Done true: "%s"' % received_data)
                     
                     self.msg_command.ready = False
+                    ser.reset_input_buffer()
                     ser.close()
                     break
                 if received_data == "True":
@@ -184,6 +188,7 @@ class MinimalSubscriber(Node):
             print("Keyboard interrupt detected. Exiting...")
         finally:
             # Close the serial port, even if an exception occurs
+            ser.reset_input_buffer()
             ser.close()
             self.timer_communication.cancel()
         self.Sending = False
