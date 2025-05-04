@@ -124,11 +124,16 @@ class MinimalSubscriber(Node):
                 if self.received_data  != "True" and self.command_sended:
                     try:
                         self.received_data  = self.ser.readline().decode().strip()
+                        raw = self.ser.readline()
+                        decoded = raw.decode('ascii', errors='ignore').strip()
                         
                     except UnicodeDecodeError as e:
                         self.get_logger().warn(f"Error decoding {self.received_data !r}: {e}")
                         
                     self.get_logger().info('Waiting callback true: "%s"' % self.received_data)
+                    self.get_logger().info('Waiting callback true2 : "%s"' % decoded)
+                    if decoded.startswith("True"):
+                         self.received_data = "True"
                     
                         
                     if self.received_data  == "True":
@@ -214,7 +219,13 @@ class MinimalSubscriber(Node):
             self.robot_command = msg
         
         
-
+    def destroy_node(self):
+        # Cerramos el serial al destruir el nodo
+        try:
+            self.ser.close()
+        except:
+            pass
+        super().destroy_node()
 
 def main(args=None):
     rclpy.init(args=args)
