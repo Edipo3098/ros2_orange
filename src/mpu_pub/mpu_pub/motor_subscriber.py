@@ -74,7 +74,7 @@ class MinimalSubscriber(Node):
                     self.msg_cmd.ready = True
                 else:
                     self.get_logger().warn(f'Arduino NOK (“{resp}”)')
-                    self.msg_cmd.ready = False
+                    
                 self.pub.publish(self.msg_cmd)
         except serial.SerialException as e:
             self.get_logger().error(f'Serial error: {e}')
