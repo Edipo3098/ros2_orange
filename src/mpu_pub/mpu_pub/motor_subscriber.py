@@ -1,241 +1,139 @@
-# Copyright 2016 Open Source Robotics Foundation, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import rclpy
 from rclpy.node import Node
-from robot_interfaces.msg import Anglemotor,MoveRobot
-from robot_interfaces.msg import Command
+from robot_interfaces.msg import MoveRobot, Command
 import time
 import serial
 
+START_DELIM = b'<'
+END_DELIM   = b'>'
+READ_TIMEOUT = 1.0  # s
 
 class MinimalSubscriber(Node):
 
     def __init__(self):
         super().__init__('motor_subscriber')
-        #self.subscription = self.create_subscription(Anglemotor,'motor_angles', self.listener_callback,10) # connect to motor control
-        self.subscription = self.create_subscription(MoveRobot, 'motor_angles', self.listener_callback, 10)
-        self.subscription  # prevent unused variable warning
-        self.publishers_ = self.create_publisher(Command, 'command_robot', 10)
-        timer_period = 0.2  # seconds
-        self.timer = self.create_timer(timer_period, self.timer_callback)
-        self.timer_communication = self.create_timer(2, self.checkCommunication_Arduino)
+        self.sub = self.create_subscription(
+            MoveRobot, 'motor_angles', self.listener_callback, 10)
+        self.pub = self.create_publisher(Command, 'command_robot', 10)
+
+        self.msg_cmd = Command()
+        self.reset_cmd_flags()
+        self.msg_cmd.ready = True
+        self.pub.publish(self.msg_cmd)
+
         self.Sending = False
-        
-        #self.checkCommunication_Arduino()
+        self.timer_comm = self.create_timer(2.0, self.check_arduino)
+        self.get_logger().info('Motor subscriber ready')
 
-        self.msg_command = Command()
-        self.msg_command.ready = True
-        self.msg_command.armmoving = False
-        self.msg_command.grippermoving = False
-        self.msg_command.gripperopen = False
-        self.msg_command.gripperclosed = False
-        self.msg_command.quadmoving = False
+    def reset_cmd_flags(self):
+        self.msg_cmd.armmoving = False
+        self.msg_cmd.grippermoving = False
+        self.msg_cmd.gripperopen = False
+        self.msg_cmd.gripperclosed = False
+        self.msg_cmd.quadmoving = False
 
-        self.publishers_.publish(self.msg_command)
-        self.isARM  = False
-        self.isGait = False
-        self.get_logger().info('Publish true')
-        
-    def checkCommunication_Arduino(self):
+    def read_packet(self, ser: serial.Serial) -> str:
+        """
+        Lee una trama <...> y devuelve el payload sin delimitadores.
+        Retorna '' si no recibió nada válido dentro de READ_TIMEOUT.
+        """
+        start = time.time()
+        buf = b''
+        # busca inicio
+        while time.time() - start < READ_TIMEOUT:
+            b = ser.read(1)
+            if b == START_DELIM:
+                break
+        else:
+            return ''
+        # lee hasta fin
+        while time.time() - start < READ_TIMEOUT:
+            b = ser.read(1)
+            if not b:
+                continue
+            if b == END_DELIM:
+                break
+            # sólo imprimibles
+            if 32 <= b[0] <= 126:
+                buf += b
         try:
-            serial_port = '/dev/ttyS5'
-            baud_rate = 115200
+            return buf.decode('ascii').strip()
+        except UnicodeDecodeError:
+            return buf.decode('ascii', errors='ignore').strip()
 
-            ser = serial.Serial(serial_port, baud_rate, timeout=1)
-            if self.Sending:
-                return
-            
+    def check_arduino(self):
+        if self.Sending:
+            return
+        try:
+            with serial.Serial('/dev/ttyS5', 115200, timeout=0.1) as ser:
+                ser.reset_input_buffer()
+                ser.write(b'<CHECK>\n')
+                resp = self.read_packet(ser)
+                if resp == 'CHECK':
+                    self.get_logger().info('Arduino OK')
+                    self.msg_cmd.ready = True
+                else:
+                    self.get_logger().warn(f'Arduino NOK (“{resp}”)')
+                    self.msg_cmd.ready = False
+                self.pub.publish(self.msg_cmd)
+        except serial.SerialException as e:
+            self.get_logger().error(f'Serial error: {e}')
 
-            # Send data over the serial connection
-            #ser.write(str('check\n').encode())
-            #ser.write(B"\n")
-            
-            csv_line = f"{'check'}\n"
-            ser.write(csv_line.encode()) 
-            
-            try:
-                received_data = ser.readline().decode().strip()
-                    
-            except UnicodeDecodeError as e:
-                self.get_logger().warn(f"Error decoding {received_data!r}: {e}")
-                received_data = received_data.decode('utf-8', errors='ignore').strip()
-            self.get_logger().info('Received: "%s"' % received_data)
-            
-            if received_data == "check":
-                self.get_logger().info('Communication with Arduino is OK')
-                self.msg_command.ready = True
-                self.publishers_.publish(self.msg_command)
-                
-            else:
-                self.get_logger().info('Communication with Arduino is NOT OK')
-        except KeyboardInterrupt:
-            # If Ctrl+C is pressed, break out of the loop
-            print("Keyboard interrupt detected. Exiting...")
-        finally:
-            # Close the serial port, even if an exception occurs
-            ser.close()
-            
-    def timer_callback(self):
-        self.publishers_.publish(self.msg_command)
-        
-  
     def listener_callback(self, msg):
         self.Sending = True
-        self.timer_communication.cancel()
-        self.get_logger().info('Command "%s"' % msg.command)
-        if msg.command == "ARM":
-            self.get_logger().info('ARM')
-            self.isARM = True
-            
-        elif msg.command == "m4":
-            msg.command = "m3"
-            self.get_logger().info('is publishing static gait')
-            self.isGait = True
-            
+        self.timer_comm.cancel()
+
+        cmd = msg.command
+        self.get_logger().info(f'Got command "{cmd}"')
+
+        # Ejemplo de ARM vs gait vs origin...
+        payload = None
+        if cmd == 'ARM':
+            self.msg_cmd.armmoving = True
+            payload = f'ARM,{msg.m0},{msg.m1},{msg.m2},{msg.m3},{msg.m4},{msg.m5}'
+        elif cmd == 'm4':
+            self.msg_cmd.quadmoving = True
+            payload = 'm3'
         else:
-            msg.command = "origin"
-            self.get_logger().info('is stoping gait')
-            
-            self.isARM = False
-        serial_port = '/dev/ttyS5'
-        baud_rate = 115200
+            payload = 'origin'
 
-        ser = serial.Serial(serial_port, baud_rate, timeout=1)
-
-        counter = 0
+        # envía y espera ACK
         try:
-            # Send data over the serial connection
-            
-            
-            if ( self.isARM):
-                ser.write(str(msg.command).encode())
-                ser.write(B"\n")
-                time.sleep(0.2)
-                csv_line = f"{msg.m0},{msg.m1},{msg.m2},{msg.m3},{msg.m4},{msg.m5}\n"
-                ser.write(csv_line.encode()) 
-                self.isARM = False
-                self.msg_command.armmoving = True
-                self.msg_command.grippermoving = False
-                self.msg_command.gripperopen = False
-                self.msg_command.gripperclosed = False
-                self.msg_command.quadmoving = False
-            elif (self.isGait):
-                csv_line = f"{msg.command}\n"
-                ser.write(csv_line.encode()) 
-                #ser.write(str(msg.command).encode())
-                #ser.write(B"\n")
-                self.isGait = False
-                self.msg_command.armmoving = False
-                self.msg_command.grippermoving = False
-                self.msg_command.gripperopen = False
-                self.msg_command.gripperclosed = False
-                self.msg_command.quadmoving = True
-                
-            else:
-                ser.write(str(msg.command).encode())
-                ser.write(B"\n")
-                self.isARM = False    
-            # Wait for a moment
-            
-            # Read response from the serial connection
-            self.msg_command.ready = False
-            self.publishers_.publish(self.msg_command )
-            received_data = "False"
-            while received_data != "True":
-                try:
-                    received_data = ser.readline().decode().strip()
-                    
-                except UnicodeDecodeError as e:
-                    self.get_logger().warn(f"Error decoding {received_data!r}: {e}")
-                    received_data = "Check"
-                self.get_logger().info('Received different than true: "%s"' % received_data)
-                counter += 1
-                if counter > 25:
-                    self.get_logger().info('Received different than true: "%s"' % received_data)
-                    
-                    self.msg_command.ready = False
-                    
-                    break
-                if received_data == "True":
-                    self.get_logger().info('Received: "%s"' % received_data)
-                    
-                    self.msg_command.ready = True
+            with serial.Serial('/dev/ttyS5', 115200, timeout=0.1) as ser:
+                ser.reset_input_buffer()
+                ser.write(f'<{payload}>\n'.encode('ascii'))
+                # espera respuesta TRUE/FALSE
+                for _ in range(20):
+                    resp = self.read_packet(ser)
+                    if resp in ('TRUE','FALSE'):
+                        break
                 else:
-                    
-                    self.msg_command.ready = False
-                if ( self.isARM):
-                    ser.write(str(msg.command).encode())
-                    ser.write(B"\n")
-                    time.sleep(0.2)
-                    csv_line = f"{msg.m0},{msg.m1},{msg.m2},{msg.m3},{msg.m4},{msg.m5}\n"
-                    ser.write(csv_line.encode()) 
-                    self.isARM = False
-                    self.msg_command.armmoving = True
-                    self.msg_command.grippermoving = False
-                    self.msg_command.gripperopen = False
-                    self.msg_command.gripperclosed = False
-                    self.msg_command.quadmoving = False
-                elif (self.isGait):
-                    csv_line = f"{msg.command}\n"
-                    ser.write(csv_line.encode()) 
-                    #ser.write(str(msg.command).encode())
-                    #ser.write(B"\n")
-                    self.isGait = False
-                    self.msg_command.armmoving = False
-                    self.msg_command.grippermoving = False
-                    self.msg_command.gripperopen = False
-                    self.msg_command.gripperclosed = False
-                    self.msg_command.quadmoving = True
-                    
-                else:
-                    ser.write(str(msg.command).encode())
-                    ser.write(B"\n")
-                    self.isARM = False  
-                    
-            self.msg_command.ready =  received_data == "True"
-            self.msg_command.armmoving = False
-            self.msg_command.grippermoving = False
-            self.msg_command.gripperopen = False
-            self.msg_command.gripperclosed = False
-            self.msg_command.quadmoving = False
-            self.publishers_.publish(self.msg_command )
+                    resp = 'FALSE'
 
-        except KeyboardInterrupt:
-            # If Ctrl+C is pressed, break out of the loop
-            print("Keyboard interrupt detected. Exiting...")
-        finally:
-            # Close the serial port, even if an exception occurs
-            ser.close()
-            self.timer_communication.cancel()
+                ok = (resp == 'TRUE')
+                if ok:
+                    self.get_logger().info('Arduino responded TRUE')
+                    self.msg_cmd.ready = True
+                else:
+                    self.get_logger().warn(f'Arduino responded: "{resp}"')
+                    self.msg_cmd.ready = False
+
+        except serial.SerialException as e:
+            self.get_logger().error(f'Serial error: {e}')
+            self.msg_cmd.ready = False
+
+        # publica estado y reactiva timer
+        self.pub.publish(self.msg_cmd)
+        self.reset_cmd_flags()
         self.Sending = False
-        self.timer_communication = self.create_timer(2, self.checkCommunication_Arduino)
-        
-        
+        self.timer_comm = self.create_timer(2.0, self.check_arduino)
 
 
 def main(args=None):
     rclpy.init(args=args)
-
-    motor_subscriber = MinimalSubscriber()
-
-    rclpy.spin(motor_subscriber)
-
-    # Destroy the node explicitly
-    # (optional - otherwise it will be done automatically
-    # when the garbage collector destroys the node object)
-    motor_subscriber.destroy_node()
+    node = MinimalSubscriber()
+    rclpy.spin(node)
+    node.destroy_node()
     rclpy.shutdown()
 
 
