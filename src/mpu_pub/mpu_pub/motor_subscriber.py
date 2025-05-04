@@ -51,7 +51,7 @@ class MinimalSubscriber(Node):
         self.received_data = "False"
         self.get_logger().info('Publish true')
         self.serial_port = '/dev/ttyS5'
-        self.baud_rate = 115200
+        self.baud_rate = 9600
 
         self.ser = serial.Serial(self.serial_port, self.baud_rate, timeout=1)
     def communicacion_arduino(self):
@@ -171,7 +171,7 @@ class MinimalSubscriber(Node):
         
         try:
             serial_port = '/dev/ttyS5'
-            baud_rate = 115200
+            baud_rate = 9600
 
             self.ser = serial.Serial(serial_port, baud_rate, timeout=1)
             if self.Sending:
