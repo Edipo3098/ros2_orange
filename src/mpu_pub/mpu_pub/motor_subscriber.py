@@ -125,7 +125,7 @@ class MinimalSubscriber(Node):
                 ser.write(str(msg.command).encode())
                 ser.write(B"\n")
                
-                csv_line = f"{msg.m0},{msg.m1},{msg.m2},{msg.m3},{msg.m4},{msg.m5}\n"
+                csv_line = f"{int(msg.m0)},{int(msg.m1)},{int(msg.m2)},{int(msg.m3)},{int(msg.m4)},{int(msg.m5)}\n"
                 ser.write(csv_line.encode()) 
                 
                 self.msg_command.armmoving = True
