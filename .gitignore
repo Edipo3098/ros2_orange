@@ -3,3 +3,4 @@ build/
 install/
 log/
 src/Quad_control_gui/
+src/quadruped_arm_motion/
