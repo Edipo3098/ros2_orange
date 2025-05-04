@@ -693,6 +693,11 @@ class MyWindow(QMainWindow):
                     new_angle = angle + current_angle
             else:
                 new_angle = angle
+            if self.armJoint == Joint_0 and ( angle > 0 and new_angle < 0.827):
+                new_angle = 0.827
+            elif self.armJoint == Joint_0 and (angle <= 0.827 and new_angle < 0.827 ):
+                new_angle = 0
+            
 
             # Set updated joint angle
             self.ros_node.arm.setJoint(self.armJoint, new_angle)

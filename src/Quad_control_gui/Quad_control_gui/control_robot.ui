@@ -20,7 +20,7 @@
    <enum>QFrame::Box</enum>
   </property>
   <property name="currentIndex">
-   <number>1</number>
+   <number>0</number>
   </property>
   <widget class="QWidget" name="controlBasic">
    <widget class="QComboBox" name="changeRobot">
@@ -223,6 +223,19 @@
       <string>Back Left Leg</string>
      </property>
     </item>
+   </widget>
+   <widget class="QPushButton" name="setEF">
+    <property name="geometry">
+     <rect>
+      <x>257</x>
+      <y>404</y>
+      <width>107</width>
+      <height>71</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Toggle EF</string>
+    </property>
    </widget>
   </widget>
   <widget class="QWidget" name="controlQuad">
