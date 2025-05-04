@@ -5,7 +5,10 @@ from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
 from std_msgs.msg import Header
 import numpy as np
-
+import math
+DEG2RAD = math.pi/180.0
+G2MS2   = 9.80665          # 1 g → 9.81 m/s²
+CLAMP_DT = (1e-4, 0.05)    # 0.1 ms – 50 ms  (20–10000 Hz)
 class ImuBridge(Node):
     def __init__(self):
         super().__init__('imu_bridge')

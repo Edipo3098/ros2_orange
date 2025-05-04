@@ -6,6 +6,9 @@ from rclpy.node import Node
 from robot_interfaces.msg import Mpu, COGframe
 from message_filters import Subscriber, ApproximateTimeSynchronizer
 
+DEG2RAD = math.pi/180.0
+G2MS2   = 9.80665          # 1 g → 9.81 m/s²
+CLAMP_DT = (1e-4, 0.05)    # 0.1 ms – 50 ms  (20–10000 Hz)
 class ImuFusionNode(Node):
     def __init__(self):
         super().__init__('imu_fusion_node')
@@ -13,7 +16,7 @@ class ImuFusionNode(Node):
         self.sub_imu1 = Subscriber(self, Mpu, 'mpu_data_2')
         #self.sub_imu2 = Subscriber(self, Mpu, 'mpu_data_2')
         self.sync = ApproximateTimeSynchronizer([self.sub_imu1], queue_size=10, slop=0.02,allow_headerless=True)
-        self.sync.registerCallback(self.imu_callback)
+        self.sync.registerCallback(self.cb)
         # Publicador del marco COG fusionado
         self.pub_cog = self.create_publisher(COGframe, 'kalman_cog_frame_3', 10)
 
@@ -46,8 +49,92 @@ class ImuFusionNode(Node):
         self.calibrating = True
         self.calib_samples = []
         self.prev_time = perf_counter()
-        self.get_logger().info("Calibrando biases de las IMUs... espere unos segundos sin mover el dispositivo.")
+        self.last_t = None
+        self.pos = np.zeros(3)
+        self.vel = np.zeros(3)
+        self.q   = np.array([1,0,0,0], float)   # cuaternión
+        self.bias = np.zeros(3)                 # bias gyro   (rad/s)
 
+        #  --- ruidos ---
+        self.Qw = (0.02*DEG2RAD)**2 * np.eye(3)  # var gyro
+        self.Qb = (0.001*DEG2RAD)**2 * np.eye(3) # var bias
+        self.Ra = (0.5*G2MS2)**2   * np.eye(3)   # var accel
+
+        self.get_logger().info("Calibrando biases de las IMUs... espere unos segundos sin mover el dispositivo.")
+    # ---------- callback sincronizado ----------
+    def cb(self, m1: Mpu):
+        now = self.get_clock().now()
+        t   = now.nanoseconds*1e-9
+        if self.last_t is None:
+            self.last_t = t
+            return
+        dt = max(CLAMP_DT[0], min(CLAMP_DT[1], t - self.last_t))
+        self.last_t = t
+
+        # 1. UNIDADES CORRECTAS ------------------------------------------------
+        a1 = np.array([m1.acx, m1.acy, m1.acz]) * G2MS2
+        w1 = np.array([m1.gx,  m1.gy,  m1.gz ]) * DEG2RAD
+        a2 = np.array([m1.acx2, m1.acy2, m1.acz2]) * G2MS2
+        w2 = np.array([m1.gx2,  m1.gy2,  m1.gz2 ]) * DEG2RAD
+
+        a  = 0.5*(a1 + a2)
+        w  = 0.5*(w1 + w2) - self.bias       # gyro sin bias
+
+        # 2. PREDICCIÓN ORIENTACIÓN (integrar giro) ----------------------------
+        dq = self._rv2quat(w*dt)             # rot vec → quat
+        self.q = self._qmult(self.q, dq)
+        self.q = self.q/np.linalg.norm(self.q)
+
+        # 3. CORRECCIÓN CON GRAVEDAD (filtro complementario sencillo) ----------
+        g_body = self._q_conj_rotate(self.q, np.array([0,0,-G2MS2]))
+        err = np.cross(a, g_body)            # error ángulo pequeño
+        self.bias += 0.0001*err              # adapta bias   (rad/s)
+        self.q = self._qmult(self.q, self._rv2quat(0.01*err))
+
+        # 4. ELIMINAR GRAVEDAD, INTEGRAR V y P ---------------------------------
+        a_lin = a - g_body                   # acel lineal (m/s²)
+        self.vel += a_lin*dt
+        self.pos += self.vel*dt
+
+        # 5. PUBLICAR -----------------------------------------------------------
+        roll, pitch, yaw = self._quat2euler(self.q)
+        out = COGframe()
+        out.pos_x, out.pos_z, out.pos_z = self.pos
+        out.roll  = math.degrees(roll)
+        out.pitch = math.degrees(pitch)
+        out.yaw   = math.degrees(yaw)
+        self.pub_cog.publish(out)
+        
+    # ---------- utilidades ----------
+    def _rv2quat(self, rv):
+        th = np.linalg.norm(rv)
+        if th < 1e-6:
+            return np.array([1, *(0.5*rv)])
+        ax = rv/th
+        s  = math.sin(th/2)
+        return np.array([math.cos(th/2), *(ax*s)])
+
+    def _qmult(self, q1, q2):
+        w0,x0,y0,z0 = q1; w1,x1,y1,z1 = q2
+        return np.array([
+            w0*w1 - x0*x1 - y0*y1 - z0*z1,
+            w0*x1 + x0*w1 + y0*z1 - z0*y1,
+            w0*y1 - x0*z1 + y0*w1 + z0*x1,
+            w0*z1 + x0*y1 - y0*x1 + z0*w1])
+
+    def _q_conj_rotate(self, q, v):
+        # rota v (3d) con cuaternión q
+        qv = np.array([0, *v])
+        return self._qmult(self._qmult(q, qv), self._qconj(q))[1:]
+
+    def _qconj(self, q): return np.array([q[0], -q[1], -q[2], -q[3]])
+
+    def _quat2euler(self, q):
+        w,x,y,z = q
+        roll  = math.atan2(2*(w*x+y*z), 1-2*(x*x+y*y))
+        pitch = math.asin(max(-1,min(1, 2*(w*y-z*x))))
+        yaw   = math.atan2(2*(w*z+x*y), 1-2*(y*y+z*z))
+        return roll, pitch, yaw
     def imu_callback(self, imu1_msg: Mpu):
         # Sincronizado: ambos mensajes corresponden aproximadamente al mismo instante
         # Extraer lecturas de acelerómetro y giroscopio de cada Mpu (asumiendo campos ax, ay, az, gx, gy, gz)
