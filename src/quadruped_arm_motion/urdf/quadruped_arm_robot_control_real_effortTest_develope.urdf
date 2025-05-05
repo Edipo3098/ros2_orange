@@ -163,11 +163,7 @@
   <link name="frontLeft_hip_motor">
     <inertial><mass value="0.001"/><origin xyz="0 0 0"/>
     <inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0"/></inertial>
-    <visual   ><geometry><cylinder radius="0.015" length="0.05"/></geometry></visual>
-    <collision><geometry><cylinder radius="0.015" length="0.05"/></geometry>
-    <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction><contact>
-    <ode><kp>10</kp><kd>50</kd></ode></contact></surface>
-    </collision>
+    
   </link>
   <joint name="frontLeft_hip_motor_joint" type="revolute">
     <parent link="frontLeft_hip_motor_fixed"/>
@@ -183,7 +179,7 @@
     <k_velocity> 10.0  </k_velocity>
     </safety>
   </joint>
-  <link name="frontLeft_knee_fixed">
+  <link name="frontLeft_knee">
     <inertial><mass value="0.158"/><origin xyz="0 0 0"/>
     <inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0"/></inertial>
 
@@ -220,9 +216,9 @@
       </surface>
     </collision>
   </link>
-  <joint name="frontLeft_knee_joint_fixed" type="fixed">
+  <joint name="frontLeft_knee_joint" type="revolute">
     <parent link="frontLeft_hip_motor"/>
-    <child  link="frontLeft_knee_fixed"/>
+    <child  link="frontLeft_knee"/>
     <origin xyz="0.030 0.055 -0.015" rpy="1.5708 0 0"/>
     <axis xyz="0 0 1"/>
     <limit lower="-1.57" upper="1.57" effort="50.88" velocity="1"/>
@@ -234,28 +230,7 @@
     <k_velocity> 10.0  </k_velocity>
     </safety>
   </joint>
-  <link name="frontLeft_knee">
-    <inertial><mass value="0.05"/><origin xyz="0 0 0"/>
-      <inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0"/></inertial>
-    <visual   ><geometry><box size="0.125 0.04 0.02" /></geometry></visual>
-    <collision><geometry><box size="0.125 0.04 0.02" /></geometry>
-    <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction><contact><ode><kp>10</kp><kd>50</kd></ode></contact></surface>
-    </collision>
-  </link>
-  <joint name="frontLeft_knee_joint" type="revolute">
-    <parent link="frontLeft_knee_fixed"/>
-    <child  link="frontLeft_knee"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <axis xyz="0 0 1"/>
-    <limit lower="-1.57" upper="1.57" effort="50.88" velocity="1"/>
-    <dynamics damping="0.05" friction="2.5"/>
-    <safety>
-    <soft_lower_limit>-3.0</soft_lower_limit>
-    <soft_upper_limit> 3.0</soft_upper_limit>
-    <k_position> 50.0 </k_position>
-    <k_velocity> 10.0  </k_velocity>
-    </safety>
-  </joint>
+  
   <link name="frontLeft_connector">
     <inertial><mass value="0.05"/><origin xyz="0 0 0"/>
       <inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0"/></inertial>
@@ -338,10 +313,7 @@
   <link name="frontLeft_ankle">
     <inertial><mass value="0.05"/><origin xyz="0 0 0"/>
       <inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0"/></inertial>
-    <visual   ><geometry><box size="0.125 0.04 0.02" /></geometry></visual>
-    <collision><geometry><box size="0.125 0.04 0.02" /></geometry>
-    <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction><contact><ode><kp>10</kp><kd>50</kd></ode></contact></surface>
-    </collision>
+    
   </link>
   <joint name="frontLeft_ankle_joint" type="revolute">
     <parent link="frontLeft_ankle_fixed"/>
@@ -456,10 +428,7 @@
   <link name="frontRight_hip_motor">
     <inertial><mass value="0.05"/><origin xyz="0 0 0"/>
       <inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0"/></inertial>
-    <visual   ><geometry><box size="0.125 0.04 0.02" /></geometry></visual>
-    <collision><geometry><box size="0.125 0.04 0.02" /></geometry>
-    <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction><contact><ode><kp>10</kp><kd>50</kd></ode></contact></surface>
-    </collision>
+    
   </link>
   <joint name="frontRight_hip_motor_joint" type="revolute">
     <parent link="frontRight_hip_motor_fixed"/>
@@ -475,7 +444,7 @@
     <k_velocity> 10.0  </k_velocity>
     </safety>
   </joint>
-  <link name="frontRight_knee_fixed">
+  <link name="frontRight_knee">
     <inertial><mass value="0.158"/><origin xyz="0 0 0"/>
     <inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0"/></inertial>
 
@@ -512,9 +481,9 @@
       </surface>
     </collision>
   </link>
-  <joint name="frontRight_knee_joint_fixed" type="fixed">
+  <joint name="frontRight_knee_joint" type="revolute">
     <parent link="frontRight_hip_motor"/>
-    <child  link="frontRight_knee_fixed"/>
+    <child  link="frontRight_knee"/>
     <origin xyz="0.035 -0.045 -0.01" rpy="1.5708 0 0"/>
     <axis xyz="0 0 1"/>
     <limit lower="-1.57" upper="1.57" effort="50.88" velocity="1"/>
@@ -526,28 +495,7 @@
     <k_velocity> 10.0  </k_velocity>
     </safety>
   </joint>
-  <link name="frontRight_knee">
-    <inertial><mass value="0.05"/><origin xyz="0 0 0"/>
-      <inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0"/></inertial>
-    <visual   ><geometry><box size="0.125 0.04 0.02" /></geometry></visual>
-    <collision><geometry><box size="0.125 0.04 0.02" /></geometry>
-    <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction><contact><ode><kp>10</kp><kd>50</kd></ode></contact></surface>
-    </collision>
-  </link>
-  <joint name="frontRight_knee_joint" type="revolute">
-    <parent link="frontRight_knee_fixed"/>
-    <child  link="frontRight_knee"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <axis xyz="0 0 1"/>
-    <limit lower="-1.57" upper="1.57" effort="50.88" velocity="1"/>
-    <dynamics damping="0.05" friction="2.5"/>
-    <safety>
-    <soft_lower_limit>-3.0</soft_lower_limit>
-    <soft_upper_limit> 3.0</soft_upper_limit>
-    <k_position> 50.0 </k_position>
-    <k_velocity> 10.0  </k_velocity>
-    </safety>
-  </joint>
+  
 
   <link name="frontRight_connector">
     <inertial><mass value="0.05"/><origin xyz="0 0 0"/>
@@ -631,10 +579,7 @@
   <link name="frontRight_ankle">
     <inertial><mass value="0.05"/><origin xyz="0 0 0"/>
       <inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0"/></inertial>
-    <visual   ><geometry><box size="0.125 0.04 0.02" /></geometry></visual>
-    <collision><geometry><box size="0.125 0.04 0.02" /></geometry>
-    <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction><contact><ode><kp>10</kp><kd>50</kd></ode></contact></surface>
-    </collision>
+    
   </link>
   <joint name="frontRight_ankle_joint" type="revolute">
     <parent link="frontRight_ankle_fixed"/>
@@ -751,10 +696,7 @@
   <link name="backLeft_hip_motor">
     <inertial><mass value="0.05"/><origin xyz="0 0 0"/>
       <inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0"/></inertial>
-    <visual   ><geometry><box size="0.125 0.04 0.02" /></geometry></visual>
-    <collision><geometry><box size="0.125 0.04 0.02" /></geometry>
-    <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction><contact><ode><kp>10</kp><kd>50</kd></ode></contact></surface>
-    </collision>
+    
   </link>
   <joint name="backLeft_hip_motor_joint" type="revolute">
     <parent link="backLeft_hip_motor_fixed"/>
@@ -771,7 +713,7 @@
     </safety>
   </joint>
 
-  <link name="backLeft_knee_fixed">
+  <link name="backLeft_knee">
     <inertial><mass value="0.158"/><origin xyz="0 0 0"/>
     <inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0"/></inertial>
 
@@ -808,9 +750,9 @@
       </surface>
     </collision>
   </link>
-  <joint name="backLeft_knee_joint_fixed" type="fixed">
+  <joint name="backLeft_knee_joint" type="revolute">
     <parent link="backLeft_hip_motor"/>
-    <child  link="backLeft_knee_fixed"/>
+    <child  link="backLeft_knee"/>
     <origin xyz="0.030 0.055 0.01" rpy="1.5708 0 0"/>
     <axis xyz="0 0 1"/>
     <limit lower="-1.57" upper="1.57" effort="50.88" velocity="1"/>
@@ -822,28 +764,7 @@
     <k_velocity> 10.0  </k_velocity>
     </safety>
   </joint>
-  <link name="backLeft_knee">
-    <inertial><mass value="0.05"/><origin xyz="0 0 0"/>
-      <inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0"/></inertial>
-    <visual   ><geometry><box size="0.125 0.04 0.02" /></geometry></visual>
-    <collision><geometry><box size="0.125 0.04 0.02" /></geometry>
-    <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction><contact><ode><kp>10</kp><kd>50</kd></ode></contact></surface>
-    </collision>
-  </link>
-  <joint name="backLeft_knee_joint" type="revolute">
-    <parent link="backLeft_knee_fixed"/>
-    <child  link="backLeft_knee"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <axis xyz="0 0 1"/>
-    <limit lower="-1.57" upper="1.57" effort="50.88" velocity="1"/>
-    <dynamics damping="0.05" friction="2.5"/>
-    <safety>
-    <soft_lower_limit>-3.0</soft_lower_limit>
-    <soft_upper_limit> 3.0</soft_upper_limit>
-    <k_position> 50.0 </k_position>
-    <k_velocity> 10.0  </k_velocity>
-    </safety>
-  </joint>
+  
 
   <link name="backLeft_connector">
     <inertial><mass value="0.05"/><origin xyz="0 0 0"/>
@@ -927,10 +848,7 @@
   <link name="backLeft_ankle">
     <inertial><mass value="0.05"/><origin xyz="0 0 0"/>
       <inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0"/></inertial>
-    <visual   ><geometry><box size="0.125 0.04 0.02" /></geometry></visual>
-    <collision><geometry><box size="0.125 0.04 0.02" /></geometry>
-    <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction><contact><ode><kp>10</kp><kd>50</kd></ode></contact></surface>
-    </collision>
+    
   </link>
   <joint name="backLeft_ankle_joint" type="revolute">
     <parent link="backLeft_ankle_fixed"/>
@@ -1047,10 +965,7 @@
   <link name="backRight_hip_motor">
     <inertial><mass value="0.05"/><origin xyz="0 0 0"/>
       <inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0"/></inertial>
-    <visual   ><geometry><box size="0.125 0.04 0.02" /></geometry></visual>
-    <collision><geometry><box size="0.125 0.04 0.02" /></geometry>
-    <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction><contact><ode><kp>10</kp><kd>50</kd></ode></contact></surface>
-    </collision>
+    
   </link>
   <joint name="backRight_hip_motor_joint" type="revolute">
     <parent link="backRight_hip_motor_fixed"/>
@@ -1068,7 +983,7 @@
   </joint>
 
 
-  <link name="backRight_knee_fixed">
+  <link name="backRight_knee">
     <inertial><mass value="0.158"/><origin xyz="0 0 0"/>
     <inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0"/></inertial>
 
@@ -1105,9 +1020,9 @@
       </surface>
     </collision>
   </link>
-  <joint name="backRight_knee_joint_fixed" type="fixed">
+  <joint name="backRight_knee_joint" type="revolute">
     <parent link="backRight_hip_motor"/>
-    <child  link="backRight_knee_fixed"/>
+    <child  link="backRight_knee"/>
     <origin xyz="0.035 -0.045 0.01" rpy="1.5708 0 0"/>
     <axis xyz="0 0 1"/>
     <limit lower="-1.57" upper="1.57" effort="50.88" velocity="1"/>
@@ -1119,28 +1034,7 @@
     <k_velocity> 10.0  </k_velocity>
     </safety>
   </joint>
-  <link name="backRight_knee">
-    <inertial><mass value="0.05"/><origin xyz="0 0 0"/>
-      <inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0"/></inertial>
-    <visual   ><geometry><box size="0.125 0.04 0.02" /></geometry></visual>
-    <collision><geometry><box size="0.125 0.04 0.02" /></geometry>
-    <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction><contact><ode><kp>10</kp><kd>50</kd></ode></contact></surface>
-    </collision>
-  </link>
-  <joint name="backRight_knee_joint" type="revolute">
-    <parent link="backRight_knee_fixed"/>
-    <child  link="backRight_knee"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <axis xyz="0 0 1"/>
-    <limit lower="-1.57" upper="1.57" effort="50.88" velocity="1"/>
-    <dynamics damping="0.05" friction="2.5"/>
-    <safety>
-    <soft_lower_limit>-3.0</soft_lower_limit>
-    <soft_upper_limit> 3.0</soft_upper_limit>
-    <k_position> 50.0 </k_position>
-    <k_velocity> 10.0  </k_velocity>
-    </safety>
-  </joint>
+ 
 
   <link name="backRight_connector">
     <inertial><mass value="0.05"/><origin xyz="0 0 0"/>
@@ -1224,10 +1118,7 @@
   <link name="backRight_ankle">
     <inertial><mass value="0.05"/><origin xyz="0 0 0"/>
       <inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0"/></inertial>
-    <visual   ><geometry><box size="0.125 0.04 0.02" /></geometry></visual>
-    <collision><geometry><box size="0.125 0.04 0.02" /></geometry>
-    <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction><contact><ode><kp>10</kp><kd>50</kd></ode></contact></surface>
-    </collision>
+    
   </link>
   <joint name="backRight_ankle_joint" type="revolute">
     <parent link="backRight_ankle_fixed"/>
@@ -1348,10 +1239,7 @@
   <link name="M0_big">
     <inertial><mass value="0.05"/><origin xyz="0 0 0"/>
       <inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0"/></inertial>
-    <visual   ><geometry><box size="0.125 0.04 0.02" /></geometry></visual>
-    <collision><geometry><box size="0.125 0.04 0.02" /></geometry>
-    <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction><contact><ode><kp>10</kp><kd>50</kd></ode></contact></surface>
-    </collision>
+    
   </link>
   <joint name="articulacion1" type="revolute">
     <parent link="M0_big_fixed"/>
@@ -1390,7 +1278,7 @@
           <color rgba="1.000000 1.000000 1.000000 1.0" />
       </material>
       
-  </visual>
+    </visual>
   </link>
   <joint name="Motor_square_Join" type="fixed">
     <parent link="M0_big"/>
@@ -1529,10 +1417,7 @@
   <link name="M2_100">
     <inertial><mass value="0.05"/><origin xyz="0 0 0"/>
       <inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0"/></inertial>
-    <visual   ><geometry><box size="0.125 0.04 0.02" /></geometry></visual>
-    <collision><geometry><box size="0.125 0.04 0.02" /></geometry>
-    <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction><contact><ode><kp>10</kp><kd>50</kd></ode></contact></surface>
-    </collision>
+    
   </link>
   <joint name="articulacion3" type="revolute">
     <parent link="M2_100_fixed"/>
@@ -1602,10 +1487,7 @@
   <link name="M3_50">
     <inertial><mass value="0.05"/><origin xyz="0 0 0"/>
       <inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0"/></inertial>
-    <visual   ><geometry><box size="0.125 0.04 0.02" /></geometry></visual>
-    <collision><geometry><box size="0.125 0.04 0.02" /></geometry>
-    <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction><contact><ode><kp>10</kp><kd>50</kd></ode></contact></surface>
-    </collision>
+    
   </link>
   <joint name="articulacion4" type="revolute">
     <parent link="M3_50_fixed"/>
@@ -1640,7 +1522,7 @@
         <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode>
     </friction><contact><ode><kp>10000</kp><kd>500000</kd></ode></contact></surface>
         <visual>
-            <origin xyz="-0.034313 -0.064453 0.015465" rpy="1.564268 3.144637 2.705270" />
+            <origin xyz="-0.034313 -0.064453 0.015465" rpy="1.564268 3.144637 1" />
             <geometry>
                 <mesh filename="/home/edipo/Documents/Robot_URDF3/meshes/connector2.stl" />
             </geometry>
@@ -1676,7 +1558,7 @@
       <mass value="0.158" />
     </inertial>
     <collision>
-      <origin xyz="0.000000 0.060000 -0.030000" rpy="-1.570796 3.141593 3.141593" />
+      <origin xyz="0.000000 0.060000 0.030000" rpy="-1.570796 3.141593 3.141593" />
       <geometry>
           <mesh filename="/home/edipo/Documents/Robot_URDF3/meshes/articulacion5.stl" />
       </geometry>
@@ -1684,7 +1566,7 @@
     </friction><contact><ode><kp>10000</kp><kd>500000</kd></ode></contact></surface>
     </collision>
     <visual>
-      <origin xyz="0.000000 0.060000 -0.030000" rpy="-1.570796 3.141593 3.141593" />
+      <origin xyz="0.000000 0.060000 0.030000" rpy="-1.570796 3.141593 3.141593" />
         <geometry>
             <mesh filename="/home/edipo/Documents/Robot_URDF3/meshes/articulacion5.stl" />
         </geometry>
@@ -1696,7 +1578,7 @@
   <joint name="articulacion5_fixed" type="fixed">
     <parent link="Connector_2"/>
     <child  link="M4_50_fixed"/>
-    <origin xyz="-0.007231 -0.062830 0.290000" rpy="1.570798 3.141596 1.134464" />
+    <origin xyz="-0.007231 -0.062830 0.290000" rpy="1.570798 3.141596 -0.4" />
     <axis xyz="0 0 1"/>
     <limit lower="-1.14" upper="1.14" effort="19.03325" velocity="1"/>
     <dynamics damping="0.05" friction="2.5"/>
@@ -1716,10 +1598,7 @@
   <link name="M4_50">
     <inertial><mass value="0.05"/><origin xyz="0 0 0"/>
       <inertia ixx="0.00016" iyy="0.00016" izz="0.00016" ixy="0" ixz="0" iyz="0"/></inertial>
-    <visual   ><geometry><box size="0.125 0.04 0.02" /></geometry></visual>
-    <collision><geometry><box size="0.125 0.04 0.02" /></geometry>
-    <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction><contact><ode><kp>10</kp><kd>50</kd></ode></contact></surface>
-    </collision>
+    
   </link>
   <joint name="articulacion5" type="revolute">
     <parent link="M4_50_fixed"/>
@@ -1753,7 +1632,7 @@
   <joint name="endEfectorJoin" type="fixed">
     <parent link="M4_50"/>
     <child  link="endEfector"/>
-    <origin xyz="0 -0.05 -0.03" rpy="0 0 0" />
+    <origin xyz="0 -0.05 0.03" rpy="0 0 0" />
     <axis xyz="0 0 1"/>
     <dynamics damping="0.05" friction="2.5"/>
     <safety>
