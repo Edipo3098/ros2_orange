@@ -1,0 +1,15 @@
+[submodule "src/apriltag_ros"]
+	path = src/apriltag_ros
+	url = https://github.com/AprilRobotics/apriltag_ros.git
+[submodule "src/image_pipeline"]
+	path = src/image_pipeline
+	url = https://github.com/ros-perception/image_pipeline.git
+[submodule "src/usb_cam"]
+	path = src/usb_cam
+	url = https://github.com/UVC-ROS/usb_cam.git
+[submodule "src/src/apriltag_ros"]
+	path = src/src/apriltag_ros
+	url = https://github.com/AprilRobotics/apriltag_ros.git
+[submodule "src/src/image_pipeline"]
+	path = src/src/image_pipeline
+	url = https://github.com/ros-perception/image_pipeline.git
