@@ -26,8 +26,9 @@ setup(
         # Install YAML  config files (optional)
         (os.path.join('share', package_name, 'config'), glob('config/*')),  # <- esto incluye controllers.yaml
         # Install YAML  config files (optional)
-        (os.path.join('share', package_name, 'meshes'), glob('meshes/*'))  # <- 
-        
+        (os.path.join('share', package_name, 'meshes'), glob('meshes/*')),  # <- 
+        # Install YAML  config files (optional)
+        (os.path.join('share', package_name, 'xacro'), glob('xacro/*'))  # <- 
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -43,6 +44,7 @@ setup(
             'trayectory_planning = quadruped_arm_motion.trayectory_planning:main',
             'dynamic_simulation = quadruped_arm_motion.dynamic_simulation:main',
             'echo_effort = quadruped_arm_motion.echo_effort:main',
+            'tag_pose_extractor = quadruped_arm_motion.tag_pose_extractor:main',
         ],
     },
 )

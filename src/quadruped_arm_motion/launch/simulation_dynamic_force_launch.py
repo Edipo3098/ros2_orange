@@ -10,8 +10,8 @@ def generate_launch_description():
     pkg_gazebo_ros = get_package_share_directory('gazebo_ros')
     pkg_robot = get_package_share_directory('quadruped_arm_motion')
 
+    urdf_file1 = os.path.join(pkg_robot, 'urdf', 'quadruped_arm_robot_control_real_effortTest_develope.urdf')
     urdf_file = os.path.join(pkg_robot, 'urdf', 'quadruped_arm_robot_control_real_effortTest_develope.urdf')
-    urdf_file1 = os.path.join(pkg_robot, 'urdf', 'quadruped_arm_robot_control_real_effort.urdf')
     
     with open(urdf_file, 'r') as f:
         robot_description = f.read()
@@ -56,13 +56,13 @@ def generate_launch_description():
             package='gazebo_ros',
             executable='spawn_entity.py',
             arguments=['-entity', 'quadruped', '-topic', 'robot_description',
-                       '-x', '0.0', '-y', '0.0', '-z', '0.375'  ],# <-- Añade posición inicial
+                       '-x', '0.0', '-y', '0.0', '-z', '0.36'  ],# <-- Añade posición inicial
             output='screen'
         ),
 
         # 4. Esperar 5 segundos antes de lanzar los controladores
         TimerAction(
-            period=4.0,
+            period=0.2,
             actions=[
                 Node(
                     package='controller_manager',
@@ -73,21 +73,21 @@ def generate_launch_description():
                 Node(
                     package='controller_manager',
                     executable='spawner',
-                    arguments=['joint_group_position_controller'],
+                    arguments=['joint_group_position_controller','--inactive'],
                     output='screen'
                 ),
                 
                 Node(
                     package='controller_manager',
                     executable='spawner',
-                    arguments=['joint_group_effort_controller'],
+                    arguments=['joint_group_effort_controller','--inactive'],
                     output='screen'
                 ),
                 
                 Node(
                     package='controller_manager',
                     executable='spawner',
-                    arguments=['trajectory_controller','--inactive'],
+                    arguments=['trajectory_controller'],
                     output='screen'
                 ),
                 

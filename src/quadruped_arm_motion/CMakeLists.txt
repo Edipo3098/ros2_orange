@@ -7,7 +7,7 @@ find_package(rosidl_default_generators REQUIRED)
 find_package(xacro REQUIRED)  # Ensure xacro is found
 
 # Install directories (URDF, Launch, RViz, CONFIG)
-install(DIRECTORY launch urdf rviz config meshes
+install(DIRECTORY launch urdf rviz config meshes xacro
   DESTINATION share/${PROJECT_NAME}
 )
 

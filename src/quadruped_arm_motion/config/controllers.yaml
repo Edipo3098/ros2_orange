@@ -54,12 +54,23 @@ joint_group_effort_controller:
 joint_group_position_controller:
   ros__parameters:
     joints:
-        - articulacion1
-        - articulacion2
-        - articulacion3
-        - articulacion4
-        - articulacion5
-
+      - frontLeft_hip_motor_joint
+      - frontLeft_knee_joint
+      - frontLeft_ankle_joint
+      - frontRight_hip_motor_joint
+      - frontRight_knee_joint
+      - frontRight_ankle_joint
+      - backLeft_hip_motor_joint
+      - backLeft_knee_joint
+      - backLeft_ankle_joint
+      - backRight_hip_motor_joint
+      - backRight_knee_joint
+      - backRight_ankle_joint
+      - articulacion1
+      - articulacion2
+      - articulacion3
+      - articulacion4
+      - articulacion5
     command_interfaces:
       - position
 
@@ -70,12 +81,13 @@ joint_group_position_controller:
     state_publish_rate: 50.0
     action_monitor_rate: 20.0
     pid_gains:
+      default: { p: 50, d: 20, i: 0.0 }
       position: # (or) position
-        articulacion1: {kp:  100.0, kd: 10.0, ki:  1.0, max_integral_error: 10000.0}
-        articulacion2: {kp:  100.0, kd: 10.0, ki:  1.0, max_integral_error: 10000.0}
-        articulacion3: {kp:  100.0, kd: 10.0, ki:  1.0, max_integral_error: 10000.0}
-        articulacion4: {kp:  100.0, kd: 10.0, ki:  1.0, max_integral_error: 10000.0}
-        articulacion5: {kp:  100.0, kd: 10.0, ki:  1.0, max_integral_error: 10000.0}
+        articulacion1: {kp:  50.0, kd: 20.0, ki:  1.0, max_integral_error: 10000.0}
+        articulacion2: {kp:  50.0, kd: 20.0, ki:  1.0, max_integral_error: 10000.0}
+        articulacion3: {kp:  50.0, kd: 20.0, ki:  1.0, max_integral_error: 10000.0}
+        articulacion4: {kp:  50.0, kd: 20.0, ki:  1.0, max_integral_error: 10000.0}
+        articulacion5: {kp:  50.0, kd: 20.0, ki:  1.0, max_integral_error: 10000.0}
 
 trajectory_controller:
   ros__parameters:
@@ -111,58 +123,9 @@ trajectory_controller:
       default: { p: 0.001, d: 0.5, i: 0.0 }
     constraints:
       stopped_velocity_tolerance: 0.01
-      goal_time: 0.0
-      frontLeft_hip_motor_joint:
-        trajectory: 0.05
-        goal: 0.00
-      frontLeft_knee_joint:
-        trajectory: 0.05
-        goal: 0.0
-      frontLeft_ankle_joint:
-        trajectory: 0.05
-        goal: 0.0
-      frontRight_hip_motor_joint:
-        trajectory: 0.05
-        goal: 0.0
-      frontRight_knee_joint:
-        trajectory: 0.05
-        goal: 0.0
-      frontRight_ankle_joint:
-        trajectory: 0.05
-        goal: 0.0  
-      backLeft_hip_motor_joint:
-        trajectory: 0.05
-        goal: 0.0
-      backLeft_knee_joint:
-        trajectory: 0.05
-        goal: 0.0
-      backLeft_ankle_joint:
-        trajectory: 0.05
-        goal: 0.0
-      backRight_hip_motor_joint:
-        trajectory: 0.05
-        goal: 0.0
-      backRight_knee_joint:
-        trajectory: 0.05
-        goal: 0.0
-      backRight_ankle_joint:
-        trajectory: 0.05
-        goal: 0.0
-      articulacion1:
-        trajectory: 0.05
-        goal: 0.0
-      articulacion2:
-        trajectory: 0.05
-        goal: 0.0
-      articulacion3:
-        trajectory: 0.05
-        goal: 0.0
-      articulacion4:  
-        trajectory: 0.05
-        goal: 0.0
-      articulacion5:
-        trajectory: 0.05
-        goal: 0.0
+      trajectory: 0.05
+      goal:       0.10 
+     
 
 
 joint_state_broadcaster:

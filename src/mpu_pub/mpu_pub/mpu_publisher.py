@@ -28,7 +28,7 @@ mpu9250_address = 0x68  # MPU9250 default I2C address
 mpu9250_address_2 = 0x69  # MPU9250 I2C address AD0 high
 PWR_MGMT_1 = 0x6B
 # Create an smbus object
-i2c_bus = 1  # Assuming you want to use /dev/i2c-1
+i2c_bus = 0  # Assuming you want to use /dev/i2c-1
 
 
 # MPU9250 register addresses
