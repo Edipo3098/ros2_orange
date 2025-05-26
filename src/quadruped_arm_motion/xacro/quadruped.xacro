@@ -1,0 +1,663 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="quadruped_arm_robot">
+  <!-- ====================== PROPERTIES ====================== -->
+  <xacro:property name="body_mesh"          value="/home/edipo/Documents/Robot_URDF3/meshes/Body.stl"/>
+  <xacro:property name="servo8y_mesh"       value="/home/edipo/Documents/Robot_URDF3/meshes/servo_8y.stl"/>
+  <xacro:property name="servo7y_mesh"       value="/home/edipo/Documents/Robot_URDF3/meshes/servo_7y.stl"/>
+  <xacro:property name="foot_front_mesh"    value="/home/edipo/Documents/Robot_URDF3/meshes/foot_3.stl"/>
+  <xacro:property name="foot_back_mesh"     value="/home/edipo/Documents/Robot_URDF3/meshes/foot_4.stl"/>
+  <xacro:property name="mu"                 value="1.0"/>
+  <xacro:property name="mu2"                value="1.0"/>
+  <xacro:property name="kp_gz"              value="10000"/>
+  <xacro:property name="kd_gz"              value="500000"/>
+  <xacro:property name="kp_g"               value="10"/>
+  <xacro:property name="kd_g"               value="50"/>
+  <xacro:property name="servo_mass"         value="0.158"/>
+  <xacro:property name="servo_inertia"      value="0.00016"/>
+  <xacro:property name="connector_size"     value="0.03"/>
+  <xacro:property name="connector_mass"     value="0.05"/>
+  <xacro:property name="connector_inertia"  value="0.00016"/>
+  <xacro:property name="imu_mass"           value="0.001"/>
+  <xacro:property name="camera_mass"        value="0.01"/>
+  <xacro:property name="small_inertia"      value="0.0003"/>
+  <xacro:property name="foot_mass"          value="0.03"/>
+  <xacro:property name="foot_inertia"       value="2e-05"/>
+  <xacro:property name="body_mass"          value="0.4"/>
+  <xacro:property name="body_inertia"       value="0.0003"/>
+
+  <!-- ====================== MACROS ====================== -->
+  <xacro:macro name="visual_collision_mesh" params="filename scale xyz rpy">
+    <visual>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+      <geometry><mesh filename="${filename}" scale="${scale}"/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+      <geometry><mesh filename="${filename}" scale="${scale}"/></geometry>
+      <surface>
+        <friction><ode><mu>${mu}</mu><mu2>${mu2}</mu2></ode></friction>
+        <contact><ode><kp>${kp_gz}</kp><kd>${kd_gz}</kd></ode></contact>
+      </surface>
+    </collision>
+  </xacro:macro>
+
+  <xacro:macro name="box_visual_collision" params="size xyz rpy mu mu2 kp kd">
+    <visual>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+      <geometry><box size="${size}"/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+      <geometry><box size="${size}"/></geometry>
+      <surface>
+        <friction><ode><mu>${mu}</mu><mu2>${mu2}</mu2></ode></friction>
+        <contact><ode><kp>${kp}</kp><kd>${kd}</kd></ode></contact>
+      </surface>
+    </collision>
+  </xacro:macro>
+
+  <xacro:macro name="inertial" params="mass ixx iyy izz xyz rpy">
+    <inertial>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+      <mass value="${mass}"/>
+      <inertia ixx="${ixx}" iyy="${iyy}" izz="${izz}" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+  </xacro:macro>
+
+  <xacro:macro name="revolute_joint" params="name parent child xyz rpy axis lower upper effort velocity">
+    <joint name="${name}" type="revolute">
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+      <parent link="${parent}"/>
+      <child link="${child}"/>
+      <axis xyz="${axis}"/>
+      <limit lower="${lower}" upper="${upper}" effort="${effort}" velocity="${velocity}"/>
+      <dynamics damping="0.05" friction="2.5"/>
+      <safety>
+        <soft_lower_limit>-3.0</soft_lower_limit>
+        <soft_upper_limit>3.0</soft_upper_limit>
+        <k_position>50.0</k_position>
+        <k_velocity>10.0</k_velocity>
+      </safety>
+    </joint>
+  </xacro:macro>
+
+  <xacro:macro name="fixed_joint" params="name parent child xyz rpy">
+    <joint name="${name}" type="fixed">
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+      <parent link="${parent}"/>
+      <child link="${child}"/>
+    </joint>
+  </xacro:macro>
+
+  <!-- ====================== BODY & SENSORS ====================== -->
+  <link name="base_link">
+    <xacro:inertial mass="${body_mass}" ixx="${body_inertia}" iyy="${body_inertia}" izz="${body_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:visual_collision_mesh filename="${body_mesh}" scale="1 1 1" xyz="0 0 0" rpy="0 0 0"/>
+  </link>
+
+  <link name="imu1_link">
+    <xacro:inertial mass="${imu_mass}" ixx="${small_inertia}" iyy="${small_inertia}" izz="${small_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:box_visual_collision size="0.005 0.005 0.005" xyz="0 0 0" rpy="0 0 0" mu="${mu}" mu2="${mu2}" kp="${kp_g}" kd="${kd_g}"/>
+  </link>
+  <xacro:fixed_joint name="imu1_fixed_joint" parent="base_link" child="imu1_link" xyz="0.12 -0.01 0.05" rpy="0 0 0"/>
+
+  <link name="imu2_link">
+    <xacro:inertial mass="${imu_mass}" ixx="${small_inertia}" iyy="${small_inertia}" izz="${small_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:box_visual_collision size="0.005 0.005 0.005" xyz="0 0 0" rpy="0 0 0" mu="${mu}" mu2="${mu2}" kp="${kp_g}" kd="${kd_g}"/>
+  </link>
+  <xacro:fixed_joint name="imu2_fixed_joint" parent="base_link" child="imu2_link" xyz="0.12 -0.05 0.05" rpy="0 0 0"/>
+
+  <link name="camera_link">
+    <xacro:inertial mass="${camera_mass}" ixx="${small_inertia}" iyy="${small_inertia}" izz="${small_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:box_visual_collision size="0.04 0.04 0.04" xyz="0 0 0" rpy="0 0 0" mu="${mu}" mu2="${mu2}" kp="${kp_g}" kd="${kd_g}"/>
+  </link>
+  <xacro:fixed_joint name="camera_fixed_joint" parent="base_link" child="camera_link" xyz="0.17 -0.03 0.05" rpy="0 0 0"/>
+
+  <!-- Legs -->
+    <!-- ====================== FRONT-LEFT LEG ====================== -->
+  <link name="frontLeft_hip_motor">
+    <xacro:inertial mass="${servo_mass}" ixx="${servo_inertia}" iyy="${servo_inertia}" izz="${servo_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:visual_collision_mesh filename="${servo8y_mesh}" scale="1 1 1" xyz="0.03 0.019 -0.08" rpy="0 0 0"/>
+  </link>
+  <xacro:revolute_joint
+    name="frontLeft_hip_motor_joint"
+    parent="base_link"
+    child="frontLeft_hip_motor"
+    xyz="0.15 0.03 0.03"
+    rpy="0 1.5708 0"
+    axis="0 0 1"
+    lower="-3.14"
+    upper="3.14"
+    effort="6"
+    velocity="1"/>
+
+  <link name="frontLeft_knee">
+    <xacro:inertial mass="${servo_mass}" ixx="${servo_inertia}" iyy="${servo_inertia}" izz="${servo_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:visual_collision_mesh filename="${servo8y_mesh}" scale="1 1 1" xyz="0.01937 -0.02363 -0.065" rpy="0 0 -1.587"/>
+  </link>
+  <xacro:revolute_joint
+    name="frontLeft_knee_joint"
+    parent="frontLeft_hip_motor"
+    child="frontLeft_knee"
+    xyz="0.03 0.055 -0.015"
+    rpy="1.5708 0 0"
+    axis="0 0 1"
+    lower="-1.57"
+    upper="1.57"
+    effort="6"
+    velocity="1"/>
+
+  <link name="frontLeft_connector">
+    <xacro:inertial mass="${connector_mass}" ixx="${connector_inertia}" iyy="${connector_inertia}" izz="${connector_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:box_visual_collision size="${connector_size} ${connector_size} ${connector_size}" xyz="0.05 0 0" rpy="0 0 0" mu="${mu}" mu2="${mu2}" kp="${kp_g}" kd="${kd_g}"/>
+  </link>
+  <xacro:fixed_joint name="frontLeft_connectorJoin" parent="frontLeft_knee" child="frontLeft_connector" xyz="0.05 0 0" rpy="0 0 0"/>
+
+  <link name="frontLeft_ankle_fixed">
+    <xacro:inertial mass="${servo_mass}" ixx="${servo_inertia}" iyy="${servo_inertia}" izz="${servo_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:visual_collision_mesh filename="${servo8y_mesh}" scale="1 1 1" xyz="0.01384 0.01866 -0.07289" rpy="-0.0891 0.08 0"/>
+  </link>
+  <xacro:fixed_joint name="frontLeft_ankle_joint_fixed" parent="frontLeft_connector" child="frontLeft_ankle_fixed" xyz="0.07 0 0" rpy="-0.0032 0 1.5"/>
+
+  <link name="frontLeft_ankle">
+    <xacro:inertial mass="${connector_mass}" ixx="${connector_inertia}" iyy="${connector_inertia}" izz="${connector_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:box_visual_collision size="0.015 0.015 0.015" xyz="0 0 0" rpy="0 0 0" mu="${mu}" mu2="${mu2}" kp="${kp_g}" kd="${kd_g}"/>
+  </link>
+  <xacro:revolute_joint
+    name="frontLeft_ankle_joint"
+    parent="frontLeft_connector"
+    child="frontLeft_ankle"
+    xyz="0.07 0 0"
+    rpy="-0.0032 0 3"
+    axis="0 0 1"
+    lower="-3.14"
+    upper="3.14"
+    effort="15"
+    velocity="1"/>
+
+  <link name="frontLeft_foot">
+    <xacro:inertial mass="${foot_mass}" ixx="${foot_inertia}" iyy="${foot_inertia}" izz="${foot_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:visual_collision_mesh filename="${foot_front_mesh}" scale="1 1 1" xyz="-0.03 -0.02 -0.01" rpy="0 0 -2.8"/>
+  </link>
+  <xacro:fixed_joint name="frontLeft_foot_joint" parent="frontLeft_ankle" child="frontLeft_foot" xyz="-0.04 0 0" rpy="0 0 0"/>
+<!-- ====================== FRONT-RIGHT LEG ====================== -->
+
+  <link name="frontRight_hip_motor">
+    <xacro:inertial mass="${servo_mass}" ixx="${servo_inertia}" iyy="${servo_inertia}" izz="${servo_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:visual_collision_mesh filename="${servo8y_mesh}" scale="1 1 1" xyz="0.03 0.005 -0.08" rpy="0 0 0"/>
+  </link>
+  <xacro:revolute_joint
+    name="frontRight_hip_motor_joint"
+    parent="base_link"
+    child="frontRight_hip_motor"
+    xyz="0.15 -0.085 0.03"
+    rpy="0 1.5708 0"
+    axis="0 0 1"
+    lower="-3.14"
+    upper="3.14"
+    effort="6"
+    velocity="1"/>
+
+  <link name="frontRight_knee">
+    <xacro:inertial mass="${servo_mass}" ixx="${servo_inertia}" iyy="${servo_inertia}" izz="${servo_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:visual_collision_mesh filename="${servo8y_mesh}" scale="1 1 1" xyz="0.01937 -0.02363 -0.065" rpy="0 0 -1.587"/>
+  </link>
+  <xacro:revolute_joint
+    name="frontRight_knee_joint"
+    parent="frontRight_hip_motor"
+    child="frontRight_knee"
+    xyz="0.03 0.055 -0.015"
+    rpy="1.5708 0 0"
+    axis="0 0 1"
+    lower="-1.57"
+    upper="1.57"
+    effort="6"
+    velocity="1"/>
+
+  <link name="frontRight_connector">
+    <xacro:inertial mass="${connector_mass}" ixx="${connector_inertia}" iyy="${connector_inertia}" izz="${connector_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:box_visual_collision size="${connector_size} ${connector_size} ${connector_size}" xyz="0.05 0 0" rpy="0 0 0" mu="${mu}" mu2="${mu2}" kp="${kp_g}" kd="${kd_g}"/>
+  </link>
+  <xacro:fixed_joint name="frontRight_connectorJoin" parent="frontRight_knee" child="frontRight_connector" xyz="0.05 0 0" rpy="0 0 0"/>
+
+  <link name="frontRight_ankle_fixed">
+    <xacro:inertial mass="${servo_mass}" ixx="${servo_inertia}" iyy="${servo_inertia}" izz="${servo_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:visual_collision_mesh filename="${servo8y_mesh}" scale="1 1 1" xyz="0.01384 0.01866 -0.07289" rpy="-0.0891 0.08 0"/>
+  </link>
+  <xacro:fixed_joint name="frontRight_ankle_joint_fixed" parent="frontRight_connector" child="frontRight_ankle_fixed" xyz="0.07 0 0" rpy="-0.0032 0 1.5"/>
+
+  <link name="frontRight_ankle">
+    <xacro:inertial mass="${connector_mass}" ixx="${connector_inertia}" iyy="${connector_inertia}" izz="${connector_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:box_visual_collision size="0.015 0.015 0.015" xyz="0 0 0" rpy="0 0 0" mu="${mu}" mu2="${mu2}" kp="${kp_g}" kd="${kd_g}"/>
+  </link>
+  <xacro:revolute_joint
+    name="frontRight_ankle_joint"
+    parent="frontRight_connector"
+    child="frontRight_ankle"
+    xyz="0.07 0 0"
+    rpy="-0.0032 0 3"
+    axis="0 0 1"
+    lower="-3.14"
+    upper="3.14"
+    effort="15"
+    velocity="1"/>
+
+  <link name="frontRight_foot">
+    <xacro:inertial mass="${foot_mass}" ixx="${foot_inertia}" iyy="${foot_inertia}" izz="${foot_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:visual_collision_mesh filename="${foot_front_mesh}" scale="1 1 1" xyz="-0.03 -0.02 -0.01" rpy="0 0 -2.8"/>
+  </link>
+  <xacro:fixed_joint name="frontRight_foot_joint" parent="frontRight_ankle" child="frontRight_foot" xyz="-0.04 0 0" rpy="0 0 0"/>
+<!-- ====================== BACK-RIGHT LEG ====================== -->
+
+  <link name="backRight_hip_motor">
+    <xacro:inertial mass="${servo_mass}" ixx="${servo_inertia}" iyy="${servo_inertia}" izz="${servo_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:visual_collision_mesh filename="${servo8y_mesh}" scale="1 1 1" xyz="0.035 0.021  -0.06" rpy="0 0 0"/>
+  </link>
+  <xacro:revolute_joint
+    name="backRight_hip_motor_joint"
+    parent="base_link"
+    child="backRight_hip_motor"
+    xyz="-0.19 -0.085 0.03"
+    rpy="0 1.5708 0"
+    axis="0 0 1"
+    lower="-3.14"
+    upper="3.14"
+    effort="6"
+    velocity="1"/>
+
+  <link name="backRight_knee">
+    <xacro:inertial mass="${servo_mass}" ixx="${servo_inertia}" iyy="${servo_inertia}" izz="${servo_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:visual_collision_mesh filename="${servo8y_mesh}" scale="1 1 1" xyz="0.01937 -0.02363 -0.065" rpy="0 0 -1.587"/>
+  </link>
+  <xacro:revolute_joint
+    name="backRight_knee_joint"
+    parent="backRight_hip_motor"
+    child="backRight_knee"
+    xyz="0.03 0.055 -0.015"
+    rpy="1.5708 0 0"
+    axis="0 0 1"
+    lower="-1.57"
+    upper="1.57"
+    effort="6"
+    velocity="1"/>
+
+  <link name="backRight_connector">
+    <xacro:inertial mass="${connector_mass}" ixx="${connector_inertia}" iyy="${connector_inertia}" izz="${connector_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:box_visual_collision size="${connector_size} ${connector_size} ${connector_size}" xyz="0.05 0 0" rpy="0 0 0" mu="${mu}" mu2="${mu2}" kp="${kp_g}" kd="${kd_g}"/>
+  </link>
+  <xacro:fixed_joint name="backRight_connectorJoin" parent="backRight_knee" child="backRight_connector" xyz="0.05 0 0" rpy="0 0 0"/>
+
+  <link name="backRight_ankle_fixed">
+    <xacro:inertial mass="${servo_mass}" ixx="${servo_inertia}" iyy="${servo_inertia}" izz="${servo_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:visual_collision_mesh filename="${servo8y_mesh}" scale="1 1 1" xyz="0.01384 0.01866 -0.07289" rpy="-0.0891 0.08 0"/>
+  </link>
+  <xacro:fixed_joint name="backRight_ankle_joint_fixed" parent="backRight_connector" child="backRight_ankle_fixed" xyz="0.07 0 0" rpy="-0.0032 0 1.5"/>
+
+  <link name="backRight_ankle">
+    <xacro:inertial mass="${connector_mass}" ixx="${connector_inertia}" iyy="${connector_inertia}" izz="${connector_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:box_visual_collision size="0.015 0.015 0.015" xyz="0 0 0" rpy="0 0 0" mu="${mu}" mu2="${mu2}" kp="${kp_g}" kd="${kd_g}"/>
+  </link>
+  <xacro:revolute_joint
+    name="backRight_ankle_joint"
+    parent="backRight_connector"
+    child="backRight_ankle"
+    xyz="0.07 0 0"
+    rpy="-0.0032 0 3"
+    axis="0 0 1"
+    lower="-3.14"
+    upper="3.14"
+    effort="15"
+    velocity="1"/>
+
+  <link name="backRight_foot">
+    <xacro:inertial mass="${foot_mass}" ixx="${foot_inertia}" iyy="${foot_inertia}" izz="${foot_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:visual_collision_mesh filename="${foot_front_mesh}" scale="1 1 1" xyz="-0.03 -0.02 -0.01" rpy="0 0 -2.8"/>
+  </link>
+  <xacro:fixed_joint name="backRight_foot_joint" parent="backRight_ankle" child="backRight_foot" xyz="-0.04 0 0" rpy="0 0 0"/>
+  <!-- ====================== BACK-LEFT LEG ====================== -->
+
+  <link name="backLeft_hip_motor">
+    <xacro:inertial mass="${servo_mass}" ixx="${servo_inertia}" iyy="${servo_inertia}" izz="${servo_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:visual_collision_mesh filename="${servo8y_mesh}" scale="1 1 1" xyz="0.035 0.035 -0.05" rpy="0 0 0"/>
+  </link>
+  <xacro:revolute_joint
+    name="backLeft_hip_motor_joint"
+    parent="base_link"
+    child="backLeft_hip_motor"
+    xyz="-0.19 0.03 0.03"
+    rpy="0 1.5708 0"
+    axis="0 0 1"
+    lower="-3.14"
+    upper="3.14"
+    effort="6"
+    velocity="1"/>
+
+  <link name="backLeft_knee">
+    <xacro:inertial mass="${servo_mass}" ixx="${servo_inertia}" iyy="${servo_inertia}" izz="${servo_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:visual_collision_mesh filename="${servo8y_mesh}" scale="1 1 1" xyz="0.01937 -0.02363 -0.065" rpy="0 0 -1.587"/>
+  </link>
+  <xacro:revolute_joint
+    name="backLeft_knee_joint"
+    parent="backLeft_hip_motor"
+    child="backLeft_knee"
+    xyz="0.03 0.055 -0.015"
+    rpy="1.5708 0 0"
+    axis="0 0 1"
+    lower="-1.57"
+    upper="1.57"
+    effort="6"
+    velocity="1"/>
+
+  <link name="backLeft_connector">
+    <xacro:inertial mass="${connector_mass}" ixx="${connector_inertia}" iyy="${connector_inertia}" izz="${connector_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:box_visual_collision size="${connector_size} ${connector_size} ${connector_size}" xyz="0.05 0 0" rpy="0 0 0" mu="${mu}" mu2="${mu2}" kp="${kp_g}" kd="${kd_g}"/>
+  </link>
+  <xacro:fixed_joint name="backLeft_connectorJoin" parent="backLeft_knee" child="backLeft_connector" xyz="0.05 0 0" rpy="0 0 0"/>
+
+  <link name="backLeft_ankle_fixed">
+    <xacro:inertial mass="${servo_mass}" ixx="${servo_inertia}" iyy="${servo_inertia}" izz="${servo_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:visual_collision_mesh filename="${servo8y_mesh}" scale="1 1 1" xyz="0.01384 0.01866 -0.07289" rpy="-0.0891 0.08 0"/>
+  </link>
+  <xacro:fixed_joint name="backLeft_ankle_joint_fixed" parent="backLeft_connector" child="backLeft_ankle_fixed" xyz="0.07 0 0" rpy="-0.0032 0 1.5"/>
+
+  <link name="backLeft_ankle">
+    <xacro:inertial mass="${connector_mass}" ixx="${connector_inertia}" iyy="${connector_inertia}" izz="${connector_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:box_visual_collision size="0.015 0.015 0.015" xyz="0 0 0" rpy="0 0 0" mu="${mu}" mu2="${mu2}" kp="${kp_g}" kd="${kd_g}"/>
+  </link>
+  <xacro:revolute_joint
+    name="backLeft_ankle_joint"
+    parent="backLeft_connector"
+    child="backLeft_ankle"
+    xyz="0.07 0 0"
+    rpy="-0.0032 0 3"
+    axis="0 0 1"
+    lower="-3.14"
+    upper="3.14"
+    effort="15"
+    velocity="1"/>
+
+  <link name="backLeft_foot">
+    <xacro:inertial mass="${foot_mass}" ixx="${foot_inertia}" iyy="${foot_inertia}" izz="${foot_inertia}" xyz="0 0 0" rpy="0 0 0"/>
+    <xacro:visual_collision_mesh filename="${foot_front_mesh}" scale="1 1 1" xyz="-0.03 -0.02 -0.01" rpy="0 0 -2.8"/>
+  </link>
+  <xacro:fixed_joint name="backLeft_foot_joint" parent="backLeft_ankle" child="backLeft_foot" xyz="-0.04 0 0" rpy="0 0 0"/>
+ <!-- ================ ARM LINKS & JOINTS ================ -->
+
+   <!-- ====================== ARM LINKS & JOINTS ====================== -->
+ <!-- ================ ARM LINKS & JOINTS ================ -->
+
+  <!-- 1) Base to first arm segment -->
+  <link name="M0_big_fixed">
+    <xacro:inertial mass="0.158" ixx="0.00016" iyy="0.00016" izz="0.00016"/>
+    <xacro:visual_collision
+      filename="$(find quadruped_arm_motion)/meshes/M0.stl"
+      scale="1 1 1"
+      origin="0.04 0 -0.02"
+      rpy="0 0 0"
+      mu="1.0" kp="10000" kd="500000"/>
+  </link>
+  <xacro:fixed_joint
+    name="articulacion1_fixed"
+    parent="base_link"
+    child="M0_big_fixed"
+    origin="0 -0.03 0.1"
+    rpy="0 0 0"/>
+
+  <link name="M0_big">
+    <xacro:inertial mass="0.05" ixx="0.00016" iyy="0.00016" izz="0.00016"/>
+    <visual><geometry><box size="0.03 0.03 0.03"/></geometry></visual>
+    <collision><geometry><box size="0.03 0.03 0.03"/></geometry></collision>
+  </link>
+  <xacro:revolute_joint
+    name="articulacion1"
+    parent="M0_big_fixed"
+    child="M0_big"
+    origin="0 0 0"
+    rpy="0 3.14 0"
+    axis="0 0 1"
+    lower="-1.14"
+    upper="1.14"
+    effort="49"
+    vel="1"
+    damping="2.05"
+    friction="6.5"
+    kpos="10"
+    kvel="10"/>
+
+  <!-- 2) Motor square segment -->
+  <link name="Motor_square">
+    <xacro:inertial mass="0.001" ixx="1e-6" iyy="1e-6" izz="1e-6"/>
+    <visual>
+      <origin xyz="0.005 0.005 0.04" rpy="0 -3.14 0"/>
+      <geometry><mesh filename="$(find quadruped_arm_motion)/meshes/Motor_square.stl"/></geometry>
+    </visual>
+    <collision><geometry><box size="0.05 0.05 0.05"/></geometry></collision>
+  </link>
+  <xacro:fixed_joint
+    name="Motor_square_Join"
+    parent="M0_big"
+    child="Motor_square"
+    origin="0 0 -0.05"
+    rpy="3.1416 3.1416 0"/>
+
+  <!-- 3) Second revolute -->
+  <link name="M1_100">
+    <xacro:inertial mass="0.001" ixx="1e-6" iyy="1e-6" izz="1e-6"/>
+    <visual>
+      <origin xyz="0.005 0.005 0.04" rpy="0 -3.14 0"/>
+      <geometry><mesh filename="$(find quadruped_arm_motion)/meshes/Motor_square.stl"/></geometry>
+    </visual>
+    <collision><geometry><box size="0.05 0.05 0.05"/></geometry></collision>
+  </link>
+  <xacro:revolute_joint
+    name="articulacion2"
+    parent="Motor_square"
+    child="M1_100"
+    origin="0 0 -0.02"
+    rpy="-1.5882 3.1422 -3.1067"
+    axis="0 0 1"
+    lower="-1.14"
+    upper="1.14"
+    effort="15"
+    vel="1"
+    damping="2.05"
+    friction="6.5"
+    kpos="10"
+    kvel="10"/>
+
+  <!-- 4) Third revolute -->
+  <link name="M2_100_fixed">
+    <xacro:inertial mass="0.158" ixx="0.00016" iyy="0.00016" izz="0.00016"/>
+    <xacro:visual_collision
+      filename="$(find quadruped_arm_motion)/meshes/arqticulacion3.stl"
+      scale="1 1 1"
+      origin="-0.02 -0.1 -0.005"
+      rpy="1.5900 3.1054 3.14"
+      mu="1.0" kp="10000" kd="500000"/>
+  </link>
+  <xacro:fixed_joint
+    name="articulacion3_fixed"
+    parent="Connector_1"
+    child="M2_100_fixed"
+    origin="-0.004 -0.335 0.0059"
+    rpy="3.1416 3.1416 0.0986"/>
+  <link name="M2_100">
+    <xacro:inertial mass="0.05" ixx="0.00016" iyy="0.00016" izz="0.00016"/>
+    <visual><geometry><box size="0.03 0.03 0.03"/></geometry></visual>
+    <collision><geometry><box size="0.03 0.03 0.03"/></geometry></collision>
+  </link>
+  <xacro:revolute_joint
+    name="articulacion3"
+    parent="M2_100_fixed"
+    child="M2_100"
+    origin="-0.02 -0.03 0"
+    rpy="0 0 0"
+    axis="0 0 1"
+    lower="-1.14"
+    upper="1.14"
+    effort="15"
+    vel="1"
+    damping="2.05"
+    friction="6.5"
+    kpos="10"
+    kvel="10"/>
+
+  <!-- 5) Fourth revolute -->
+  <link name="M3_50_fixed">
+    <xacro:inertial mass="0.158" ixx="0.00016" iyy="0.00016" izz="0.00016"/>
+    <xacro:visual_collision
+      filename="$(find quadruped_arm_motion)/meshes/arqticulacion4.stl"
+      scale="1 1 1"
+      origin="-0.005625 0.070702 0.008913"
+      rpy="-1.5763 3.2110 -3.1066"
+      mu="1.0" kp="10000" kd="500000"/>
+  </link>
+  <xacro:fixed_joint
+    name="articulacion4_fixed"
+    parent="M2_100"
+    child="M3_50_fixed"
+    origin="0.012922 0.071422 -0.000218"
+    rpy="-2.7688 4.5953 -0.4817"/>
+  <link name="M3_50">
+    <xacro:inertial mass="0.05" ixx="0.00016" iyy="0.00016" izz="0.00016"/>
+    <visual><geometry><box size="0.03 0.03 0.03"/></geometry></visual>
+    <collision><geometry><box size="0.03 0.03 0.03"/></geometry></collision>
+  </link>
+  <xacro:revolute_joint
+    name="articulacion4"
+    parent="M3_50_fixed"
+    child="M3_50"
+    origin="0 0 0"
+    rpy="0 3 0"
+    axis="0 0 1"
+    lower="-1.14"
+    upper="1.14"
+    effort="6"
+    vel="1"
+    damping="2.05"
+    friction="6.5"
+    kpos="10"
+    kvel="10"/>
+
+  <!-- 6) Fifth revolute -->
+  <link name="M4_50_fixed">
+    <xacro:inertial mass="0.158" ixx="0.00016" iyy="0.00016" izz="0.00016"/>
+    <xacro:visual_collision
+      filename="$(find quadruped_arm_motion)/meshes/articulacion5.stl"
+      scale="1 1 1"
+      origin="0 0.06 0.03"
+      rpy="-1.5708 3 3.1416"
+      mu="1.0" kp="10000" kd="500000"/>
+  </link>
+  <xacro:fixed_joint
+    name="articulacion5_fixed"
+    parent="Connector_2"
+    child="M4_50_fixed"
+    origin="-0.03 -0.06283 0.29"
+    rpy="1.5708 3.1416 -0.4"/>
+  <link name="M4_50">
+    <xacro:inertial mass="0.05" ixx="0.00016" iyy="0.00016" izz="0.00016"/>
+    <visual><geometry><box size="0.03 0.03 0.03"/></geometry></visual>
+    <collision><geometry><box size="0.03 0.03 0.03"/></geometry></collision>
+  </link>
+  <xacro:revolute_joint
+    name="articulacion5"
+    parent="M4_50_fixed"
+    child="M4_50"
+    origin="0 0 0"
+    rpy="0 0 0"
+    axis="0 0 1"
+    lower="-1.14"
+    upper="1.14"
+    effort="6"
+    vel="1"
+    damping="2.05"
+    friction="6.5"
+    kpos="10"
+    kvel="10"/>
+
+  <!-- End effector -->
+  <link name="endEfector">
+    <xacro:inertial mass="0.08158" ixx="0.00016" iyy="0.00016" izz="0.00016"/>
+    <visual><geometry><box size="0.05 0.05 0.05"/></geometry></visual>
+    <collision><geometry><box size="0.05 0.05 0.05"/></geometry></collision>
+  </link>
+  <xacro:fixed_joint
+    name="endEfectorJoin"
+    parent="M4_50"
+    child="endEfector"
+    origin="0 -0.05 0.03"
+    rpy="0 0 0"/>
+
+  <!-- ====================== ros2_control & transmissions ====================== -->
+  <xacro:property name="leg_joints" value="frontLeft_hip_motor_joint frontLeft_knee_joint frontLeft_ankle_joint frontRight_hip_motor_joint frontRight_knee_joint frontRight_ankle_joint backLeft_hip_motor_joint backLeft_knee_joint backLeft_ankle_joint backRight_hip_motor_joint backRight_knee_joint backRight_ankle_joint"/>
+  <xacro:property name="arm_joints" value="articulacion1 articulacion2 articulacion3 articulacion4 articulacion5"/>
+
+  <ros2_control name="QuadrupedArmHardware" type="system">
+    <hardware>
+      <plugin>gazebo_ros2_control/GazeboSystem</plugin>
+    </hardware>
+    <xacro:for joint in "${leg_joints.split()}">
+      <joint name="${joint}">
+        <command_interface name="effort"/>
+        <command_interface name="position"/>
+        <state_interface name="position"/>
+        <state_interface name="velocity"/>
+        <state_interface name="effort"/>
+      </joint>
+    </xacro:for>
+    <xacro:for joint in "${arm_joints.split()}">
+      <joint name="${joint}">
+        <command_interface name="effort"/>
+        <command_interface name="position"/>
+        <state_interface name="position"/>
+        <state_interface name="velocity"/>
+        <state_interface name="effort"/>
+      </joint>
+    </xacro:for>
+  </ros2_control>
+
+  <!-- Define transmissions similarly via xacro:for... -->
+      <!-- ====================== TRANSMISSIONS ====================== -->
+  <transmissions>
+    <!-- transmisiones para las patas -->
+    <xacro:for joint in "${leg_joints.split()}">
+      <transmission name="${joint}_trans">
+        <type>transmission_interface/SimpleTransmission</type>
+        <actuator name="${joint}_motor">
+          <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+        </actuator>
+        <joint name="${joint}">
+          <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+        </joint>
+      </transmission>
+    </xacro:for>
+
+    <!-- transmisiones para el brazo -->
+    <xacro:for joint in "${arm_joints.split()}">
+      <transmission name="${joint}_trans">
+        <type>transmission_interface/SimpleTransmission</type>
+        <actuator name="${joint}_motor">
+          <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+        </actuator>
+        <joint name="${joint}">
+          <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+        </joint>
+      </transmission>
+    </xacro:for>
+  </transmissions>
+
+  <gazebo>
+    <plugin filename="libgazebo_ros2_control.so" name="gazebo_ros2_control">
+      <robot_sim_type>gazebo_ros2_control/GazeboSystem</robot_sim_type>
+      <hold_joints>true</hold_joints>
+      <parameters>/home/edipo/ros2_orange/src/quadruped_arm_motion/config/controllers.yaml</parameters>
+    </plugin>
+    <physics type="ode">
+      <max_contacts>20</max_contacts>
+      <contact_surface_layer>0.001</contact_surface_layer>
+      <contact_max_correcting_vel>2.0</contact_max_correcting_vel>
+      <verbose>1</verbose>
+    </physics>
+  </gazebo>
+</robot>
