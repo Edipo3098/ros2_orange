@@ -14,7 +14,14 @@ update that update uses both measurements
 G
 
 """
+# Constants for sensitivity values
+ACCEL_SENSITIVITY_NORM = 2 
+GYRO_SENSITIVITY_NORM = 250
 
+ACCEL_SENSITIVITY_RAW = 16384
+GYRO_SENSITIVITY_RAW = 131 
+ACCEL_SENSITIVITY = ACCEL_SENSITIVITY_RAW  # LSB/g for +/- 2g range
+GYRO_SENSITIVITY = GYRO_SENSITIVITY_RAW 
 
 
 from filterpy.kalman import ExtendedKalmanFilter

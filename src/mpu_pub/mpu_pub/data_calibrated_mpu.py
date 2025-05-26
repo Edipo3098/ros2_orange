@@ -126,7 +126,7 @@ class MinimalPublisher(Node):
         self.current_time = time.time()
               
         timer_period = 1/2000   # seconds 50Hz
-        self.timer = self.create_timer(timer_period, self.timer_callback)
+        self.timer = self.create_timer(timer_period, self.timer_converData)
         self.sendData = self.create_timer(timer_period, self.send_data)
         self.timer2 = self.create_timer(1, self.timer_callback2)
         self.i = 0
@@ -529,6 +529,37 @@ class MinimalPublisher(Node):
         gyro_x =  gyro_x -calibration_data[calibration_key]["gyro"]["offset"][0]
         gyro_y =  gyro_y -calibration_data[calibration_key]["gyro"]["offset"][1]
         gyro_z =  gyro_z -calibration_data[calibration_key]["gyro"]["offset"][2]
+        
+        if (accel_x >0 and accel_x< 0.03):
+            accel_x = 0
+        if (accel_x < 0 and accel_x > -0.03):
+            accel_x = 0
+            
+        if (accel_y >0 and accel_y < 0.02):
+            accel_y = 0
+        if (accel_y < 0 and accel_y > -0.02):
+            accel_y = 0
+            
+        if (accel_z >0 and accel_z < 0.02):
+            accel_z = 0
+        if (accel_z < 0 and accel_z > -0.02):
+            accel_z = 0
+            
+        if (gyro_x >0 and gyro_x < 1):
+            gyro_x = 0
+        if (gyro_x < 0 and gyro_x > -1):
+            gyro_x = 0    
+
+        if (gyro_y >0 and gyro_y < 3):
+            gyro_y = 0
+        if (gyro_y < 0 and gyro_y > -3):
+            gyro_y = 0   
+            
+        if (gyro_z >0 and gyro_y < 3):
+            gyro_z = 0
+        if (gyro_z < 0 and gyro_y > -3):
+            gyro_z = 0  
+             
         log_data2 = f"After calibration Accel: {round(accel_x,3)}, {round(accel_y,3)}, {round(accel_z,3)}, Gyro: {round(gyro_x,3)}, {round(gyro_y,3)}, {round(gyro_z,3)}"
         # Log the data for debugging
         """
@@ -583,7 +614,8 @@ class MinimalPublisher(Node):
 
    
     
-    def timer_callback(self):
+    def timer_converData(self):
+        # Uses previoues lectures and process data
         self.current_time = perf_counter()
         
         self.dt = self.current_time - self.prevTime 
@@ -640,6 +672,7 @@ class MinimalPublisher(Node):
         self.prevTime2= perf_counter()
         
         self.msg2.message = "EL mensaje es"
+        
         self.msg2.acx = float(self.prev_accel_x)
         self.msg2.acy = float(self.prev_accel_y)
         self.msg2.acz = float(self.prev_accel_z)

@@ -20,6 +20,11 @@ def generate_launch_description():
             executable='imu_bridge',
             name='imu_bridge'
         ),
+         Node(
+            package='mpu_pub',
+            executable='data_calibrated_mpu',
+            name='imu_bridge'
+        ),
         Node(
             package='robot_localization',
             executable='ekf_node',

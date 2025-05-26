@@ -38,6 +38,7 @@ setup(
             'motor_subscriber = mpu_pub.motor_subscriber:main',
             'motor_subscriber2 = mpu_pub.motor_subscriber2:main',
             'data_calibrated_mpu = mpu_pub.data_calibrated_mpu:main',
+            'data_calibrated_just_offset= mpu_pub.data_calibrated_just_offset:main',
             'imu_bridge = mpu_pub.imu_bridge:main',
         ],
     },
