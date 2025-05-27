@@ -34,13 +34,13 @@ def generate_launch_description():
             output='screen',
         ),
         # transforma map → odom
-        #Node(
-        #    package='tf2_ros',
-        #    executable='static_transform_publisher',
-        #    name='static_map_to_odom',
-        #    arguments=['0', '0', '0', '0', '0', '0', 'map', 'odom'],
-        #    output='screen'
-        #),
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='static_map_to_odom',
+            arguments=['0', '0', '0', '0', '0', '0', 'map', 'odom'],
+            output='screen'
+        ),
 
         # transforma odom → base_link
         Node(
@@ -55,7 +55,7 @@ def generate_launch_description():
             package='tf2_ros',
             executable='static_transform_publisher',
             name='static_map_to_tag0',
-            arguments=['1.85', '0.37', '0.31', '0.347', '-0.584', '0.63', 'map', 'tag36h11:0'],
+            arguments=['1.85', '0.37', '0.31', '0.347', '-0.584', '0.63', 'map', 'tag36h11:0_fixed'],
             output='screen'
         ),
 
@@ -64,7 +64,7 @@ def generate_launch_description():
             package='tf2_ros',
             executable='static_transform_publisher',
             name='static_map_to_tag1',
-            arguments=['1.69', '0.47', '0.31', '-0.28', '-0.584', '0.63', 'map',  'tag36h11:1'],
+            arguments=['1.69', '0.47', '-0.28', '0.25', '-0.31', '0.0', 'map',  'tag36h11:1_fixed'],
             output='screen'
         ),
         Node(
