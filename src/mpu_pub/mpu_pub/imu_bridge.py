@@ -5,6 +5,7 @@ from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
 from std_msgs.msg import Header
 from geometry_msgs.msg import TwistWithCovarianceStamped
+from nav_msgs.msg import Odometry
 import numpy as np
 import math
 
@@ -18,8 +19,7 @@ class ImuBridge(Node):
         # Suscripción al mensaje combinado de tus dos MPU
         self.sub = self.create_subscription(Mpu, 'mpu_data_2', self.callback_mpu, 10)
         # Publicador de zero-twist para ZUPT
-        self.zero_twist_pub = self.create_publisher(
-            TwistWithCovarianceStamped, '/zero_twist', 10)
+        self.zero_odom_pub = self.create_publisher( Odometry, '/zero_twist', 10)
         # Publicadores de los dos Imu separados
         self.pub0 = self.create_publisher(Imu, 'imu/primary', 10)
         self.pub1 = self.create_publisher(Imu, 'imu/secondary', 10)
@@ -35,7 +35,7 @@ class ImuBridge(Node):
 
         # --- Construcción del mensaje IMU0 ---
         imu0 = Imu()
-        imu0.header = Header(stamp=now, frame_id='imu0_link')
+        imu0.header = Header(stamp=now, frame_id='imu1_link')
         ax0 = (msg.acx) * G2MS2
         ay0 = (msg.acy) * G2MS2
         az0 = (msg.acz) * G2MS2
@@ -53,7 +53,7 @@ class ImuBridge(Node):
 
         # --- Construcción del mensaje IMU1 ---
         imu1 = Imu()
-        imu1.header = Header(stamp=now, frame_id='imu1_link')
+        imu1.header = Header(stamp=now, frame_id='imu2_link')
         ax1 = (msg.acx2) * G2MS2
         ay1 = (msg.acy2) * G2MS2
         az1 = (msg.acz2) * G2MS2
@@ -91,22 +91,15 @@ class ImuBridge(Node):
             abs(gz1) < self.gyro_threshold
         )
         if stationary0 and stationary1:
-            zero = TwistWithCovarianceStamped()
-            zero.header.stamp = now
-            zero.header.frame_id = 'base_link'  # 
-            # velocidades a cero
-            zero.twist.twist.linear.x = 0.0
-            zero.twist.twist.linear.y = 0.0
-            zero.twist.twist.linear.z = 0.0
-            zero.twist.twist.angular.x = 0.0
-            zero.twist.twist.angular.y = 0.0
-            zero.twist.twist.angular.z = 0.0
-            # Covarianza pequeña => alta confianza en «cero»
-            cov = [0.0]*36
-            cov[0] = cov[7] = cov[14] = 0.001  # vx, vy, vz
-            cov[21] = cov[28] = cov[35] = 0.001  # vroll, vpitch, vyaw
-            zero.twist.covariance = cov
-            self.zero_twist_pub.publish(zero)
+            zero_odom = Odometry()
+            zero_odom.header = zero_odom.header
+            zero_odom.header.frame_id = 'base_link'
+            zero_odom.child_frame_id = 'base_link'
+            zero_odom.twist = zero_odom.twist
+            # (podéis dejar pose a cero)
+            self.zero_odom_pub = self.create_publisher(Odometry, '/zero_twist', 10)
+            self.zero_odom_pub.publish(zero_odom)
+            
 
     def callback_odometry(self, msg: Odometry):
         now = self.get_clock().now().to_msg()

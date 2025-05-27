@@ -84,7 +84,7 @@ def generate_launch_description():
                 {'family': '36h11'},
                 {'size': 0.1},
                 {'publish_tf': True},
-                { 'publish_tag_detections_pose': False},
+                { 'publish_tag_detections_pose': True},
                 {'camera_frame_id': 'camera_link'}
                 
             ],

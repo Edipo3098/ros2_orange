@@ -77,29 +77,29 @@ ekf_filter:
     imu1_queue_size: 5
     imu0_remove_gravitational_acceleration: true
     imu1_remove_gravitational_acceleration: true
-    imu0_linear_acceleration_covariance: [1.5, 0.0, 0.0, 
-                                          0.0, 1.5, 0.0, 
-                                          0.0, 0.0, 1.5]
-    imu0_angular_velocity_covariance:      [1.5, 0.0, 0.0, 
-                                            0.0, 1.5, 0.0, 
-                                            0.0, 0.0, 1.5]
-    imu1_linear_acceleration_covariance: [1.5, 0.0, 0.0, 
-                                          0.0, 1.5, 0.0, 
-                                          0.0, 0.0, 1.5]
-    imu1_angular_velocity_covariance:      [1.5, 0.0, 0.0, 
-                                          0.0, 1.5, 0.0, 
-                                          0.0, 0.0, 1.5]
+    imu0_linear_acceleration_covariance: [0.1, 0.0, 0.0, 
+                                          0.0, 0.1, 0.0, 
+                                          0.0, 0.0, 0.1]
+    imu0_angular_velocity_covariance:      [0.1, 0.0, 0.0, 
+                                            0.0, 0.1, 0.0, 
+                                            0.0, 0.0, 0.1]
+    imu1_linear_acceleration_covariance: [0.1, 0.0, 0.0, 
+                                          0.0, 0.1, 0.0, 
+                                          0.0, 0.0, 0.1]
+    imu1_angular_velocity_covariance:      [0.1, 0.0, 0.0, 
+                                          0.0, 0.1, 0.0, 
+                                          0.0, 0.0, 0.1]
 
     # En ekf_filter.yaml
-    odomZ: /zero_twist
-    odomZ_config: [
+    odom2: /zero_twist
+    odom2_config: [
       false,false,false,   # pos_x,pos_y,pos_z  (no usamos pose)
       false,false,false,   # ori_roll,ori_pitch,ori_yaw (no)
       true,  true, false,  # vx,   vy,   vz     ← sólo fusionamos vx,vy
       false,false,false,   # vroll,vpitch,vyaw (no)
       false,false,false    # ax,   ay,   az     (no aceleraciones)
     ]
-    odomZ_twist_covariance: [0.0001,0.0,0.0,  
+    odom2_twist_covariance: [0.0001,0.0,0.0,  
                               0.0, 0.0001, 0.0, 
                                0.0,0.0,0.0001]
 
