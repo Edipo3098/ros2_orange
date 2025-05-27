@@ -2,10 +2,13 @@ ukf_filter:
   ros__parameters:
     # Frecuencia de predicción y publicación
     frequency: 50.0
-    sensor_timeout: 0.1
-    two_d_mode: true
+    sensor_timeout: 0.2
+    two_d_mode: false
     publish_tf: true
-
+    predict_to_current_time: true
+    smooth_lagged_data: true
+    history_length: 0.5
+    dynamic_process_noise_covariance: true
     world_frame:    "map"
     odom_frame:     "odom"
     base_link_frame: "base_link"
@@ -29,14 +32,14 @@ ukf_filter:
     odom0_child_frame: "base_link"
     odom0_config: [
       true, true, true,   # pos_x, pos_y, pos_z
-      true, true, true, # vel_x, vel_y, vel_z
+      false, false, false,  # vel_x, vel_y, vel_z
       false, false, false, # ori_roll, ori_pitch, ori_yaw
       false, false, false, # ang_vel roll/pitch/yaw
       false, false, false  # lin_accel x/y/z
     ]
     odom0_pose_covariance: [
       0.001, 0.0,   0.0,   0.0,   0.0,   0.0,
-      0.0,   0.001, 0.0,   0.0,   0.0,   0.0,
+      0.0,   099.9, 0.0,   0.0,   0.0,   0.0,
       0.0,   0.0,   999.0, 0.0,   0.0,   0.0,
       0.0,   0.0,   0.0,   999.0, 0.0,   0.0,
       0.0,   0.0,   0.0,   0.0,   999.0, 0.0,
@@ -51,14 +54,14 @@ ukf_filter:
     odom1_child_frame: "base_link"
     odom1_config: [
       true, true, true,
-      true, true, true,
+      false, false, false, 
       false, false, false,
       false, false, false,
       false, false, false
     ]
     odom1_pose_covariance: [
       0.001, 0.0,   0.0,   0.0,   0.0,   0.0,
-      0.0,   0.001, 0.0,   0.0,   0.0,   0.0,
+      0.0,   99.9, 0.0,   0.0,   0.0,   0.0,
       0.0,   0.0,   999.0, 0.0,   0.0,   0.0,
       0.0,   0.0,   0.0,   999.0, 0.0,   0.0,
       0.0,   0.0,   0.0,   0.0,   999.0, 0.0,
@@ -72,13 +75,14 @@ ukf_filter:
     odom2_frame:      "base_link"
     odom2_child_frame: "base_link"
     odom2_config: [
-      false, false, false,  # pos_x, pos_y, pos_z
+      true,  true,  true,  # pos_x, pos_y, pos_z
       false, false, false,  # ori_roll, ori_pitch, ori_yaw
       true,  true, true,   # vel_x, vel_y, vel_z (solo vx, vy)
       true, true, true,  # ang_vel roll/pitch/yaw
       false, false, false   # lin_accel x/y/z
     ]
     odom2_twist_covariance: [1e-9,0.0,0.0, 0.0,1e-9,0.0, 0.0,0.0,1e-9]
+    odom2_pose_covariance: [1e-9,0.0,0.0, 0.0,1e-9,0.0, 0.0,0.0,1e-9]
 
     # ----------------------------------------------------------------
     # Configuración de IMUs

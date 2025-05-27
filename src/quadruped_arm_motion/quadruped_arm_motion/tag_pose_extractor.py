@@ -24,7 +24,7 @@ class TagOdomFromTF(Node):
             topic = f'/tag_odom_{tid}'
             self.pubs[tid] = self.create_publisher(Odometry, topic, 10)
 
-        self.create_timer(0.1, lambda: self.publish_tag_odom(base_frame, tag_ids))
+        self.create_timer(0.01, lambda: self.publish_tag_odom(base_frame, tag_ids))
 
     def publish_tag_odom(self, base_frame, tag_ids):
         now = Time()
@@ -32,14 +32,14 @@ class TagOdomFromTF(Node):
             tag_frame = f'tag36h11:{tid}'
             try:
                 tf_stamped = self.tf_buffer.lookup_transform(
-                    tag_frame,base_frame , now, timeout=Duration(seconds=0.05))
+                    base_frame , tag_frame, now, timeout=Duration(seconds=0.05))
             except LookupException:
                 continue
 
             msg = Odometry()
             msg.header = tf_stamped.header
-            msg.header.frame_id = f'tag36h11:{tid}'
-            msg.child_frame_id =  base_frame
+            msg.header.frame_id = base_frame
+            msg.child_frame_id =   f'tag36h11:{tid}'
 
             t = tf_stamped.transform.translation
             q = tf_stamped.transform.rotation

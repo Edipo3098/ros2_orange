@@ -105,10 +105,20 @@ class ImuBridge(Node):
             zero_odom.twist.twist.angular.x = 0.0
             zero_odom.twist.twist.angular.y = 0.0
             zero_odom.twist.twist.angular.z = 0.0
-
+            # Ahora también fijas la pose a cero
+            zero_odom.pose.pose.position.x = 0.0
+            zero_odom.pose.pose.position.y = 0.0
+            zero_odom.pose.pose.position.z = 0.0
+            # Y orientación identidad (cuaternion)
+            zero_odom.pose.pose.orientation.x = 0.0
+            zero_odom.pose.pose.orientation.y = 0.0
+            zero_odom.pose.pose.orientation.z = 0.0
+            zero_odom.pose.pose.orientation.w = 1.0
             # Covarianza pequeña → alta confianza en ceros
             cov = [1e-9 if i in (0,7,14) else 0.0 for i in range(36)]
             zero_odom.twist.covariance = cov
+            
+            zero_odom.pose.covariance = cov
             #self.get_logger().info('ZUPT detectado: publicando velocidad cero en /zero_twist')
 
             
