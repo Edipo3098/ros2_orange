@@ -32,14 +32,14 @@ class TagOdomFromTF(Node):
             tag_frame = f'tag36h11:{tid}'
             try:
                 tf_stamped = self.tf_buffer.lookup_transform(
-                    base_frame, tag_frame, now, timeout=Duration(seconds=0.05))
+                    tag_frame,base_frame , now, timeout=Duration(seconds=0.05))
             except LookupException:
                 continue
 
             msg = Odometry()
             msg.header = tf_stamped.header
-            msg.header.frame_id = base_frame
-            msg.child_frame_id = f'tag36h11:{tid}'
+            msg.header.frame_id = f'tag36h11:{tid}'
+            msg.child_frame_id =  base_frame
 
             t = tf_stamped.transform.translation
             q = tf_stamped.transform.rotation

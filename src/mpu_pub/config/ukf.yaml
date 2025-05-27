@@ -1,4 +1,4 @@
-ekf_filter:
+ukf_filter:
   ros__parameters:
     # Frecuencia de predicción y publicación
     frequency: 50.0

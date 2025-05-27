@@ -16,7 +16,7 @@ def generate_launch_description():
     # Read the URDF file content
     with open(urdf_file_resolved, 'r') as infp:
         robot_description_content = infp.read()
-
+    tags_yaml = '/home/edipo/ros2_orange/src/apriltag_ros/cfg/tags_36h11.yaml'
     return LaunchDescription([
         
         
@@ -83,9 +83,11 @@ def generate_launch_description():
             parameters=[
                 {'family': '36h11'},
                 {'size': 0.1},
+                '/home/edipo/ros2_orange/src/apriltag_ros/cfg/tags_36h11.yaml',
                 {'publish_tf': True},
                 { 'publish_tag_detections_pose': True},
-                {'camera_frame_id': 'camera_link'}
+                {'camera_frame_id': 'camera_link'},
+                
                 
             ],
             remappings=[

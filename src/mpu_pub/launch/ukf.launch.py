@@ -9,9 +9,9 @@ import os
 
 def generate_launch_description():
     pkg_robot = get_package_share_directory('mpu_pub')
-    ekf_yaml = os.path.join(pkg_robot, 'config', 'ekf.yaml')
+    ukf_yaml = os.path.join(pkg_robot, 'config', 'ukf.yaml')
     
-    with open(ekf_yaml, 'r') as f:
+    with open(ukf_yaml, 'r') as f:
         controllers_files = f.read()
     return LaunchDescription([
         
@@ -27,14 +27,14 @@ def generate_launch_description():
         ),
         Node(
             package='robot_localization',
-            executable='ekf_node',
-            name='ekf_filter',
+            executable='ukf_node',
+            name='ukf_filter',
             output='screen',
-            parameters=[ekf_yaml],
+            parameters=[ukf_yaml],
             # Esta línea activa el nivel de log DEBUG
             arguments=[
                 '--ros-args',
-                '--log-level', 'ekf_filter:=DEBUG'
+                '--log-level', 'ukf_filter:=DEBUG'
             ],
             emulate_tty=True,  # fuerza que el output sea interactivo
         ),

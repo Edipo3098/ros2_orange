@@ -48,8 +48,8 @@ class ImuBridge(Node):
         imu0.angular_velocity.x = gx0
         imu0.angular_velocity.y = gy0
         imu0.angular_velocity.z = gz0
-        imu0.linear_acceleration_covariance = [1.5,0.0,0.0,  0.0,1.5,0.0,  0.0,0.0,1.5]
-        imu0.angular_velocity_covariance    = [1.5,0.0,0.0,  0.0,1.5,0.0,  0.0,0.0,1.5]
+        imu0.linear_acceleration_covariance = [0.1,0.0,0.0,  0.0,0.1,0.0,  0.0,0.0,0.1]
+        imu0.angular_velocity_covariance    = [0.1,0.0,0.0,  0.0,0.1,0.0,  0.0,0.0,0.1]
 
         # --- Construcción del mensaje IMU1 ---
         imu1 = Imu()
@@ -66,8 +66,8 @@ class ImuBridge(Node):
         imu1.angular_velocity.x = gx1
         imu1.angular_velocity.y = gy1
         imu1.angular_velocity.z = gz1
-        imu1.linear_acceleration_covariance = [1.5,0.0,0.0,  0.0,1.5,0.0,  0.0,0.0,1.5]
-        imu1.angular_velocity_covariance    = [1.5,0.0,0.0,  0.0,1.5,0.0,  0.0,0.0,1.5]
+        imu1.linear_acceleration_covariance = [0.1,0.0,0.0,  0.0,0.1,0.0,  0.0,0.0,0.1]
+        imu1.angular_velocity_covariance    = [0.1,0.0,0.0,  0.0,0.1,0.0,  0.0,0.0,0.1]
 
         # Publica IMUs
         self.pub0.publish(imu0)
@@ -97,7 +97,21 @@ class ImuBridge(Node):
             zero_odom.child_frame_id = 'base_link'
             zero_odom.twist = zero_odom.twist
             # (podéis dejar pose a cero)
-            self.zero_odom_pub = self.create_publisher(Odometry, '/zero_twist', 10)
+            # Añade aquí la línea de log
+            # ---- Aquí defines explícitamente el twist y covarianza ----
+            zero_odom.twist.twist.linear.x = 0.0
+            zero_odom.twist.twist.linear.y = 0.0
+            zero_odom.twist.twist.linear.z = 0.0
+            zero_odom.twist.twist.angular.x = 0.0
+            zero_odom.twist.twist.angular.y = 0.0
+            zero_odom.twist.twist.angular.z = 0.0
+
+            # Covarianza pequeña → alta confianza en ceros
+            cov = [1e-9 if i in (0,7,14) else 0.0 for i in range(36)]
+            zero_odom.twist.covariance = cov
+            #self.get_logger().info('ZUPT detectado: publicando velocidad cero en /zero_twist')
+
+            
             self.zero_odom_pub.publish(zero_odom)
             
 
