@@ -55,7 +55,7 @@ def generate_launch_description():
             package='tf2_ros',
             executable='static_transform_publisher',
             name='static_map_to_tag0',
-            arguments=['1.85', '0.37', '0.31', '0.347', '-0.584', '0.63', 'map', 'tag36h11:0_fixed'],
+            arguments=['-0.4025', '2.122', '-0.422', '0.0842', '0.05084', '-0.759', 'map', 'tag36h11:0_fixed'],
             output='screen'
         ),
 
@@ -64,7 +64,7 @@ def generate_launch_description():
             package='tf2_ros',
             executable='static_transform_publisher',
             name='static_map_to_tag1',
-            arguments=['1.69', '0.47', '-0.28', '0.25', '-0.31', '0.0', 'map',  'tag36h11:1_fixed'],
+            arguments=['0.30150', '2.078', '-0.453', '0.0842', '0.085', '-0.721', 'map',  'tag36h11:1_fixed'],
             output='screen'
         ),
         Node(
