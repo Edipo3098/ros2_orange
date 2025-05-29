@@ -45,6 +45,7 @@ setup(
             'dynamic_simulation = quadruped_arm_motion.dynamic_simulation:main',
             'echo_effort = quadruped_arm_motion.echo_effort:main',
             'tag_pose_extractor = quadruped_arm_motion.tag_pose_extractor:main',
+            'ik_trigger_node = quadruped_arm_motion.ik_trigger_node:main',
         ],
     },
 )

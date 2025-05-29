@@ -55,7 +55,7 @@ def generate_launch_description():
             package='tf2_ros',
             executable='static_transform_publisher',
             name='static_map_to_tag0',
-            arguments=['-0.4025', '2.122', '-0.422', '0.0842', '0.05084', '-0.759', 'map', 'tag36h11:0_fixed'],
+            arguments=['2.146', '0.393', '-0.477', '3.14', '0.0', '-0.0', 'map', 'tag36h11:0_fixed'],
             output='screen'
         ),
 
@@ -64,7 +64,7 @@ def generate_launch_description():
             package='tf2_ros',
             executable='static_transform_publisher',
             name='static_map_to_tag1',
-            arguments=['0.30150', '2.078', '-0.453', '0.0842', '0.085', '-0.721', 'map',  'tag36h11:1_fixed'],
+            arguments=['2.0796', '-0.3191', '-0.50', '3.14', '0.0', '-0.0', 'map',  'tag36h11:1_fixed'],
             output='screen'
         ),
         Node(
@@ -80,7 +80,8 @@ def generate_launch_description():
                 {'camera_info_url': 'file:///home/edipo/.ros/camera_info/default_cam_2.yaml'},
                 {'frame_id': 'camera_link'}  ,
                 {'pixel_format': 'yuyv'}
-            ]
+            ],
+            arguments=['--ros-args', '--log-level', 'error']
         ),
           # corrección de distorsión
         Node(
@@ -90,6 +91,7 @@ def generate_launch_description():
                 ('image', '/image_raw'),
                 ('camera_info', 'camera_info'),
             ],
+            arguments=['--ros-args', '--log-level', 'error']
         ),
         
         Node(
@@ -108,16 +110,18 @@ def generate_launch_description():
                 
             ],
             remappings=[
-                ('image', '/image_rect'),
+                ('image', '/image_raw'),
                 ('/camera_info', '/camera_info')
-            ]
+            ],
+            arguments=['--ros-args', '--log-level', 'error']
         ),
         
         Node(
             package='quadruped_arm_motion',
             executable='tag_pose_extractor',
             name='tag_pose_extractor',
-            output='screen'
+            output='screen',
+            arguments=['--ros-args', '--log-level', 'error']
         ),
 
         
