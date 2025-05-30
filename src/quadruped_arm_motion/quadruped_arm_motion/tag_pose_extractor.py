@@ -5,7 +5,8 @@ from tf2_ros import Buffer, TransformListener, LookupException, ConnectivityExce
 from rclpy.duration import Duration
 import numpy as np
 from geometry_msgs.msg import Quaternion
-
+from std_msgs.msg import Float64MultiArray
+from tf2_msgs.msg import TFMessage
 DEFAULT_COV = [
     0.01, 0.0, 0.0, 0.0, 0.0, 0.0,
     0.0, 0.01, 0.0, 0.0, 0.0, 0.0,
@@ -62,6 +63,14 @@ class TagOdomFromTF(Node):
         self.tag_ids = tag_ids
 
         self.create_timer(1.0 / self.frequency, self.publish_all_tag_odom)
+        self.publisher_ = self.create_publisher(Float64MultiArray, '/tag36h11_5_pose', 10)
+        self.subscription = self.create_subscription(
+            TFMessage,
+            '/tf',
+            self.tf_callback,
+            10
+        )
+        self.last_stamp = None
 
     def publish_all_tag_odom(self):
         for tid in self.tag_ids:
@@ -117,7 +126,24 @@ class TagOdomFromTF(Node):
             ]
 
             self.pubs[tid].publish(msg)
-
+    def tf_callback(self, msg):
+        for transform in msg.transforms:
+            if transform.child_frame_id == 'tag36h11:5':
+                data = [
+                    transform.transform.translation.x,
+                    transform.transform.translation.y,
+                    transform.transform.translation.z,
+                    transform.transform.rotation.w,
+                    transform.transform.rotation.x,
+                    transform.transform.rotation.y,
+                    transform.transform.rotation.z
+                ]
+                arr = Float64MultiArray()
+                arr.data = data
+                self.publisher_.publish(arr)
+                self.get_logger().info(
+                    f'Publicado /tag36h11_5_pose: x={data[0]:.3f}, y={data[1]:.3f}, z={data[2]:.3f}'
+                )
 def main():
     rclpy.init()
     node = TagOdomFromTF()

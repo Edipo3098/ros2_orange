@@ -46,6 +46,7 @@ setup(
             'echo_effort = quadruped_arm_motion.echo_effort:main',
             'tag_pose_extractor = quadruped_arm_motion.tag_pose_extractor:main',
             'ik_trigger_node = quadruped_arm_motion.ik_trigger_node:main',
+            'ik_trigger_node2 = quadruped_arm_motion.ik_trigger_node2:main',
         ],
     },
 )
