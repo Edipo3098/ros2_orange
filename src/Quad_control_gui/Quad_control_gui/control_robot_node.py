@@ -10,6 +10,7 @@ from matplotlib.patches import Circle
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor,QPalette
 from PyQt5.QtCore import QTimer
+from PyQt5.QtGui import QFont, QColor
 import numpy as np
 
 import rclpy
@@ -17,8 +18,8 @@ from rclpy.node import Node
 
 from Quad_control_gui.MyMplCanvas import MyMplCanvas,IndicatorWidget
 from Quad_control_gui.control_robot import Ui_RobotControl
-from Quad_control_gui.IkQuad import FiveDOFArm , ForwardKinematicsLeg
-
+from collections import deque
+import pyqtgraph as pg
 from tf2_ros import TransformListener, Buffer
 
 from geometry_msgs.msg import TransformStamped
@@ -82,14 +83,17 @@ class MyNode(Node):
         self.msg_move_robot.m3 = float(0)
         self.msg_move_robot.m4 = float(0)
         self.msg_move_robot.m5 = float(0)
+        self.sendCogReady = False
+        self.countCogmsg = 0
         
         # Sample data storage for x, y, z, roll, pitch, yaw with 3 sources for each
-        self.data_x = []
-        self.data_y = []
-        self.data_z = []
-        self.data_roll = []
-        self.data_pitch = []
-        self.data_yaw = []
+        self.max_len = 500  # o 200, dependiendo de cuánto quieras ver “en pantalla”
+        self.data_x     = deque(maxlen=self.max_len )
+        self.data_y     = deque(maxlen=self.max_len )
+        self.data_z     = deque(maxlen=self.max_len )
+        self.data_roll  = deque(maxlen=self.max_len )
+        self.data_pitch = deque(maxlen=self.max_len )
+        self.data_yaw   = deque(maxlen=self.max_len )
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
@@ -142,38 +146,28 @@ class MyNode(Node):
         self.joint_states_pub.publish(self.joint_state_msg)
 
     def add_data(self, msg, index):
-        """Add received data to the corresponding lists."""
+        """Simplemente agrega al deque; automáticamente descarta lo más antiguo."""
         self.data_x.append(msg.pos_x)
-        self.data_y.append(msg._pos_y)
+        self.data_y.append(msg.pos_y)
         self.data_z.append(msg.pos_z)
         self.data_roll.append(msg.roll)
         self.data_pitch.append(msg.pitch)
         self.data_yaw.append(msg.yaw)
-
-        if len(self.data_x) > 1000:
-            self.data_x.pop(0)
-        
-        if len(self.data_y) > 1000:
-            self.data_y.pop(0)
-        
-        if len(self.data_z) > 1000:
-            self.data_z.pop(0)
-        
-        if len(self.data_roll) > 1000:
-            self.data_roll.pop(0)
-        
-        if len(self.data_pitch) > 1000:
-            self.data_pitch.pop(0)
-        
-        if len(self.data_yaw) > 1000:
-            self.data_yaw.pop(0) 
         
 
         
 
     def cog_callback(self, msg):
         """Callback for cog_data topic."""
-        self.add_data(msg, 0)
+        self.countCogmsg += 1
+        if self.countCogmsg > 20:
+            self.sendCogReady = True
+            self.countCogmsg = 0
+        else:
+            self.sendCogReady = False
+            
+        if self.sendCogReady:
+            self.add_data(msg, 0)
     def timer_foot_callback(self):
         foot_joint= ['frontLeft_foot','frontRight_foot','backRight_foot','backLeft_foot'] 
         arm_joint= ['endEfector'] 
@@ -391,13 +385,49 @@ class MyWindow(QMainWindow):
         self.armMoving = self.ros_node.armMoving
         self.RobotReady = self.ros_node.RobotReady
         # Create a canvas for each plot (x, y, z, roll, pitch, yaw)
-        self.plot_canvas = MyMplCanvas(self, width=4, height=4, dpi=100)
-        self.plot_canvas_2 = MyMplCanvas(self, width=4, height=4, dpi=100)
-        self.plot_canvas_arm = MyMplCanvas(self, width=4, height=4, dpi=100)
-        self.plot_canvas_arm_2 = MyMplCanvas(self, width=4, height=4, dpi=100)
-        self.plot_canvas_arm_3 = MyMplCanvas(self, width=4, height=4, dpi=100)
-        
-      
+        self.plot_canvas = pg.PlotWidget(title="Foots pose URDF")
+        self.plot_canvas.showGrid(x=True, y=True)
+        #self.plot_canvas.setXRange(-1, 1)  # Ajusta según tu rango real
+        #self.plot_canvas.setYRange(-1, 1)
+        self.plot_canvas_2 =        pg.PlotWidget(title="Foots Kinematics")
+        self.plot_canvas_2.showGrid(x=True, y=True)
+        #self.plot_canvas_2.setXRange(-1, 1)  # Ajusta según tu rango real
+        #self.plot_canvas_2.setYRange(-1, 1)
+        self.plot_canvas_arm =      pg.PlotWidget(title="XY pose URDF")
+        self.plot_canvas_arm.showGrid(x=True, y=True)
+        #self.plot_canvas_arm.setXRange(-1, 1)
+        #self.plot_canvas_arm.setYRange(-1, 1)
+        self.plot_canvas_arm_2 =    pg.PlotWidget(title="YZ pose URDF")
+        self.plot_canvas_arm_2.showGrid(x=True, y=True)
+        #self.plot_canvas_arm_2.setXRange(-1, 1)
+        #self.plot_canvas_arm_2.setYRange(-1, 1)
+        self.plot_canvas_arm_3 =    pg.PlotWidget(title="XZ pose URDF")
+        self.plot_canvas_arm_3.showGrid(x=True, y=True)
+        #self.plot_canvas_arm_3.setXRange(-1, 1)
+        #self.plot_canvas_arm_3.setYRange(-1, 1)
+        # 1) Para plot_canvas (pies URDF):
+        self.scatter_feet_urdf = pg.ScatterPlotItem(size=10, brush=pg.mkBrush('b'))
+        self.scatter_cog_urdf  = pg.ScatterPlotItem(size=12, brush=pg.mkBrush('r'))
+        self.plot_canvas.addItem(self.scatter_feet_urdf)
+        self.plot_canvas.addItem(self.scatter_cog_urdf)
+
+        # 2) Para plot_canvas_2 (pies cinemática):
+        self.scatter_feet_kin = pg.ScatterPlotItem(size=10, brush=pg.mkBrush('b'))
+        self.scatter_cog_kin  = pg.ScatterPlotItem(size=12, brush=pg.mkBrush('r'))
+        self.plot_canvas_2.addItem(self.scatter_feet_kin)
+        self.plot_canvas_2.addItem(self.scatter_cog_kin)
+
+        # 3) Para plot_canvas_arm (end‐effector XY):
+        self.scatter_ee_xy = pg.ScatterPlotItem(size=12, brush=pg.mkBrush('g'))
+        self.plot_canvas_arm.addItem(self.scatter_ee_xy)
+
+        # 4) Para plot_canvas_arm_2 (end‐effector YZ):
+        self.scatter_ee_yz = pg.ScatterPlotItem(size=12, brush=pg.mkBrush('g'))
+        self.plot_canvas_arm_2.addItem(self.scatter_ee_yz)
+
+        # 5) Para plot_canvas_arm_3 (end‐effector XZ):
+        self.scatter_ee_xz = pg.ScatterPlotItem(size=12, brush=pg.mkBrush('g'))
+        self.plot_canvas_arm_3.addItem(self.scatter_ee_xz)
 
         # Find the layout of the plotFoot widget (the placeholder in your UI on controlQuad)
         layout = QVBoxLayout(self.ui.plotFoot)  # plotFoot is in the controlQuad page
@@ -413,13 +443,114 @@ class MyWindow(QMainWindow):
 
 
         # Create a canvas for each plot (x, y, z, roll, pitch, yaw)
-        self.canvas_x = MyMplCanvas(self, width=5, height=4, dpi=100)
-        self.canvas_y = MyMplCanvas(self, width=5, height=4, dpi=100)
-        self.canvas_z = MyMplCanvas(self, width=5, height=4, dpi=100)
-        self.canvas_roll = MyMplCanvas(self, width=5, height=4, dpi=100)
-        self.canvas_pitch = MyMplCanvas(self, width=5, height=4, dpi=100)
-        self.canvas_yaw = MyMplCanvas(self, width=5, height=4, dpi=100)
+        #self.canvas_x = MyMplCanvas(self, width=5, height=4, dpi=100)
+        #self.canvas_y = MyMplCanvas(self, width=5, height=4, dpi=100)
+        #self.canvas_z = MyMplCanvas(self, width=5, height=4, dpi=100)
+        #self.canvas_roll = MyMplCanvas(self, width=5, height=4, dpi=100)
+        #self.canvas_pitch = MyMplCanvas(self, width=5, height=4, dpi=100)
+        #self.canvas_yaw = MyMplCanvas(self, width=5, height=4, dpi=100)
+        self.max_len = 500  # o 200, dependiendo de cuánto quieras ver “en pantalla”
+        self.canvas_x = pg.PlotWidget(title="Position X vs Time")
+        self.canvas_x.setBackground('w')   # blanco puro. Si prefieres gris muy suave, usa '#f5f5f5'
 
+        # 2) Fuente del título y etiquetas de los ejes:
+        
+        self.canvas_x.setTitle("Position X vs Time", color='#333333', size='10pt')
+        self.canvas_x.showGrid(x=True, y=True)
+        self.canvas_x.getPlotItem().getAxis('bottom').setLabel(text='Time(s)', color='#333333', **{'font-size': '8pt'})
+        self.canvas_x.getPlotItem().getAxis('left').setLabel(text='Position(m)', color='#333333', **{'font-size': '8pt'})
+        self.canvas_x.getPlotItem().getViewBox().enableAutoRange(False, False)
+        self.canvas_x.setYRange(-2, 15, padding=0)
+        axis_pen = pg.mkPen(color='#666666', width=1)
+        ax_bottom = self.canvas_x.getPlotItem().getAxis('bottom')
+        ax_left   = self.canvas_x.getPlotItem().getAxis('left')
+        ax_bottom.setPen(axis_pen)
+        ax_left.setPen(axis_pen)
+        axis_x_y = self.canvas_x.getPlotItem().getAxis('left')
+        axis_x_y.setRange(-2, 15)
+        axis_x_y.setTickSpacing(5, 1)
+        
+        self.x_lines = self.canvas_x.plot(
+            np.linspace(0, self.max_len-1, self.max_len), 
+            np.zeros(self.max_len), 
+            pen=pg.mkPen('r', width=2)
+        )
+        self.canvas_y = pg.PlotWidget(title="Position Y vs Time", color='#333333', size='10pt') 
+        self.canvas_y.setBackground('w')
+        self.canvas_y.getPlotItem().getAxis('bottom').setLabel(text='Time(s)', color='#333333', **{'font-size': '8pt'})
+        self.canvas_y.getPlotItem().getAxis('left').setLabel(text='Position(m)', color='#333333', **{'font-size': '8pt'})
+        self.canvas_y.showGrid(x=True, y=True)
+        self.canvas_y.getPlotItem().getViewBox().enableAutoRange(False, False)
+        self.canvas_y.setYRange(-2, 15, padding=0)
+        axis_y_z = self.canvas_y.getPlotItem().getAxis('left')
+        axis_y_z.setRange(-2, 15)
+        axis_y_z.setTickSpacing(5, 1)
+        
+        self.y_lines = self.canvas_y.plot(
+            np.linspace(0, self.max_len-1, self.max_len), 
+            np.zeros(self.max_len), 
+            pen=pg.mkPen('r', width=2)
+        )
+        self.canvas_z = pg.PlotWidget(title="Position Z vs Time", color='#333333', size='10pt')
+        self.canvas_z.setBackground('w')
+        self.canvas_z.getPlotItem().getAxis('bottom').setLabel(text='Time(s)', color='#333333', **{'font-size': '8pt'})
+        self.canvas_z.showGrid(x=True, y=True)
+        self.canvas_z.getPlotItem().getViewBox().enableAutoRange(False, False)
+        self.canvas_z.setYRange(-2, 15, padding=0)
+        axis_x_z = self.canvas_z.getPlotItem().getAxis('left')
+        axis_x_z.setRange(-2, 15)
+        axis_x_z.setTickSpacing(5, 1)
+        
+        self.z_lines = self.canvas_z.plot(
+            np.linspace(0, self.max_len-1, self.max_len), 
+            np.zeros(self.max_len), 
+            pen=pg.mkPen('r', width=2)
+        )
+        self.canvas_roll = pg.PlotWidget(title="Yaw vs Time", color='#333333', size='10pt')
+        self.canvas_roll.setBackground('w')
+        self.canvas_roll.showGrid(x=True, y=True)
+        self.canvas_roll.getPlotItem().getViewBox().enableAutoRange(False, False)
+        self.canvas_roll.setYRange(-2, 180, padding=0)
+        axis_roll= self.canvas_roll.getPlotItem().getAxis('left')
+        axis_roll.setRange(-15, 180)
+        axis_roll.setTickSpacing(60, 30)
+        self.canvas_roll.getPlotItem().getAxis('bottom').setLabel(text='Time(s)', color='#333333', **{'font-size': '8pt'})
+        self.canvas_roll.getPlotItem().getAxis('left').setLabel(text='Position(m)', color='#333333', **{'font-size': '8pt'})
+        self.roll_lines = self.canvas_roll.plot(
+            np.linspace(0, self.max_len-1, self.max_len), 
+            np.zeros(self.max_len), 
+            pen=pg.mkPen('r', width=2)
+        )
+        self.canvas_pitch = pg.PlotWidget(title="Yaw vs Time", color='#333333', size='10pt')
+        self.canvas_pitch.setBackground('w')
+        self.canvas_pitch.showGrid(x=True, y=True)
+        self.canvas_pitch.getPlotItem().getViewBox().enableAutoRange(False, False)
+        self.canvas_pitch.setYRange(-2, 180, padding=0)
+        axis_pitch= self.canvas_pitch.getPlotItem().getAxis('left')
+        axis_pitch.setRange(-15, 180)
+        axis_pitch.setTickSpacing(60, 30)
+        self.canvas_pitch.getPlotItem().getAxis('bottom').setLabel(text='Time(s)', color='#333333', **{'font-size': '8pt'})
+        self.canvas_pitch.getPlotItem().getAxis('left').setLabel(text='Position(m)', color='#333333', **{'font-size': '8pt'})
+        self.pitch_lines = self.canvas_pitch.plot(
+            np.linspace(0, self.max_len-1, self.max_len), 
+            np.zeros(self.max_len), 
+            pen=pg.mkPen('r', width=2)
+        )
+        self.canvas_yaw = pg.PlotWidget(title="Yaw vs Time", color='#333333', size='10pt')
+        self.canvas_yaw.setBackground('w')
+        self.canvas_yaw.showGrid(x=True, y=True)
+        self.canvas_yaw.getPlotItem().getViewBox().enableAutoRange(False, False)
+        self.canvas_yaw.setYRange(-2, 180, padding=0)
+        axis_yaw= self.canvas_yaw.getPlotItem().getAxis('left')
+        axis_yaw.setRange(-15, 180)
+        axis_yaw.setTickSpacing(60, 30)
+        self.canvas_yaw.getPlotItem().getAxis('bottom').setLabel(text='Time(s)', color='#333333', **{'font-size': '8pt'})
+        self.canvas_yaw.getPlotItem().getAxis('left').setLabel(text='Position(m)', color='#333333', **{'font-size': '8pt'})
+        self.yaw_lines = self.canvas_yaw.plot(
+            np.linspace(0, self.max_len-1, self.max_len), 
+            np.zeros(self.max_len), 
+            pen=pg.mkPen('r', width=2)
+        )
         # Add each canvas to the layout
         layout_acx = QVBoxLayout(self.ui.acc_x)  # plotFoot is in the controlQuad page
         layout_acx.addWidget(self.canvas_x)
@@ -434,22 +565,36 @@ class MyWindow(QMainWindow):
         layout_yaw = QVBoxLayout(self.ui.rot_z)  # plotFoot is in the controlQuad page
         layout_yaw.addWidget(self.canvas_yaw)
 
-        # Initialize three lines for each plot (x, y, z, roll, pitch, yaw)
-        self.x_lines = [self.canvas_x.axes.plot([], [])[0] for _ in range(1)]
-        self.y_lines = [self.canvas_y.axes.plot([], [])[0] for _ in range(1)]
-        self.z_lines = [self.canvas_z.axes.plot([], [])[0] for _ in range(1)]
-        self.roll_lines = [self.canvas_roll.axes.plot([], [])[0] for _ in range(1)]
-        self.pitch_lines = [self.canvas_pitch.axes.plot([], [])[0] for _ in range(1)]
-        self.yaw_lines = [self.canvas_yaw.axes.plot([], [])[0] for _ in range(1)]
+        
 
         self.ui.label_2.setText("Static Gait")
         self.ui.label_2.setStyleSheet("font-size: 40px; font-weight: bold; color: blue;")  # Set font size, weight, and color
-
+        # Parámetros para los buffers y ejes
+        self.ui.label_6.setText("COG Location")
+        self.ui.label_6.setStyleSheet("font-size: 40px; font-weight: bold; color: blue;")  # Set font size, weight, and color
+        
+        self.ylim_min = -2.0
+        self.ylim_max =  2.0
+        # Initialize three lines for each plot (x, y, z, roll, pitch, yaw)
+        #self.x_lines =      self.canvas_x.axes.plot(np.arange(self.max_len), np.zeros(self.max_len))[0]
+        #self.y_lines =      self.canvas_y.axes.plot(np.arange(self.max_len), np.zeros(self.max_len))[0]
+        #self.z_lines =      self.canvas_z.axes.plot(np.arange(self.max_len), np.zeros(self.max_len))[0]
+        #self.roll_lines =   self.canvas_roll.axes.plot(np.arange(self.max_len), np.zeros(self.max_len))[0]
+        #self.pitch_lines =  self.canvas_pitch.axes.plot(np.arange(self.max_len), np.zeros(self.max_len))[0]
+        #self.yaw_lines =    self.canvas_yaw.axes.plot(np.arange(self.max_len), np.zeros(self.max_len))[0]
+        
+        
+        self.setAxisPlots()
       
         # QTimer to periodically update the plot
         self.plot_timer = QTimer(self)
         self.plot_timer.timeout.connect(self.plotFoots)
-        self.plot_timer.start(500)  # Refresh plot every 100ms
+        self.plot_timer.start(1000)  # Refresh plot every 100ms
+        
+        # QTimer to periodically update the plot
+        self.plot_COG = QTimer(self)
+        self.plot_COG.timeout.connect(self.plotCog)
+        self.plot_COG.start(1000)  # Refresh plot every 100ms
 
         self.update_joint_positions()
         # Update the indicator based on conditions
@@ -514,30 +659,41 @@ class MyWindow(QMainWindow):
         self.indicator_leg.repaint()
         self.indicator_robot.update()
         self.indicator_leg.update()
-    def plotFoots(self):
-        self.update_indicator()
+    def plotCog(self):
         try:
             self.update_plots()
         finally:
             pass
-        footPose = self.ros_node.footPose
-        cogPose = self.ros_node.cogPose
-        quadMoving = self.robotMoving
-        legMoving = self.leg
-
         
-        footPose_2 =  self.ros_node.footPose_k
+    def plotFoots(self):
+        self.update_indicator()
 
-        EndEffector = [self.ros_node.endEfector[0],self.ros_node.endEfector[1]]
-       
-        self.plot_canvas.plot_circles(footPose[:],cogPose,quadMoving,legMoving,'Foots pose URDF')
-        self.plot_canvas_2.plot_circles(footPose_2[:],cogPose,quadMoving,legMoving, 'Foots pose Kinematics')
+        footPose = self.ros_node.footPose        # lista de 4 pares [x,y]
+        footPose_2 = self.ros_node.footPose_k    # lista de 4 pares [x,y]
+        cogPose = self.ros_node.cogPose          # [x, y, z]
+        ee     = self.ros_node.endEfector        # [x, y, z, rot...]
 
-        self.plot_canvas_arm.plot_circle(EndEffector , 'End Effector URDF XY','X axis','Y axis')
-        EndEffector = [self.ros_node.endEfector[1],self.ros_node.endEfector[2]]
-        self.plot_canvas_arm_2.plot_circle(EndEffector , 'End Effector URDF YZ','Y axis','Z axis')
-        EndEffector = [self.ros_node.endEfector[0],self.ros_node.endEfector[2]]
-        self.plot_canvas_arm_3.plot_circle(EndEffector, 'End Effector URDF XZ','X axis','Z axis')
+        # 1) Actualizar pies URDF + COG en plot_canvas:
+        xs_urdf = [p[0] for p in footPose]
+        ys_urdf = [p[1] for p in footPose]
+        self.scatter_feet_urdf.setData(x=xs_urdf, y=ys_urdf)
+        # COG proyectado en XY:
+        self.scatter_cog_urdf.setData(x=[cogPose[0]], y=[cogPose[1]])
+
+        # 2) Actualizar pies cinemática + COG en plot_canvas_2:
+        xs_kin = [p[0] for p in footPose_2]
+        ys_kin = [p[1] for p in footPose_2]
+        self.scatter_feet_kin.setData(x=xs_kin, y=ys_kin)
+        self.scatter_cog_kin.setData(x=[cogPose[0]], y=[cogPose[1]])
+
+        # 3) End‐effector XY en plot_canvas_arm:
+        self.scatter_ee_xy.setData(x=[ee[0]], y=[ee[1]])
+
+        # 4) End‐effector YZ en plot_canvas_arm_2:
+        self.scatter_ee_yz.setData(x=[ee[1]], y=[ee[2]])
+
+        # 5) End‐effector XZ en plot_canvas_arm_3:
+        self.scatter_ee_xz.setData(x=[ee[0]], y=[ee[2]])
        
     def nextPage(self):
         if self.currentIdx < 3:
@@ -680,7 +836,7 @@ class MyWindow(QMainWindow):
         elif self.Robot == QUAD:
             
             self.ros_node.msg_move.robot = 'QUAD'
-            self.ros_node.msg_move_robot = 'QUAD'
+           # self.ros_node.msg_move_robot = 'QUAD'
             
             if self.leg == FL:
                 
@@ -816,119 +972,103 @@ class MyWindow(QMainWindow):
     def update_plots(self):
         """Update the plots with new data from ROS."""
         
-        # Create an x-axis for each plot, based on the number of data points
-        x_axis_x = range(1000)
-        x_axis_y = range(1000)
-        x_axis_z = range(1000)
-        x_axis_roll = range(1000)
-        x_axis_pitch = range(1000)
-        x_axis_yaw = range(1000)
-        """
-         # Debugging: Print the lengths and types of the data before plotting
-        self.ros_node.get_logger().info(f"Data X Length: {len(self.ros_node.data_x)}, Data Y Length: {len(self.ros_node.data_y)}")
-        self.ros_node.get_logger().info(f"Data Z Length: {len(self.ros_node.data_z)}, Data Roll Length: {len(self.ros_node.data_roll)}")
-        self.ros_node.get_logger().info(f"Data Pitch Length: {len(self.ros_node.data_pitch)}, Data Yaw Length: {len(self.ros_node.data_yaw)}")
-        self.ros_node.get_logger().info(f"First 5 X Values: {self.ros_node.data_x[:5]}")
-        self.ros_node.get_logger().info(f"First 5 Y Values: {self.ros_node.data_y[:5]}")
-            # Ensure the data is non-empty and numeric before plotting
-            # Ensure that x and y data arrays have the same length
-        """
-        if len(x_axis_x) == len(self.ros_node.data_x):
-            self.x_lines[0].set_data(x_axis_x, self.ros_node.data_x)
-        else:
+
+         # 1) Convertir cada deque a numpy array
+        data_x     = np.array(self.ros_node.data_x)
+        data_y     = np.array(self.ros_node.data_y)
+        data_z     = np.array(self.ros_node.data_z)
+        data_roll  = np.array(self.ros_node.data_roll)
+        data_pitch = np.array(self.ros_node.data_pitch)
+        data_yaw   = np.array(self.ros_node.data_yaw)
+
+        # 2) Si no hay datos, salgo
+        if (data_x.size == 0 or data_y.size == 0 or data_z.size == 0
+            or data_roll.size == 0 or data_pitch.size == 0 or data_yaw.size == 0):
             return
 
-        if len(x_axis_y) == len(self.ros_node.data_y):
-            self.y_lines[0].set_data(x_axis_y, self.ros_node.data_y)
-        else:
-            return
+        # 3) Crear buffers completos de longitud self.max_len (todos ceros)
+        arr_x     = np.zeros(self.max_len)
+        arr_y     = np.zeros(self.max_len)
+        arr_z     = np.zeros(self.max_len)
+        arr_roll  = np.zeros(self.max_len)
+        arr_pitch = np.zeros(self.max_len)
+        arr_yaw   = np.zeros(self.max_len)
 
-        if len(x_axis_z) == len(self.ros_node.data_z):
-            self.z_lines[0].set_data(x_axis_z, self.ros_node.data_z)
-        else:
-            return
+        # 4) Copiar las últimas n muestras al final de cada buffer
+        n_x     = data_x.size
+        n_y     = data_y.size
+        n_z     = data_z.size
+        n_roll  = data_roll.size
+        n_pitch = data_pitch.size
+        n_yaw   = data_yaw.size
 
-        if len(x_axis_roll) == len(self.ros_node.data_roll):
-            self.roll_lines[0].set_data(x_axis_roll, self.ros_node.data_roll)
-        else:
-            return
+        arr_x[-n_x:]     = data_x
+        arr_y[-n_y:]     = data_y
+        arr_z[-n_z:]     = data_z
+        arr_roll[-n_roll:]  = data_roll
+        arr_pitch[-n_pitch:] = data_pitch
+        arr_yaw[-n_yaw:]   = data_yaw
 
-        if len(x_axis_pitch) == len(self.ros_node.data_pitch):
-            self.pitch_lines[0].set_data(x_axis_pitch, self.ros_node.data_pitch)
-        else:
-            return
-
-        if len(x_axis_yaw) == len(self.ros_node.data_yaw):
-            self.yaw_lines[0].set_data(x_axis_yaw, self.ros_node.data_yaw)
-        else:
-            return
-        if not self.ros_node.data_x or not self.ros_node.data_y or not self.ros_node.data_z:
-            return
-        if not self.ros_node.data_roll or not self.ros_node.data_pitch or not self.ros_node.data_yaw:
-            return
-             # Adjust plot limits and redraw each plot
-        self.canvas_x.axes.set_xlabel('Time (s)')
-        self.canvas_x.axes.set_ylabel('Position X (m)')
-        self.canvas_x.axes.set_title('Position X vs Time')
-        self.canvas_x.axes.relim()
-        self.canvas_x.axes.autoscale_view()
-        self.canvas_x.fig.tight_layout()
-        self.canvas_x.fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
-        self.canvas_x.axes.grid(True)
-        self.canvas_x.draw()
-
-        self.canvas_y.axes.set_xlabel('Time (s)')
-        self.canvas_y.axes.set_ylabel('Position Y (m)')
-        self.canvas_y.axes.set_title('Position Y vs Time')
-        self.canvas_y.fig.tight_layout()
-        self.canvas_y.fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
-        self.canvas_y.axes.relim()
-        self.canvas_y.axes.autoscale_view()
-        self.canvas_y.axes.grid(True)
-        self.canvas_y.draw()
-
-        self.canvas_z.axes.set_xlabel('Time (s)')
-        self.canvas_z.axes.set_ylabel('Position Z (m)')
-        self.canvas_z.axes.set_title('Position Z vs Time')
-        self.canvas_z.fig.tight_layout()
-        self.canvas_z.fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
-        self.canvas_z.axes.relim()
-        self.canvas_z.axes.autoscale_view()
-        self.canvas_z.axes.grid(True)
-        self.canvas_z.draw()
-
-        self.canvas_roll.axes.set_xlabel('Time (s)')
-        self.canvas_roll.axes.set_ylabel('Orientation roll (rad)')
-        self.canvas_roll.axes.set_title('Roll vs Time')
-        self.canvas_roll.fig.tight_layout()
-        self.canvas_roll.fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
-        self.canvas_roll.axes.relim()
-        self.canvas_roll.axes.autoscale_view()
-        self.canvas_roll.axes.grid(True)
-        self.canvas_roll.draw()
-
-        self.canvas_pitch.axes.set_xlabel('Time (s)')
-        self.canvas_pitch.axes.set_ylabel('Orientation pitch (rad)')
-        self.canvas_pitch.axes.set_title('Pitchvs Time')
-        self.canvas_pitch.fig.tight_layout()
-        self.canvas_pitch.fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
-        self.canvas_pitch.axes.relim()
-        self.canvas_pitch.axes.autoscale_view()
-        self.canvas_pitch.axes.grid(True)
-        self.canvas_pitch.draw()
-
-        self.canvas_yaw.axes.set_xlabel('Time (s)')
-        self.canvas_yaw.axes.set_ylabel('Orientation yaw (rad)')
-        self.canvas_yaw.axes.set_title('Yaw vs Time')
-        self.canvas_yaw.fig.tight_layout()
-        self.canvas_yaw.fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
-        self.canvas_yaw.axes.relim()
-        self.canvas_yaw.axes.autoscale_view()
-        self.canvas_yaw.axes.grid(True)
-        self.canvas_yaw.draw()
-        # Plot the circles on the canvas
+        # 5) Actualizar cada PlotDataItem (llama a setData)
+        self.x_lines   .setData(arr_x)
+        self.y_lines   .setData(arr_y)
+        self.z_lines   .setData(arr_z)
+        self.roll_lines.setData(arr_roll)
+        self.pitch_lines.setData(arr_pitch)
+        self.yaw_lines .setData(arr_yaw)
     
-
+    def setAxisPlots(self):
+        
+        #self.canvas_x.axes.set_xlabel('Time (s)')
+        #self.canvas_x.axes.set_ylabel('Position X (m)')
+        #self.canvas_x.axes.set_title('Position X vs Time')
+        #self.canvas_x.axes.relim()
+        #self.canvas_x.axes.autoscale_view()
+        #self.canvas_x.fig.tight_layout()
+        #self.canvas_x.fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
+        #self.canvas_x.axes.grid(True)
+        #self.canvas_y.axes.set_xlabel('Time (s)')
+        #self.canvas_y.axes.set_ylabel('Position Y (m)')
+        #self.canvas_y.axes.set_title('Position Y vs Time')
+        #self.canvas_y.fig.tight_layout()
+        #self.canvas_y.fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
+        #self.canvas_y.axes.relim()
+        #self.canvas_y.axes.autoscale_view()
+        #self.canvas_y.axes.grid(True)
+        #self.canvas_z.axes.set_xlabel('Time (s)')
+        #self.canvas_z.axes.set_ylabel('Position Z (m)')
+        #self.canvas_z.axes.set_title('Position Z vs Time')
+        #self.canvas_z.fig.tight_layout()
+        #self.canvas_z.fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
+        #self.canvas_z.axes.relim()
+        #self.canvas_z.axes.autoscale_view()
+        #self.canvas_z.axes.grid(True)
+        #self.canvas_roll.axes.set_xlabel('Time (s)')
+        #self.canvas_roll.axes.set_ylabel('Orientation roll (rad)')
+        #self.canvas_roll.axes.set_title('Roll vs Time')
+        #self.canvas_roll.fig.tight_layout()
+        #self.canvas_roll.fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
+        #self.canvas_roll.axes.relim()
+        #self.canvas_roll.axes.autoscale_view()
+        #self.canvas_roll.axes.grid(True)
+        #self.canvas_pitch.axes.set_xlabel('Time (s)')
+        #self.canvas_pitch.axes.set_ylabel('Orientation pitch (rad)')
+        #self.canvas_pitch.axes.set_title('Pitchvs Time')
+        #self.canvas_pitch.fig.tight_layout()
+        #self.canvas_pitch.fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
+        #self.canvas_pitch.axes.relim()
+        #self.canvas_pitch.axes.autoscale_view()
+        #self.canvas_pitch.axes.grid(True)
+        #self.canvas_yaw.axes.set_xlabel('Time (s)')
+        #self.canvas_yaw.axes.set_ylabel('Orientation yaw (rad)')
+        #self.canvas_yaw.axes.set_title('Yaw vs Time')
+        #self.canvas_yaw.fig.tight_layout()
+        #self.canvas_yaw.fig.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
+        #self.canvas_yaw.axes.relim()
+        #self.canvas_yaw.axes.autoscale_view()
+        #self.canvas_yaw.axes.grid(True)
+        return
+        
 def ros_spin_thread(node):
     """
     This function runs the ROS2 spin loop in a separate thread to process ROS2 messages.
