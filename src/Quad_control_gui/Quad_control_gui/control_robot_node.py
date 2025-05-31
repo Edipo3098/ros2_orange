@@ -28,7 +28,7 @@ from robot_interfaces.msg import Anglemotor
 from robot_interfaces.msg import Command,MoveRobot
 from robot_interfaces.msg import Mpu,COGframe
 from sensor_msgs.msg import JointState
-
+from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 ARM = 0
 QUAD = 1
 
@@ -77,6 +77,7 @@ class MyNode(Node):
         self.subscription = self.create_subscription(Command, 'command_robot', self.listener_callback, 10)
         self.joint_states_pub = self.create_publisher(JointState,'joint_states',10)
         self.subscription_cog = self.create_subscription(COGframe, 'kalman_cog_frame_3', self.cog_callback, 10)
+        self.subscription_IkSolution  = self.create_subscription(JointTrajectory, '/arm_trajectory', self.ikCallback, 10)
         self.msg_move_robot.m0 = float(0)
         self.msg_move_robot.m1 = float(0)
         self.msg_move_robot.m2 = float(0)
@@ -85,7 +86,7 @@ class MyNode(Node):
         self.msg_move_robot.m5 = float(0)
         self.sendCogReady = False
         self.countCogmsg = 0
-        
+        self.IkSolution = np.zeros(5, dtype=float)  # Initialize IK solution array
         # Sample data storage for x, y, z, roll, pitch, yaw with 3 sources for each
         self.max_len = 500  # o 200, dependiendo de cuánto quieras ver “en pantalla”
         self.data_x     = deque(maxlen=self.max_len )
@@ -100,7 +101,9 @@ class MyNode(Node):
 
         self.footPose = [[0,0],[0,0],[0,0],[0,0]]
         self.footPose_k = [[0,0],[0,0],[0,0],[0,0]]
-        self.endEfector = [0,0,0,0,0,0]
+        self.endEfector =   [0,0,0,0,0,0]
+        self.aprilTagPose = [0,0,0,0,0,0]
+        self.ikSol = np.zeros(5, dtype=float)
         self.cogPose = [0,0,0]
         self.cogOR = [0,0,0]
         self.COG = np.append(self.cogPose,self.cogOR)
@@ -144,7 +147,21 @@ class MyNode(Node):
         self.leg_joints_BL = np.zeros(3, dtype=float)
         self.leg_joints_BR = np.zeros(3, dtype=float)
         self.joint_states_pub.publish(self.joint_state_msg)
+    def ikCallback(self, msg):
+        """
+        Callback function triggered when a message is received on the 'arm_trajectory' topic.
+        The label in the UI will be updated with the message data.
+        """
+        
+        if len(msg.points) == 0:
+            self.get_logger().info('No hay puntos en el mensaje JointTrajectory.')
+        else:
+            for idx, point in enumerate(msg.points):
+                pt = msg.points[0]
 
+                
+                self.ikSol[:] = pt.positions
+                
     def add_data(self, msg, index):
         """Simplemente agrega al deque; automáticamente descarta lo más antiguo."""
         self.data_x.append(msg.pos_x)
@@ -235,18 +252,25 @@ class MyNode(Node):
                 
                 # Look for the transform from the world frame to the end effector
             now = rclpy.time.Time()
-            transform = self.tf_buffer.lookup_transform('map', 'endEfector', now)
+            transform = self.tf_buffer.lookup_transform('base_link', 'endEfector', now)
             
             # Extract the translation (position) and rotation (orientation)
             trans = transform.transform.translation
             rot = transform.transform.rotation  
             
             # Print the position and orientation of the end effector
-            #self.get_logger().info(f"End Effecor: x={trans.x}, y={trans.y}, z={trans.z}")
+            
                 
             self.endEfector = [trans.x ,trans.y,trans.z,rot.x,rot.y,rot.z]
-            
-        
+            transform = self.tf_buffer.lookup_transform('base_link', 'tag36h11:5', now)
+             # Extract the translation (position) and rotation (orientation)
+            trans = transform.transform.translation
+            rot = transform.transform.rotation  
+            #self.get_logger().info(f"AprilTag: x={trans.x}, y={trans.y}, z={trans.z}")
+            # Print the position and orientation of the end effector
+            #self.get_logger().info(f"End Effecor: x={trans.x}, y={trans.y}, z={trans.z}")
+                
+            self.aprilTagPose = [trans.x ,trans.y,trans.z,rot.x,rot.y,rot.z]
             #self.get_logger().info(f"End Effecor kinematics: x={endPose[0]}, y={endPose[1]}, z={endPose[2]}")
 
             #self.get_logger().info(f"Rot x={rot.x}, y={rot.y}, z={rot.z}")
@@ -322,22 +346,161 @@ class MyWindow(QMainWindow):
         # Add the indicator widget to the layout
         self.indicator_robot = IndicatorWidget()  # Create the indicator widget
         self.indicator_label = QLabel("Robot Status:")  # Create a label for the indicator
-
+        self.indicator_robot_2 = IndicatorWidget()  # Create the indicator widget
+        self.indicator_label_2 = QLabel("Robot Status:")  # Create a label for the indicator
+        self.indicator_robot_3 = IndicatorWidget()  # Create the indicator widget
+        self.indicator_label_3 = QLabel("Robot Status:")  # Create a label for the indicator
+         # Assuming you have a placeholder in the .ui file
         self.ui.layout_indicator = QHBoxLayout(self.ui.quadMoving)  # Assuming you have a placeholder in the .ui file
+        self.ui.layout_indicator_page2 = QHBoxLayout(self.ui.quadMoving_2) 
+        self.ui.layout_indicator_page3 = QHBoxLayout(self.ui.quadMoving_3) 
+        
         self.ui.layout_indicator.addWidget(self.indicator_label)
-        self.ui.layout_indicator.addWidget(self.indicator_robot)  
+        self.ui.layout_indicator.addWidget(self.indicator_robot) 
+        self.ui.layout_indicator_page2.addWidget(self.indicator_label_2)
+        self.ui.layout_indicator_page2.addWidget(self.indicator_robot_2) 
+         
+        self.ui.layout_indicator_page3.addWidget(self.indicator_label_3)
+        self.ui.layout_indicator_page3.addWidget(self.indicator_robot_3)  
 
         self.indicator_arm= IndicatorWidget()  # Create the indicator widget
         self.indicator_label_arm = QLabel("Arm moving:")  # Create a label for the indicator
+        self.indicator_arm_2= IndicatorWidget()  # Create the indicator widget
+        self.indicator_label_arm_2 = QLabel("Arm moving:")  # Create a label for the indicator
+        self.indicator_arm_3= IndicatorWidget()  # Create the indicator widget
+        self.indicator_label_arm_3 = QLabel("Arm moving:")  # Create a label for the indicator
+        
         self.ui.layout_indicator2 = QHBoxLayout(self.ui.armMoving)  # Assuming you have a placeholder in the .ui file
+        self.ui.layout_indicator2_page2 = QHBoxLayout(self.ui.armMoving_2) 
+        self.ui.layout_indicator2_page3 = QHBoxLayout(self.ui.armMoving_3) 
         self.ui.layout_indicator2.addWidget(self.indicator_label_arm)
         self.ui.layout_indicator2.addWidget(self.indicator_arm)  
-
+        self.ui.layout_indicator2_page2.addWidget(self.indicator_label_arm_2)
+        self.ui.layout_indicator2_page2.addWidget(self.indicator_arm_2)  
+        self.ui.layout_indicator2_page3.addWidget(self.indicator_label_arm_3)
+        self.ui.layout_indicator2_page3.addWidget(self.indicator_arm_3)  
+        
         self.indicator_leg = IndicatorWidget()  # Create the indicator widget
         self.indicator_label_leg = QLabel("Quad moving:")  # Create a label for the indicator
+        self.indicator_leg_2 = IndicatorWidget()  # Create the indicator widget
+        self.indicator_label_leg_2 = QLabel("Quad moving:")  # Create a label for the indicator
+        self.indicator_leg_3 = IndicatorWidget()  # Create the indicator widget
+        self.indicator_label_leg_3 = QLabel("Quad moving:")  # Create a label for the indicator
+        
         self.ui.layout_indicator3 = QHBoxLayout(self.ui.LegMoving)  # Assuming you have a placeholder in the .ui file
+        self.ui.layout_indicator3_page2 = QHBoxLayout(self.ui.LegMoving_2) 
+        self.ui.layout_indicator3_page3 = QHBoxLayout(self.ui.LegMoving_3) 
         self.ui.layout_indicator3.addWidget(self.indicator_label_leg)
         self.ui.layout_indicator3.addWidget(self.indicator_leg)  
+        self.ui.layout_indicator3_page2.addWidget(self.indicator_label_leg_2)
+        self.ui.layout_indicator3_page2.addWidget(self.indicator_leg_2)  
+        self.ui.layout_indicator3_page3.addWidget(self.indicator_label_leg_3)
+        self.ui.layout_indicator3_page3.addWidget(self.indicator_leg_3)  
+        # Joint angles Inverse Kinematics
+        self.indicator_j0 = QLabel("Joint 0:")  # Create a label for the indicator
+        self.indicator_j0_value = QLabel("")  # Create a label for the indicato
+        self.ui.layout_indicator4 = QHBoxLayout(self.ui.jointAngles_0)  # Assuming you have a placeholder in the .ui file
+        self.ui.layout_indicator4.addWidget(self.indicator_j0)
+        self.ui.layout_indicator4.addWidget(self.indicator_j0_value)  
+        
+        # Joint angles Inverse Kinematics
+        self.indicator_j1 = QLabel("Joint 1:")  # Create a label for the indicator
+        self.indicator_j1_value = QLabel("")  # Create a label for the indicato
+        self.ui.layout_indicator5 = QHBoxLayout(self.ui.jointAngles_1)  # Assuming you have a placeholder in the .ui file
+        self.ui.layout_indicator5.addWidget(self.indicator_j1)
+        self.ui.layout_indicator5.addWidget(self.indicator_j1_value) 
+        # Joint angles Inverse Kinematics
+        self.indicator_j2 = QLabel("Joint 2:")  # Create a label for the indicator
+        self.indicator_j2_value = QLabel("")  # Create a label for the indicato
+        self.ui.layout_indicator6 = QHBoxLayout(self.ui.jointAngles_2)  # Assuming you have a placeholder in the .ui file
+        self.ui.layout_indicator6.addWidget(self.indicator_j2)
+        self.ui.layout_indicator6.addWidget(self.indicator_j2_value)
+        # Joint angles Inverse Kinematics
+        self.indicator_j3 = QLabel("Joint 1:")  # Create a label for the indicator
+        self.indicator_j3_value = QLabel("")  # Create a label for the indicato
+        self.ui.layout_indicator7 = QHBoxLayout(self.ui.jointAngles_3)  # Assuming you have a placeholder in the .ui file
+        self.ui.layout_indicator7.addWidget(self.indicator_j3)
+        self.ui.layout_indicator7.addWidget(self.indicator_j3_value)
+        # Joint angles Inverse Kinematics
+        self.indicator_j4 = QLabel("Joint 1:")  # Create a label for the indicator
+        self.indicator_j4_value = QLabel("")  # Create a label for the indicato
+        self.ui.layout_indicator8 = QHBoxLayout(self.ui.jointAngles_4)  # Assuming you have a placeholder in the .ui file
+        self.ui.layout_indicator8.addWidget(self.indicator_j4)
+        self.ui.layout_indicator8.addWidget(self.indicator_j4_value) 
+        
+        # AprilTagLocation
+        self.indicator_apX = QLabel("Pos X:")  # Create a label for the indicator
+        self.indicator_apX_value = QLabel("")  # Create a label for the indicato
+        self.ui.layout_indicator9 = QHBoxLayout(self.ui.tag5_x)  # Assuming you have a placeholder in the .ui file
+        self.ui.layout_indicator9.addWidget(self.indicator_apX)
+        self.ui.layout_indicator9.addWidget(self.indicator_apX_value)  
+        # Joint angles Inverse Kinematics
+        self.indicator_apY = QLabel("Pos Y:")  # Create a label for the indicator
+        self.indicator_apY_value = QLabel("")  # Create a label for the indicato
+        self.ui.layout_indicator10 = QHBoxLayout(self.ui.tag5_y)  # Assuming you have a placeholder in the .ui file
+        self.ui.layout_indicator10.addWidget(self.indicator_apY)
+        self.ui.layout_indicator10.addWidget(self.indicator_apY_value)  
+        # Joint angles Inverse Kinematics
+        self.indicator_apZ = QLabel("Pos Z:")  # Create a label for the indicator
+        self.indicator_apZ_value = QLabel("")  # Create a label for the indicato
+        self.ui.layout_indicator11 = QHBoxLayout(self.ui.tag5_z)  # Assuming you have a placeholder in the .ui file
+        self.ui.layout_indicator11.addWidget(self.indicator_apZ)
+        self.ui.layout_indicator11.addWidget(self.indicator_apZ_value) 
+        # Joint angles Inverse Kinematics
+        self.indicator_apROl = QLabel("Roll:")  # Create a label for the indicator
+        self.indicator_apROl_value = QLabel("")  # Create a label for the indicato
+        self.ui.layout_indicator12 = QHBoxLayout(self.ui.tag5_roll)  # Assuming you have a placeholder in the .ui file
+        self.ui.layout_indicator12.addWidget(self.indicator_apROl)
+        self.ui.layout_indicator12.addWidget(self.indicator_apROl_value)
+        # Joint angles Inverse Kinematics
+        self.indicator_apPit = QLabel("Pitch:")  # Create a label for the indicator
+        self.indicator_apPit_value = QLabel("")  # Create a label for the indicato
+        self.ui.layout_indicator13 = QHBoxLayout(self.ui.tag5_pitch)  # Assuming you have a placeholder in the .ui file
+        self.ui.layout_indicator13.addWidget(self.indicator_apPit)
+        self.ui.layout_indicator13.addWidget(self.indicator_apPit_value)
+        # Joint angles Inverse Kinematics
+        self.indicator_apYa = QLabel("Yaw:")  # Create a label for the indicator
+        self.indicator_apYa_value = QLabel("")  # Create a label for the indicato
+        self.ui.layout_indicator14 = QHBoxLayout(self.ui.tag5_yaw)  # Assuming you have a placeholder in the .ui file
+        self.ui.layout_indicator14.addWidget(self.indicator_apYa)
+        self.ui.layout_indicator14.addWidget(self.indicator_apYa_value) 
+        
+        # End Effector pose
+        self.indicator_eeX = QLabel("Pos X:")  # Create a label for the indicator
+        self.indicator_eeX_value = QLabel("")  # Create a label for the indicato
+        self.ui.layout_indicator15 = QHBoxLayout(self.ui.EF_x)  # Assuming you have a placeholder in the .ui file
+        self.ui.layout_indicator15.addWidget(self.indicator_eeX)
+        self.ui.layout_indicator15.addWidget(self.indicator_eeX_value)  
+        # Joint angles Inverse Kinematics
+        self.indicator_eeY = QLabel("Pos Y:")  # Create a label for the indicator
+        self.indicator_eeY_value = QLabel("")  # Create a label for the indicato
+        self.ui.layout_indicator16 = QHBoxLayout(self.ui.EF_y)  # Assuming you have a placeholder in the .ui file
+        self.ui.layout_indicator16.addWidget(self.indicator_eeY)
+        self.ui.layout_indicator16.addWidget(self.indicator_eeY_value)  
+        # Joint angles Inverse Kinematics
+        self.indicator_eeZ = QLabel("Pos Z:")  # Create a label for the indicator
+        self.indicator_eeZ_value = QLabel("")  # Create a label for the indicato
+        self.ui.layout_indicator17 = QHBoxLayout(self.ui.EF_z)  # Assuming you have a placeholder in the .ui file
+        self.ui.layout_indicator17.addWidget(self.indicator_eeZ)
+        self.ui.layout_indicator17.addWidget(self.indicator_eeZ_value) 
+        # Joint angles Inverse Kinematics
+        self.indicator_eeROl = QLabel("Roll:")  # Create a label for the indicator
+        self.indicator_eeROl_value = QLabel("")  # Create a label for the indicato
+        self.ui.layout_indicator18 = QHBoxLayout(self.ui.EF_roll)  # Assuming you have a placeholder in the .ui file
+        self.ui.layout_indicator18.addWidget(self.indicator_eeROl)
+        self.ui.layout_indicator18.addWidget(self.indicator_eeROl_value)
+        # Joint angles Inverse Kinematics
+        self.indicator_eePit = QLabel("Pitch:")  # Create a label for the indicator
+        self.indicator_eePit_value = QLabel("")  # Create a label for the indicato
+        self.ui.layout_indicator19 = QHBoxLayout(self.ui.EF_pitch)  # Assuming you have a placeholder in the .ui file
+        self.ui.layout_indicator19.addWidget(self.indicator_eePit)
+        self.ui.layout_indicator19.addWidget(self.indicator_eePit_value)
+        # Joint angles Inverse Kinematics
+        self.indicator_eeYa = QLabel("Yaw:")  # Create a label for the indicator
+        self.indicator_eeYa_value = QLabel("")  # Create a label for the indicato
+        self.ui.layout_indicator20 = QHBoxLayout(self.ui.EF_yaw)  # Assuming you have a placeholder in the .ui file
+        self.ui.layout_indicator20.addWidget(self.indicator_eeYa)
+        self.ui.layout_indicator20.addWidget(self.indicator_eeYa_value) 
          # Embed the Matplotlib plot in the controlQuad page (index 1 of the QStackedWidget)
        
         
@@ -568,10 +731,18 @@ class MyWindow(QMainWindow):
         
 
         self.ui.label_2.setText("Static Gait")
-        self.ui.label_2.setStyleSheet("font-size: 40px; font-weight: bold; color: blue;")  # Set font size, weight, and color
+        self.ui.label_2.setStyleSheet("font-size: 20px; font-weight: bold; color: blue;")  # Set font size, weight, and color
         # Parámetros para los buffers y ejes
         self.ui.label_6.setText("COG Location")
-        self.ui.label_6.setStyleSheet("font-size: 40px; font-weight: bold; color: blue;")  # Set font size, weight, and color
+        self.ui.label_6.setStyleSheet("font-size: 20px; font-weight: bold; color: blue;")  # Set font size, weight, and color
+        self.ui.label_7.setText("Inverse Kinematics")
+        self.ui.label_7.setStyleSheet("font-size: 20px; font-weight: bold; color: blue;")  # Set font size, weight, and color
+        self.ui.label_8.setText("Joints Solution")
+        self.ui.label_8.setStyleSheet("font-size: 20px; font-weight: bold; color: blue;")  # Set font size, weight, and color
+        self.ui.label_9.setText("AprilTag Location")
+        self.ui.label_9.setStyleSheet("font-size: 20px; font-weight: bold; color: blue;")  # Set font size, weight, and color
+        self.ui.label_10.setText("End Effector Location")
+        self.ui.label_10.setStyleSheet("font-size: 20px; font-weight: bold; color: blue;")  # Set font size, weight, and color
         
         self.ylim_min = -2.0
         self.ylim_max =  2.0
@@ -638,27 +809,57 @@ class MyWindow(QMainWindow):
         self.RobotReady = self.ros_node.RobotReady
         if self.RobotReady:
             self.indicator_robot.setColor("green")
+            self.indicator_robot_2.setColor("green")
+            self.indicator_robot_3.setColor("green")
             
         else:
             self.indicator_robot.setColor("red")
+            self.indicator_robot_2.setColor("red")
+            self.indicator_robot_3.setColor("red")
             
         if self.armMoving:
             self.indicator_arm.setColor("green")
+            self.indicator_arm_2.setColor("green")
+            self.indicator_arm_3.setColor("green")
         else:
             self.indicator_arm.setColor("red")
+            self.indicator_arm_2.setColor("red")
+            self.indicator_arm_3.setColor("red")
             
         if self.robotMoving:
             self.indicator_leg.setColor("green")
+            self.indicator_leg_2.setColor("green")
+            self.indicator_leg_3.setColor("green")
         else:
             self.indicator_leg.setColor("red")
+            self.indicator_leg_2.setColor("red")
+            self.indicator_leg_3.setColor("red")
                 
         self.indicator_robot.setAutoFillBackground(True)
-
+        self.indicator_robot_2.setAutoFillBackground(True)
+        self.indicator_robot_3.setAutoFillBackground(True)
         self.indicator_robot.repaint()
-        self.indicator_arm.repaint()
-        self.indicator_leg.repaint()
+        self.indicator_robot_2.repaint()
+        self.indicator_robot_3.repaint()
         self.indicator_robot.update()
+        self.indicator_robot_2.update()
+        self.indicator_robot_3.update()
+        
+        
+        self.indicator_arm.repaint()
+        self.indicator_arm_2.repaint()
+        self.indicator_arm_3.repaint()
+        self.indicator_arm.update()
+        self.indicator_arm_2.update()
+        self.indicator_arm_3.update()
+        
+        self.indicator_leg.repaint()
+        self.indicator_leg_2.repaint()
+        self.indicator_leg_3.repaint()
+        
         self.indicator_leg.update()
+        self.indicator_leg_2.update()
+        self.indicator_leg_3.update()
     def plotCog(self):
         try:
             self.update_plots()
@@ -672,7 +873,29 @@ class MyWindow(QMainWindow):
         footPose_2 = self.ros_node.footPose_k    # lista de 4 pares [x,y]
         cogPose = self.ros_node.cogPose          # [x, y, z]
         ee     = self.ros_node.endEfector        # [x, y, z, rot...]
-
+        aprilTagPose = self.ros_node.aprilTagPose  # [x, y, z, roll, pitch, yaw]
+        ik = self.ros_node.ikSol  
+        self.indicator_j0_value.setText(f"{ik[0]:.2f}")
+        self.indicator_j1_value.setText(f"{ik[1]:.2f}")
+        self.indicator_j2_value.setText(f"{ik[2]:.2f}")
+        self.indicator_j3_value.setText(f"{ik[3]:.2f}")
+        self.indicator_j4_value.setText(f"{ik[4]:.2f}")
+        # Actualizar indicadores de posición de las articulaciones:
+        self.indicator_apX_value.setText(f"{aprilTagPose[0]:.2f}")
+        self.indicator_apY_value.setText(f"{aprilTagPose[1]:.2f}")
+        self.indicator_apZ_value.setText(f"{aprilTagPose[2]:.2f}")
+        self.indicator_apROl_value.setText(f"{aprilTagPose[3]:.2f}")
+        self.indicator_apPit_value.setText(f"{aprilTagPose[4]:.2f}")
+        self.indicator_apYa_value.setText(f"{aprilTagPose[5]:.2f}")
+        self.indicator_eeX_value.setText(f"{ee[0]:.2f}")
+        self.indicator_eeY_value.setText(f"{ee[1]:.2f}")
+        self.indicator_eeZ_value.setText(f"{ee[2]:.2f}")
+        self.indicator_eeROl_value.setText(f"{ee[3]:.2f}")
+        self.indicator_eePit_value.setText(f"{ee[4]:.2f}")
+        self.indicator_eeYa_value.setText(f"{ee[5]:.2f}")
+        
+        
+        
         # 1) Actualizar pies URDF + COG en plot_canvas:
         xs_urdf = [p[0] for p in footPose]
         ys_urdf = [p[1] for p in footPose]

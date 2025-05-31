@@ -160,7 +160,7 @@ class IKPyIKNode(Node):
                 self.get_logger().info(f"Solution IK Art{i+1} IK: θ={sol_full[i]:.4f} rad ({np.rad2deg(sol_full[i]):.1f}°)")
             # 2) Extrae las 5 posiciones DH
             joint_angles_dh = sol_full  # solu[0] es el dummy link base
-            joint_angles_dh = sol_full[1:6]   # θ_1 a θ_5
+            joint_angles_dh = sol_full[0:5]   # θ_1 a θ_5
             # 3) Convierte a ángulos físicos sumando offsets
             joint_angles_robot = []
             for idx, θ_dh in enumerate(joint_angles_dh):
