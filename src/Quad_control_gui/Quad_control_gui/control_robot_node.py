@@ -43,12 +43,7 @@ Joint_3 = 3
 Joint_4 = 4
 Joint_5 = 5
 class Joints(Enum):
-    X_joint = 'X_joint'
-    Y_joint = 'Y_joint'
-    Z_joint = 'Z_joint'
-    Roll_joint = 'Roll_joint'
-    Pitch_joint = 'Pitch_joint'
-    Yaw_joint = 'Yaw_joint'
+    
     frontLeft_hip_motor_joint = 'frontLeft_hip_motor_joint'
     frontLeft_knee_joint = 'frontLeft_knee_joint'
     frontLeft_ankle_joint = 'frontLeft_ankle_joint'
@@ -67,63 +62,7 @@ class Joints(Enum):
     articulacion4 = 'articulacion4'
     articulacion5 = 'articulacion5'
 
-L1 = 0.035
-L2 = 0.16
-L3 = 0.18
-a = 0.275
-b = 0.065
 
-
-a1 = 0.1
-a2 =  0.29
-a3 = 0.1
-a4 = 0.32
-a5 = 0.1
-
-"""
-dh_Arm = [(0  ,     -np.pi/2,  a1 ,     0), #m0 a m1
-          (a2 ,      0   ,  0  ,        -np.pi/2),  # m1 a m2 Upper arm
-          (a3,       0  ,  0 ,         np.pi/2),  # m2 a m3 Lower arm
-          (a4 ,      0   ,  0,          0),# m3 a m4 Wrist
-          (a5 ,      0   ,  0,          0)]  #m4 a effector
-"""  
-"""          
-dh_Arm = [(0  ,     -np.pi/2,  a1 ,     0), #m0 a m1
-          (a2 ,      0   ,  0  ,        -np.pi/2),  # m1 a m2 Upper arm
-          (a3+a4,       0  ,  0 ,         np.pi/2),  # m2 a m4 Lower arm
-          (a5 ,      np.pi   ,  0,          0)]  #m4 a effector 
-
-
-
-dh_Arm = [(0  ,     -np.pi/2,  a1 ,     0), #m0 a m1
-          (a2 ,      0   ,  0  ,        -np.pi/2),  # m1 a m2 Upper arm
-          (a3,       np.pi/2  , 0   ,   np.pi/2),  # m2 a m3 Lower arm
-          (a4,      -np.pi/2  ,        0,   0),  # m3 a m4 Wrist THIS FAILED JOINT3 
-          (a5 ,       0 ,  0,          0)]  #m4 a effector 
-
-          """ 
-        # a, alpha, d, theta_offset
-dh_Arm = [          (0          , -np.pi/2      ,   a1      ,       0       ), #m0 a m1
-                    (a2         ,  0            ,   0       ,       -np.pi/2),  # m1 a m2 Upper arm
-                    (a3+a4+a5   , -np.pi/2      ,   0       ,       np.pi/2 ),  # m2 a m3 Lower arm
-                    (0          , np.pi/2       ,   0       ,       0       ),  # m3 a m4 Wrist THIS FAILED JOINT3 
-                    (0          , 0             ,   0       ,       0       )]  #m4 a effector 
-
-
-dh_Right_leg = [  
-                    (L1         ,     np.pi/2   ,  0       ,        0        ),  # Hip to knee
-                    (L2         ,     0         ,  0       ,        -0.6     ), # Knee to ankle
-                    (L3         ,     0         ,  0       ,        1.7      )]  # Ankle to foot
-
-
-dh_Left_leg = [   
-                    (L1         ,     np.pi/2   ,  0        ,       0        ), # Hip to knee
-                    (L2         ,     0         ,  0        ,       -0.6     ), # Knee to ankle
-                    (L3         ,     0         ,  0        ,       1.7      )] # Ankle to foot    
-edge_FL = np.array([a , b])
-edge_BL = np.array([-a , b])
-edge_FR = np.array([a , -b])
-edge_BR = np.array([-a , -b])
 class MyNode(Node):
     def __init__(self):
         super().__init__('control_robot_node')
@@ -165,27 +104,24 @@ class MyNode(Node):
        
         # Create Arm objests
         self.armJoint = np.array([0.0,0.0,0.0,0.0,0.0])
-        self.arm = FiveDOFArm(dh_Arm,self.armJoint ,self.COG )
+        
         self.legJoints_FL = np.array([0.0 , 0.0 , 0.0])
         self.legJoints_FR = copy.deepcopy(self.legJoints_FL)  # Creates an independent list
         self.legJoints_BL = copy.deepcopy(self.legJoints_FL)
         self.legJoints_BR = copy.deepcopy(self.legJoints_FL)
-        self.R_Front = ForwardKinematicsLeg(dh_Right_leg[:],self.COG,edge_FR,self.legJoints_FL[:])
-        self.R_Back = ForwardKinematicsLeg(dh_Right_leg[:],self.COG,edge_BR,self.legJoints_FR[:])
-        self.L_Front = ForwardKinematicsLeg(dh_Left_leg[:],self.COG,edge_FL,self.legJoints_BR[:])
-        self.L_Back = ForwardKinematicsLeg(dh_Left_leg[:],self.COG,edge_BL,self.legJoints_BL[:])
+
         
 
          # Timer to periodically check the transform
         self.timer_footPose = self.create_timer(0.5, self.timer_foot_callback)
         self.timer_foot_callback()
 
-
+        
         self.joint_state_msg = JointState()
          # List of joint names from your URDF
         self.joint_state_msg.name = self.joint_state_msg.name = [joint.value for joint in Joints]
         
-        self.joint_state_msg.position = [float(value) for value in [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
+        self.joint_state_msg.position = [value for value in len(Joints)* [0.0]]  # Initialize positions to 0.0 for each joint
 
         # Set the current time for the header
         self.joint_state_msg.header.stamp = self.get_clock().now().to_msg()
@@ -196,6 +132,13 @@ class MyNode(Node):
         # Publish the initial joint states
         
         self.get_logger().info('Initial joint states published.')
+        self.arm_joints = np.zeros(5, dtype=float)
+
+        # Y para cada pata, un arreglo de 3 ángulos (por ejemplo: cadera, rodilla, tobillo)
+        self.leg_joints_FL = np.zeros(3, dtype=float)
+        self.leg_joints_FR = np.zeros(3, dtype=float)
+        self.leg_joints_BL = np.zeros(3, dtype=float)
+        self.leg_joints_BR = np.zeros(3, dtype=float)
         self.joint_states_pub.publish(self.joint_state_msg)
 
     def add_data(self, msg, index):
@@ -241,7 +184,7 @@ class MyNode(Node):
                 
                 # Look for the transform from the world frame to the end effector
                 now = rclpy.time.Time()
-                transform = self.tf_buffer.lookup_transform('odom', i, now)
+                transform = self.tf_buffer.lookup_transform('map', i, now)
                 
                 # Extract the translation (position) and rotation (orientation)
                 trans = transform.transform.translation
@@ -260,14 +203,8 @@ class MyNode(Node):
                 #self.get_logger().warn(f"Could not get transform: {str(e)}")
         
        
-        foot_RB = self.R_Back.FootPose()
-        foot_RF = self.R_Front.FootPose()
-        foot_LB = self.L_Back.FootPose()
-        foot_LF = self.L_Front.FootPose()
-        self.footPose_k[0] = foot_LF[0:2]
-        self.footPose_k[1] = foot_RF[0:2]
-        self.footPose_k[2] = foot_RB[0:2]
-        self.footPose_k[3] = foot_LB[0:2]
+        
+       
 
         
         """
@@ -280,7 +217,7 @@ class MyNode(Node):
             # Look for the transform from the world frame to the end effector
         try:
             now = rclpy.time.Time()
-            transform = self.tf_buffer.lookup_transform('odom', 'Yaw_body', now)
+            transform = self.tf_buffer.lookup_transform('map', 'base_link', now)
             
             # Extract the translation (position) and rotation (orientation)
             trans = transform.transform.translation
@@ -296,7 +233,7 @@ class MyNode(Node):
             self.R_Back.changePoseLeg(self.COG)
             self.L_Front.changePoseLeg(self.COG)
             self.L_Back.changePoseLeg(self.COG)
-            self.arm.changeArmBase(self.COG)
+            
         except Exception as e:
             pass
             #self.get_logger().warn(f"Could not get transform: {str(e)}")
@@ -304,7 +241,7 @@ class MyNode(Node):
                 
                 # Look for the transform from the world frame to the end effector
             now = rclpy.time.Time()
-            transform = self.tf_buffer.lookup_transform('odom', 'endEfector', now)
+            transform = self.tf_buffer.lookup_transform('map', 'endEfector', now)
             
             # Extract the translation (position) and rotation (orientation)
             trans = transform.transform.translation
@@ -314,7 +251,7 @@ class MyNode(Node):
             #self.get_logger().info(f"End Effecor: x={trans.x}, y={trans.y}, z={trans.z}")
                 
             self.endEfector = [trans.x ,trans.y,trans.z,rot.x,rot.y,rot.z]
-            endPose ,orientation= self.arm.ArmPose()
+            
         
             #self.get_logger().info(f"End Effecor kinematics: x={endPose[0]}, y={endPose[1]}, z={endPose[2]}")
 
@@ -345,11 +282,11 @@ class MyNode(Node):
         """
         
         self.publisher.publish(self.msg_move)
-        self.msg_move_robot.m0 =    float(self.arm.getJoint(Joint_0)),  # Update ARM
-        self.msg_move_robot.m1 =    float(self.arm.getJoint(Joint_1)),  # Update 'joint_0' of the FL leg
-        self.msg_move_robot.m2 =    float(self.arm.getJoint(Joint_2)),  # Update 'joint_0' of the FL leg
-        self.msg_move_robot.m3 =    float(self.arm.getJoint(Joint_3)) ,  # Update 'joint_0' of the FL leg
-        self.msg_move_robot.m4 =    float(self.arm.getJoint(Joint_4))  # Update 'joint_0' of the FL leg
+        self.msg_move_robot.m0 =  self.arm_joints[0]  #float(self.arm.getJoint(Joint_0)),  # Update ARM
+        self.msg_move_robot.m1 =  self.arm_joints[1]  #float(self.arm.getJoint(Joint_1)),  # Update 'joint_0' of the FL leg
+        self.msg_move_robot.m2 =  self.arm_joints[2]  #float(self.arm.getJoint(Joint_2)),  # Update 'joint_0' of the FL leg
+        self.msg_move_robot.m3 =  self.arm_joints[3]  #float(self.arm.getJoint(Joint_3)) ,  # Update 'joint_0' of the FL leg
+        self.msg_move_robot.m4 =  self.arm_joints[4]  #float(self.arm.getJoint(Joint_4))  # Update 'joint_0' of the FL leg
         self.publisher_commandRobot.publish(self.msg_move_robot)
     def publish_joint_states(self):
         """
@@ -525,11 +462,11 @@ class MyWindow(QMainWindow):
         self.ros_node.msg_move_robot.m3 = 0.0
         self.ros_node.msg_move_robot.m4 = 0.0
         self.ros_node.msg_move_robot.m5 = 0.0
-        self.ros_node.arm.setJoint(Joint_0, 0.0)
-        self.ros_node.arm.setJoint(Joint_1, 0.0)
-        self.ros_node.arm.setJoint(Joint_2, 0.0)
-        self.ros_node.arm.setJoint(Joint_3, 0.0)
-        self.ros_node.arm.setJoint(Joint_4, 0.0)
+        self.ros_node.arm_joints[0]
+        self.ros_node.arm_joints[1]
+        self.ros_node.arm_joints[2]
+        self.ros_node.arm_joints[3]
+        self.ros_node.arm_joints[4]
         self.ros_node.get_logger().info(f"Updated Arm Joint {Joint_5} Angle: {self.ros_node.msg_move_robot.m5}")
         self.update_joint_positions()
         self.publishMessage()
@@ -709,7 +646,7 @@ class MyWindow(QMainWindow):
             self.ros_node.msg_move.leg = "nn"
             self.armMoving = True
             
-            current_angle = self.ros_node.arm.getJoint(self.armJoint)
+            current_angle = self.ros_node.arm_joints[self.armJoint]
         
             # Log current joint angle for debugging
             self.ros_node.get_logger().info(f"Current Arm Joint {self.armJoint} Angle: {current_angle}")
@@ -731,14 +668,15 @@ class MyWindow(QMainWindow):
             
 
             # Set updated joint angle
-            self.ros_node.arm.setJoint(self.armJoint, new_angle)
+            
+            self.ros_node.arm_joints[self.armJoint] = new_angle
 
             # Log updated joint angle for debugging
-            updated_angle = self.ros_node.arm.getJoint(self.armJoint)
+            updated_angle = new_angle
             self.ros_node.get_logger().info(f"Updated Arm Joint {self.armJoint} Angle: {updated_angle}")
 
             self.ros_node.msg_move.joint = str(self.armJoint)
-            self.ros_node.msg_move.angle =  float(self.ros_node.arm.getJoint(self.armJoint) )
+            self.ros_node.msg_move.angle =  float(new_angle )
         elif self.Robot == QUAD:
             
             self.ros_node.msg_move.robot = 'QUAD'
@@ -747,7 +685,7 @@ class MyWindow(QMainWindow):
             if self.leg == FL:
                 
                 # self.ros_node.get_logger().info(f"FL currentAngle  {currentAngle}")
-                current_angle = self.ros_node.L_Front.getJoint(self.legJoint)     
+                current_angle = self.ros_node.leg_joints_FL[self.legJoint]
                      # Calculate new joint angle
                 if not Force:
                     if angle + current_angle <= 0:
@@ -758,13 +696,14 @@ class MyWindow(QMainWindow):
                         new_angle = angle + current_angle
                 else:
                     new_angle = angle
-                self.ros_node.L_Front.setJoint(self.legJoint,new_angle) 
+                
+                self.ros_node.leg_joints_FL[self.legJoint] = new_angle
                 self.ros_node.msg_move.leg = str("FL")
                 self.ros_node.msg_move.joint = str(self.legJoint)
-                self.ros_node.msg_move.angle =  float(self.ros_node.L_Front.getJoint(self.legJoint))
+                self.ros_node.msg_move.angle =  float(new_angle)
             elif self.leg == FR:
                  # Calculate new joint angle
-                current_angle = self.ros_node.R_Front.getJoint(self.legJoint) 
+                current_angle = self.ros_node.leg_joints_FR[self.legJoint]
                 if not Force:
                     if angle + current_angle <= 0:
                         new_angle = 0
@@ -775,12 +714,13 @@ class MyWindow(QMainWindow):
                 else:
                     new_angle = angle 
                 
-                self.ros_node.R_Front.setJoint(self.legJoint,new_angle)   
+                  
+                self.ros_node.leg_joints_FR[self.legJoint] = new_angle
                 self.ros_node.msg_move.leg =str("FR")
                 self.ros_node.msg_move.joint = str(self.legJoint)
-                self.ros_node.msg_move.angle =  float(self.ros_node.R_Front.getJoint(self.legJoint))
+                self.ros_node.msg_move.angle =  float(new_angle)
             elif self.leg == BR:
-                current_angle = self.ros_node.R_Back.getJoint(self.legJoint) 
+                current_angle = self.ros_node.leg_joints_BR[self.legJoint] 
                 if not Force:
                     if angle + current_angle <= 0:
                         new_angle = 0
@@ -791,13 +731,13 @@ class MyWindow(QMainWindow):
                 else:
                     new_angle = angle 
                 
-                self.ros_node.R_Back.setJoint(self.legJoint,new_angle) 
+                self.ros_node.leg_joints_BR[self.legJoint] = new_angle
                 self.ros_node.msg_move.leg =str("FR")
                 self.ros_node.msg_move.joint = str(self.legJoint)
-                self.ros_node.msg_move.angle =  float(self.ros_node.R_Back.getJoint(self.legJoint))
+                self.ros_node.msg_move.angle =  float(new_angle)
             elif self.leg == BL:
                
-                current_angle = self.ros_node.L_Back.getJoint(self.legJoint) 
+                current_angle = self.ros_node.leg_joints_BL[self.legJoint]
                 if not Force:
                     if angle + current_angle <= 0:
                         new_angle = 0
@@ -808,10 +748,10 @@ class MyWindow(QMainWindow):
                 else:
                     new_angle = angle 
                 
-                self.ros_node.L_Back.setJoint(self.legJoint,new_angle)
+                self.ros_node.leg_joints_BL[self.legJoint] = new_angle
                 self.ros_node.msg_move.leg =str("FR")
                 self.ros_node.msg_move.joint = str(self.legJoint)
-                self.ros_node.msg_move.angle =  float(self.ros_node.L_Back.getJoint(self.legJoint))
+                self.ros_node.msg_move.angle =  float(new_angle)
 
         self.update_joint_positions()
         self.publishMessage()
@@ -819,43 +759,36 @@ class MyWindow(QMainWindow):
         # Update the arm joint positions
         position = [
             
-            float(0),
-            float(0),
-            float(0) ,                                  
-            float(0),
-            float(0),
-            float(0),
-
 
             # Leg FL (Front Left)
             
-            float(self.ros_node.L_Front.getJoint(Joint_0)),  # Update 'joint_0' of the FL leg
-            float(self.ros_node.L_Front.getJoint(Joint_1)),  # Update 'joint_0' of the FL leg
-            float(self.ros_node.L_Front.getJoint(Joint_2)),  # Update 'joint_0' of the FL leg
+            float(self.ros_node.leg_joints_FL[Joint_0]),  # Update 'joint_0' of the FL leg
+            float(self.ros_node.leg_joints_FL[Joint_1]),  # Update 'joint_0' of the FL leg
+            float(self.ros_node.leg_joints_FL[Joint_2]),  # Update 'joint_0' of the FL leg
             
             # Leg FR (Front Right)
             
-            float(self.ros_node.R_Front.getJoint(Joint_0)),  # Update 'joint_0' of the FL leg
-            float(self.ros_node.R_Front.getJoint(Joint_1)),  # Update 'joint_0' of the FL leg
-            float(self.ros_node.R_Front.getJoint(Joint_2)),  # Update 'joint_0' of the FL leg
+            float(self.ros_node.leg_joints_FR[Joint_0]),  # Update 'joint_0' of the FL leg
+            float(self.ros_node.leg_joints_FR[Joint_1]),  # Update 'joint_0' of the FL leg
+            float(self.ros_node.leg_joints_FR[Joint_2]),  # Update 'joint_0' of the FL leg
             
             # Leg BL (Back Right)
             
-            float(self.ros_node.R_Back.getJoint(Joint_0)),  # Update 'joint_0' of the FL leg
-            float(self.ros_node.R_Back.getJoint(Joint_1)),  # Update 'joint_0' of the FL leg
-            float(self.ros_node.R_Back.getJoint(Joint_2)),  # Update 'joint_0' of the FL leg
+            float(self.ros_node.leg_joints_FL[Joint_0]),  # Update 'joint_0' of the FL leg
+            float(self.ros_node.leg_joints_FL[Joint_1]),  # Update 'joint_0' of the FL leg
+            float(self.ros_node.leg_joints_FL[Joint_2]),  # Update 'joint_0' of the FL leg
             
             # Leg BR (Back Right)
            
-            float(self.ros_node.L_Back.getJoint(Joint_0)),  # Update 'joint_0' of the FL leg
-            float(self.ros_node.L_Back.getJoint(Joint_1)),  # Update 'joint_0' of the FL leg
-            float(self.ros_node.L_Back.getJoint(Joint_2)),  # Update 'joint_0' of the FL leg
+            float(self.ros_node.leg_joints_FR[Joint_0]),  # Update 'joint_0' of the FL leg
+            float(self.ros_node.leg_joints_FR[Joint_1]),  # Update 'joint_0' of the FL leg
+            float(self.ros_node.leg_joints_FR[Joint_2]),  # Update 'joint_0' of the FL leg
 
-            float(self.ros_node.arm.getJoint(Joint_0)),  # Update ARM
-            float(self.ros_node.arm.getJoint(Joint_1)),  # Update 'joint_0' of the FL leg
-            float(self.ros_node.arm.getJoint(Joint_2)),  # Update 'joint_0' of the FL leg
-            float(self.ros_node.arm.getJoint(Joint_3)) ,  # Update 'joint_0' of the FL leg
-            float(self.ros_node.arm.getJoint(Joint_4))  # Update 'joint_0' of the FL leg
+            float(self.ros_node.arm_joints[Joint_0]),  # Update ARM
+            float(self.ros_node.arm_joints[Joint_1]),  # Update 'joint_0' of the FL leg
+            float(self.ros_node.arm_joints[Joint_2]),  # Update 'joint_0' of the FL leg
+            float(self.ros_node.arm_joints[Joint_3]) ,  # Update 'joint_0' of the FL leg
+            float(self.ros_node.arm_joints[Joint_4])  # Update 'joint_0' of the FL leg
             
         ]
 
@@ -871,11 +804,11 @@ class MyWindow(QMainWindow):
     def publishMessage(self):
         self.ros_node.msg_move.angle =  float(self.ros_node.msg_move.angle )*180/np.pi
         
-        self.ros_node.msg_move_robot.m0 =    round(float(self.ros_node.arm.getJoint(Joint_0))*180/np.pi ,2)
-        self.ros_node.msg_move_robot.m1 =    round(float(self.ros_node.arm.getJoint(Joint_1))*180/np.pi ,2)
-        self.ros_node.msg_move_robot.m2 =    round(float(self.ros_node.arm.getJoint(Joint_2))*180/np.pi ,2)
-        self.ros_node.msg_move_robot.m3 =    round(float(self.ros_node.arm.getJoint(Joint_3))*180/np.pi ,2)
-        self.ros_node.msg_move_robot.m4 =    round(float(self.ros_node.arm.getJoint(Joint_4))*180/np.pi,2)
+        self.ros_node.msg_move_robot.m0 =    round(float(self.ros_node.arm_joints[Joint_0])*180/np.pi ,2)
+        self.ros_node.msg_move_robot.m1 =    round(float(self.ros_node.arm_joints[Joint_1])*180/np.pi ,2)
+        self.ros_node.msg_move_robot.m2 =    round(float(self.ros_node.arm_joints[Joint_2])*180/np.pi ,2)
+        self.ros_node.msg_move_robot.m3 =    round(float(self.ros_node.arm_joints[Joint_3])*180/np.pi ,2)
+        self.ros_node.msg_move_robot.m4 =    round(float(self.ros_node.arm_joints[Joint_4])*180/np.pi,2)
         #self.ros_node.msg_move_robot.m5 =    round(float(self.ros_node.arm.getJoint(Joint_5))*180/np.pi,2)
         self.ros_node.publisher_commandRobot.publish(self.ros_node.msg_move_robot)
 

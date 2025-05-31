@@ -25,7 +25,7 @@ class ImuBridge(Node):
         self.pub1 = self.create_publisher(Imu, 'imu/secondary', 10)
         # Publicador de COG
         self.pub_COG = self.create_publisher(COGframe, 'kalman_cog_frame_3', 10)
-
+        self.create_subscription(Odometry, '/odometry/filtered', self.callback_odometry, 10)
         # Umbrales para detectar «quietud»
         self.acc_threshold = 0.05    # m/s²
         self.gyro_threshold = 0.02   # rad/s

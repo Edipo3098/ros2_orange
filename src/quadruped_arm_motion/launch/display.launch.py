@@ -25,33 +25,33 @@ def generate_launch_description():
             
         ),
 
-        Node(
-            package='robot_state_publisher',
-            executable='robot_state_publisher',
-            name='robot_state_publisher',
-            output='screen',
-            parameters=[{'robot_description': robot_description_content}],
-        ),
-        Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            name='static_transform_pub_map_odom',
-            arguments=['0', '0', '0', '0', '0', '0', 'map', 'odom'],
-            output='screen'
-        ),
-        Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            name='static_transform_pub_odom_base',
-            arguments=['0', '0', '0', '0', '0', '0', 'odom', 'base_link'],
-            output='screen'
-        ),
-        Node(
-            package='rviz2',
-            executable='rviz2',
-            name='rviz2',
-            output='screen',
-        ),
+        #Node(
+        #    package='robot_state_publisher',
+        #    executable='robot_state_publisher',
+        #    name='robot_state_publisher',
+        #    output='screen',
+        #    parameters=[{'robot_description': robot_description_content}],
+        #),
+        #Node(
+        #    package='tf2_ros',
+        #    executable='static_transform_publisher',
+        #    name='static_transform_pub_map_odom',
+        #    arguments=['0', '0', '0', '0', '0', '0', 'map', 'odom'],
+        #    output='screen'
+        #),
+        #Node(
+        #    package='tf2_ros',
+        #    executable='static_transform_publisher',
+        #    name='static_transform_pub_odom_base',
+        #    arguments=['0', '0', '0', '0', '0', '0', 'odom', 'base_link'],
+        #    output='screen'
+        #),
+        #Node(
+        #    package='rviz2',
+        #    executable='rviz2',
+        #    name='rviz2',
+        #    output='screen',
+        #),
 
         
     ])

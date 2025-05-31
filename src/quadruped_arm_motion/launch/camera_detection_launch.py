@@ -2,6 +2,7 @@ from launch import LaunchDescription
 from launch_ros.actions import Node
 from launch.substitutions import PathJoinSubstitution
 from ament_index_python.packages import get_package_share_directory
+import os
 
 def generate_launch_description():
     urdf_file = PathJoinSubstitution(
@@ -17,9 +18,20 @@ def generate_launch_description():
     with open(urdf_file_resolved, 'r') as infp:
         robot_description_content = infp.read()
     tags_yaml = '/home/edipo/ros2_orange/src/apriltag_ros/cfg/tags_36h11.yaml'
+    rviz_config_path = os.path.expanduser('~/.rviz2/quad.rviz')
     return LaunchDescription([
         
-        
+        Node(
+            package='rviz2',
+            executable='rviz2',
+            name='rviz2',
+            output='screen',
+            arguments=[
+                '-d', rviz_config_path
+            ],
+            # Otras opciones (por ejemplo, nodename, remappings) se
+            # pueden agregar aquí si lo necesitas.
+        ),
         Node(
             package='robot_state_publisher',
             executable='robot_state_publisher',
@@ -28,11 +40,18 @@ def generate_launch_description():
             parameters=[{'robot_description': robot_description_content}],
         ),
         Node(
-            package='joint_state_publisher_gui',
-            executable='joint_state_publisher_gui',
-            name='joint_state_publisher_gui',
+            package='Quad_control_gui',
+            executable='control_robot_node',
+            name='control_robot_node',
             output='screen',
+            
         ),
+        #Node(
+        #    package='joint_state_publisher_gui',
+        #    executable='joint_state_publisher_gui',
+        #    name='joint_state_publisher_gui',
+        #    output='screen',
+        #),
         # transforma map → odom
         Node(
             package='tf2_ros',
@@ -123,6 +142,6 @@ def generate_launch_description():
             output='screen',
             arguments=['--ros-args', '--log-level', 'error']
         ),
-
+        
         
     ])

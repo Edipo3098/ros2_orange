@@ -16,6 +16,7 @@ import rclpy
 from rclpy.node import Node
 from robot_interfaces.msg import Anglemotor,MoveRobot
 from robot_interfaces.msg import Command
+from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 import time
 import serial
 
@@ -52,14 +53,24 @@ class MinimalSubscriber(Node):
         self.get_logger().info('Publish true')
         self.serial_port = '/dev/ttyS5'
         self.baud_rate = 9600
+        self.JointIK = [0,0,0,0,0,0]
 
         self.ser = serial.Serial(self.serial_port, self.baud_rate, timeout=1)
+    def GetIkArm(self, msg):
+        self.get_logger().info('Received: "%s"' % msg)
+        self.get_logger().info('Received: "%s"' % msg.joint_names)
+        for i in range(len(msg.points)):
+            self.get_logger().info('Received: "%s"' % msg.points[i].positions)
+            self.JointIK[i] = msg.points[i].positions
+
+        
     def communicacion_arduino(self):
         if not self.Sending:
             self.get_logger().info('No new data"')
             
         if self.Sending == True:
             msg = self.robot_command
+            
             self.get_logger().info('Received: "%s"' % msg)
             self.get_logger().info('Command "%s"' % msg.command)
             self.isARM = False
@@ -159,6 +170,7 @@ class MinimalSubscriber(Node):
                 print("Keyboard interrupt detected. Exiting...")
             finally:
                 # Close the serial port, even if an exception occurs
+                self.Sending = False
                 self.ser = serial.Serial(self.serial_port, self.baud_rate, timeout=1)
                 self.ser.reset_input_buffer()
                 self.ser.close()

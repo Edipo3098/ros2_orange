@@ -111,7 +111,7 @@ class IKPyIKNode(Node):
             return
 
         tx, ty, tz = trans.transform.translation.x, trans.transform.translation.y, trans.transform.translation.z
-        tx =tx-1
+        tx =tx-0.5
         tz = tz+0.3
         self.get_logger().info(f"Tag {self.tag_id} en base: ({tx:.3f}, {ty:.3f}, {tz:.3f})")
 
@@ -160,11 +160,12 @@ class IKPyIKNode(Node):
                 self.get_logger().info(f"Solution IK Art{i+1} IK: θ={sol_full[i]:.4f} rad ({np.rad2deg(sol_full[i]):.1f}°)")
             # 2) Extrae las 5 posiciones DH
             joint_angles_dh = sol_full  # solu[0] es el dummy link base
-
+            joint_angles_dh = sol_full[1:6]   # θ_1 a θ_5
             # 3) Convierte a ángulos físicos sumando offsets
             joint_angles_robot = []
             for idx, θ_dh in enumerate(joint_angles_dh):
                 deg = np.rad2deg(θ_dh)
+                joint_angles_robot.append(θ_dh)
                 self.get_logger().info(f"Art{idx+1}: θ_DH={θ_dh:.4f} rad ({deg:.1f}°)")
 
 
