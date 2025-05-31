@@ -7,6 +7,7 @@ from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from tf2_ros import TransformListener, Buffer, LookupException, ConnectivityException, ExtrapolationException
 from ikpy.chain import Chain
 from ikpy.link import DHLink
+import ikpy.utils.geometry as geom
 import numpy as np
 from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import TransformStamped, Vector3, Quaternion
@@ -16,11 +17,11 @@ from tf_transformations import quaternion_from_matrix
 # DH:      d (m),      theta (rad), r (a) (m), alpha (rad)
 dh_Arm = [
     #   name,           d,      a (r),      alpha,                theta_offset,          bounds
-    ("articulacion1",  0.00,  0.0000, np.deg2rad(-180), np.deg2rad(90.0),   (np.deg2rad(-180), np.deg2rad(180))),
-    ("articulacion2",  -0.1400,  0.000, np.deg2rad(90),   np.deg2rad(90),  (np.deg2rad(-180), np.deg2rad(180))),
-    ("articulacion3",  0.0,  0.300, np.deg2rad(0), np.deg2rad(-90),    (np.deg2rad(-180), np.deg2rad(180))),
-    ("articulacion4",  0.0,  0.14, np.deg2rad(-90),  np.deg2rad(0),  (np.deg2rad(-180), np.deg2rad(180))),
-    ("articulacion5",  0.3800,  0, np.deg2rad(-90),   np.deg2rad(0.0),    (np.deg2rad(-180), np.deg2rad(180))),
+    ("articulacion1",  0.00     ,  0.00 , np.deg2rad(-180)  , np.deg2rad(90.0)  ,  (np.deg2rad(0), np.deg2rad(180))),
+    ("articulacion2",  -0.1400  ,  0.00 , np.deg2rad(90)    , np.deg2rad(90)    ,  (np.deg2rad(0), np.deg2rad(180))),
+    ("articulacion3",  0.0      ,  0.30 , np.deg2rad(0.0)   , np.deg2rad(-90)   ,  (np.deg2rad(0), np.deg2rad(180))),
+    ("articulacion4",  0.0      ,  0.14 , np.deg2rad(-90)   , np.deg2rad(0.0)   ,  (np.deg2rad(0), np.deg2rad(180))),
+    ("articulacion5",  0.3800   ,  0.0  , np.deg2rad(-90)   , np.deg2rad(0.0)   ,  (np.deg2rad(0), np.deg2rad(180))),
 ]
 
 # Offsets DH (en radianes), uno por articulación según tu tabla dh_Arm
@@ -88,13 +89,15 @@ class IKPyIKNode(Node):
         ee_home = self.chain.forward_kinematics([0, 0, 0, 0, 0])
         self.publish_dh_frames([0, 0, 0, 0, 0])
         self.ik_seed = [
-            
-            1.6,    # articulacion1 ≈ 91.6°
-            2.0,    # articulacion2 ≈114.6°
-            1.5,    # articulacion3 ≈ 28.6°
-            2.1,    # articulacion4 ≈ 0°
-            0.0     # articulacion5 ≈ 0°
+            np.deg2rad(0),   # articulacion1
+            np.deg2rad(20),   # articulacion2
+            np.deg2rad(90),   # articulacion3
+            np.deg2rad(90),   # articulacion4
+            np.deg2rad(90),   # articulacion5
         ]
+        # Publicar la pose “home” de la cadena DH en TF (opcional, solo como referencia)
+        initial_angles = [0, 0, 0, 0, 0]
+        self.publish_dh_frames(initial_angles)
 
     def timer_callback(self):
         # Obtener TF al tag
@@ -108,6 +111,8 @@ class IKPyIKNode(Node):
             return
 
         tx, ty, tz = trans.transform.translation.x, trans.transform.translation.y, trans.transform.translation.z
+        tx =tx-1
+        tz = tz+0.3
         self.get_logger().info(f"Tag {self.tag_id} en base: ({tx:.3f}, {ty:.3f}, {tz:.3f})")
 
         # TF del EE real para comparar
@@ -130,22 +135,38 @@ class IKPyIKNode(Node):
         try:
             # 1) Calcula la solución de IK con toda la cadena (5 articulaciones)
             #    Nota: IKPy devuelve un vector de longitud 6 = 1 "dummy" + 5 joints.
+            target_orientation = geom.rpy_matrix(-np.pi/2, 0.0, np.pi/2)
+            pretarget_orientation = geom.rpy_matrix(0.0, 0.0, 0.0)
+            target_orientation = geom.rpy_matrix(
+                -np.pi/2,  # roll:  -90° (rotación sobre X)
+                0.0,      # pitch:   0°
+                np.pi/2   # yaw:   +90° (rotación sobre Z)
+            )
+            self.ik_seed = [
+            np.deg2rad(10),   # articulacion1
+            np.deg2rad(50),   # articulacion2
+            np.deg2rad(90),   # articulacion3
+            np.deg2rad(50),   # articulacion4
+            np.deg2rad(50),   # articulacion5
+            ]
             sol_full = self.chain.inverse_kinematics(
                 target_position=[tx, ty, tz],
+                max_iter = 500,
+                regularization_parameter=0.5,
+                optimizer='least_squares',
                 initial_position=self.ik_seed
             )
+            for i in range(len(sol_full)):
+                self.get_logger().info(f"Solution IK Art{i+1} IK: θ={sol_full[i]:.4f} rad ({np.rad2deg(sol_full[i]):.1f}°)")
             # 2) Extrae las 5 posiciones DH
             joint_angles_dh = sol_full  # solu[0] es el dummy link base
 
             # 3) Convierte a ángulos físicos sumando offsets
             joint_angles_robot = []
-            for idx, angle_dh in enumerate(joint_angles_dh):
-                theta = wrap_angle(angle_dh )
-                joint_angles_robot.append(theta)
-                self.get_logger().info(
-                    f"Art {idx+1}: θ_DH={angle_dh:.3f} rad ({np.rad2deg(angle_dh):.1f}°) | "
-                    f"θ_robot={theta:.3f} rad ({np.rad2deg(theta):.1f}°)"
-                )
+            for idx, θ_dh in enumerate(joint_angles_dh):
+                deg = np.rad2deg(θ_dh)
+                self.get_logger().info(f"Art{idx+1}: θ_DH={θ_dh:.4f} rad ({deg:.1f}°)")
+
 
             # 4) Comprueba el FK de esa solución DH
             fk_ik = self.chain.forward_kinematics(sol_full)
