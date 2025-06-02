@@ -96,7 +96,7 @@ def generate_launch_description():
                 {'image_width': 1280},
                 {'image_height': 720},
                 {'framerate': 30.0},
-                {'camera_info_url': 'file:///home/edipo/.ros/camera_info/default_cam_2.yaml'},
+                {'camera_info_url': 'file:///home/edipo/.ros/camera_info/default_cam_3.yaml'},
                 {'frame_id': 'camera_link'}  ,
                 {'pixel_format': 'yuyv'}
             ],
@@ -108,7 +108,7 @@ def generate_launch_description():
             name='image_proc', output='screen',
             remappings=[
                 ('image', '/image_raw'),
-                ('camera_info', 'camera_info'),
+                ('camera_info', '/camera_info'),
             ],
             arguments=['--ros-args', '--log-level', 'error']
         ),
@@ -129,8 +129,8 @@ def generate_launch_description():
                 
             ],
             remappings=[
-                ('image', '/image_raw'),
-                ('/camera_info', '/camera_info')
+                ('image', '/image_rect'),
+                ('camera_info', '/camera_info')
             ],
             arguments=['--ros-args', '--log-level', 'error']
         ),

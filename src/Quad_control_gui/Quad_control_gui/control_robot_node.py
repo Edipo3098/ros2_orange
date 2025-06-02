@@ -529,7 +529,8 @@ class MyWindow(QMainWindow):
         
         self.ui.startGait.clicked.connect(self.on_start_gait_click)
         self.ui.stopGait.clicked.connect(self.on_stop_gait_click)
-                
+        self.ui.startGait_2.clicked.connect(self.on_start_ik_click)
+        self.ui.stopGait_2.clicked.connect(self.on_stop_ik_click)       
         
         
         self.armJoint = Joint_0
@@ -1009,6 +1010,22 @@ class MyWindow(QMainWindow):
         self.ros_node.msg_move.robot = 'm4'
         self.ros_node.msg_move_robot.command = 'm4'
         
+        self.publishMessage()
+    def on_stop_ik_click(self):
+        pass
+    def on_start_ik_click(self):
+        print("Set 180º clicked")
+        
+        self.ros_node.arm_joints[Joint_0] = self.ros_node.ikSol[0]
+        self.ros_node.arm_joints[Joint_1] = self.ros_node.ikSol[1]
+        self.ros_node.arm_joints[Joint_2] = self.ros_node.ikSol[2]
+        self.ros_node.arm_joints[Joint_3] = self.ros_node.ikSol[3]
+        self.ros_node.arm_joints[Joint_4] = self.ros_node.ikSol[4]
+        
+        self.ros_node.msg_move.robot = "ARM"
+        self.ros_node.msg_move_robot.command = "ARM"
+        self.ros_node.msg_move.leg = "nn"
+        self.update_joint_positions()
         self.publishMessage()
     def on_stop_gait_click(self):
         

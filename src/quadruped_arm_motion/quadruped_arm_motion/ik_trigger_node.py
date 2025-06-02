@@ -111,8 +111,8 @@ class IKPyIKNode(Node):
             return
 
         tx, ty, tz = trans.transform.translation.x, trans.transform.translation.y, trans.transform.translation.z
-        tx =tx-0.5
-        tz = tz+0.3
+        tx =tx
+        tz = tz
         self.get_logger().info(f"Tag {self.tag_id} en base: ({tx:.3f}, {ty:.3f}, {tz:.3f})")
 
         # TF del EE real para comparar
@@ -144,16 +144,16 @@ class IKPyIKNode(Node):
             )
             self.ik_seed = [
             np.deg2rad(10),   # articulacion1
-            np.deg2rad(50),   # articulacion2
-            np.deg2rad(90),   # articulacion3
+            np.deg2rad(30),   # articulacion2
+            np.deg2rad(10),   # articulacion3
             np.deg2rad(50),   # articulacion4
             np.deg2rad(50),   # articulacion5
             ]
             sol_full = self.chain.inverse_kinematics(
                 target_position=[tx, ty, tz],
                 max_iter = 500,
-                regularization_parameter=0.5,
-                optimizer='least_squares',
+                regularization_parameter=0.1,
+                optimizer='scalar',
                 initial_position=self.ik_seed
             )
             for i in range(len(sol_full)):
