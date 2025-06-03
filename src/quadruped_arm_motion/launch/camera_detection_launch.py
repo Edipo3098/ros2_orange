@@ -57,7 +57,7 @@ def generate_launch_description():
             package='tf2_ros',
             executable='static_transform_publisher',
             name='static_map_to_odom',
-            arguments=['0', '0', '0', '0', '0', '0', 'map', 'odom'],
+            arguments=['0', '0', '0.35', '0', '0', '0', 'map', 'odom'],
             output='screen'
         ),
 
@@ -129,7 +129,7 @@ def generate_launch_description():
                 
             ],
             remappings=[
-                ('image', '/image_rect'),
+                ('image', '/image_raw'),
                 ('camera_info', '/camera_info')
             ],
             arguments=['--ros-args', '--log-level', 'error']

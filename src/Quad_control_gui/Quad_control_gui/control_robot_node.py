@@ -23,7 +23,8 @@ import pyqtgraph as pg
 from tf2_ros import TransformListener, Buffer
 
 from geometry_msgs.msg import TransformStamped
-from std_msgs.msg import String
+from std_msgs.msg import String,Bool
+
 from robot_interfaces.msg import Anglemotor
 from robot_interfaces.msg import Command,MoveRobot
 from robot_interfaces.msg import Mpu,COGframe
@@ -71,6 +72,7 @@ class MyNode(Node):
         self.data1 = 0
         self.data2 = 0
         self.msg_move = Anglemotor()
+        self.msg_ik = Bool()
         self.msg_move_robot = MoveRobot()
         self.publisher = self.create_publisher(Anglemotor, 'motor_angles2', 10)
         self.publisher_commandRobot = self.create_publisher(MoveRobot, 'motor_angles', 10)
@@ -78,6 +80,8 @@ class MyNode(Node):
         self.joint_states_pub = self.create_publisher(JointState,'joint_states',10)
         self.subscription_cog = self.create_subscription(COGframe, 'kalman_cog_frame_3', self.cog_callback, 10)
         self.subscription_IkSolution  = self.create_subscription(JointTrajectory, '/arm_trajectory', self.ikCallback, 10)
+        self.publisher_getIkSolution = self.create_publisher(Bool, 'calculate_Ik', 10)
+        self.getIk = False
         self.msg_move_robot.m0 = float(0)
         self.msg_move_robot.m1 = float(0)
         self.msg_move_robot.m2 = float(0)
@@ -107,6 +111,7 @@ class MyNode(Node):
         self.cogPose = [0,0,0]
         self.cogOR = [0,0,0]
         self.COG = np.append(self.cogPose,self.cogOR)
+        
 
        
         # Create Arm objests
@@ -1012,7 +1017,15 @@ class MyWindow(QMainWindow):
         
         self.publishMessage()
     def on_stop_ik_click(self):
-        pass
+        if self.ros_node.getIk:
+            self.ros_node.msg_ik.data = False
+            self.ros_node.publisher_getIkSolution.publish(self.ros_node.msg_ik)
+            self.ros_node.getIk = False
+        else:
+            self.ros_node.msg_ik.data = True
+            self.ros_node.getIk
+            self.ros_node.publisher_getIkSolution.publish(self.ros_node.msg_ik)
+            
     def on_start_ik_click(self):
         print("Set 180º clicked")
         
@@ -1031,6 +1044,8 @@ class MyWindow(QMainWindow):
         
         self.ros_node.msg_move.robot = 'origin'
         self.ros_node.msg_move_robot.command = 'origin'
+        msg = Bool()
+        
         self.publishMessage()
     def moveRobot(self,angle,Force):
         currentAngle = 0
