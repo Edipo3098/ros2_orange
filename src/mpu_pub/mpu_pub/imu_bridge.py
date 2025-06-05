@@ -4,9 +4,6 @@ from robot_interfaces.msg import Mpu, COGframe
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
 from std_msgs.msg import Header
-from geometry_msgs.msg import TwistWithCovarianceStamped
-from nav_msgs.msg import Odometry
-import numpy as np
 import math
 
 # Constantes
@@ -92,12 +89,10 @@ class ImuBridge(Node):
         )
         if stationary0 and stationary1:
             zero_odom = Odometry()
-            zero_odom.header = zero_odom.header
+            zero_odom.header.stamp = now
             zero_odom.header.frame_id = 'base_link'
             zero_odom.child_frame_id = 'base_link'
-            zero_odom.twist = zero_odom.twist
             # (podéis dejar pose a cero)
-            # Añade aquí la línea de log
             # ---- Aquí defines explícitamente el twist y covarianza ----
             zero_odom.twist.twist.linear.x = 0.0
             zero_odom.twist.twist.linear.y = 0.0
@@ -117,13 +112,11 @@ class ImuBridge(Node):
             # Covarianza pequeña → alta confianza en ceros
             cov = [1e-9 if i in (0,7,14) else 0.0 for i in range(36)]
             zero_odom.twist.covariance = cov
-            
             zero_odom.pose.covariance = cov
-            #self.get_logger().info('ZUPT detectado: publicando velocidad cero en /zero_twist')
-
-            
+            self.get_logger().info(
+                'ZUPT detectado: publicando velocidad cero en /zero_twist'
+            )
             self.zero_odom_pub.publish(zero_odom)
-            
 
     def callback_odometry(self, msg: Odometry):
         now = self.get_clock().now().to_msg()
