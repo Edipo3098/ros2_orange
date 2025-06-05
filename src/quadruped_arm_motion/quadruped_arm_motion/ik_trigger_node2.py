@@ -16,10 +16,10 @@ import matplotlib.pyplot as plt
 
 # Parámetros DH (5 DOF)
 dh_Arm = [
-    ("art1", 0.32,   0.00,   np.deg2rad(-180), np.deg2rad( 80.0), (np.deg2rad(-0.5),  np.deg2rad(20))),
-    ("art2", -0.0800,0.00,   np.deg2rad(  90), np.deg2rad( 55.0), (np.deg2rad(-0.5),  np.deg2rad(20))),
-    ("art3", 0.00,   0.30,   np.deg2rad(   0), np.deg2rad(-45.0), (np.deg2rad(-0.5),  np.deg2rad(15))),
-    ("art4", 0.00,   0.1,   np.deg2rad(-90),  np.deg2rad(  30.0),(np.deg2rad(-0.5),  np.deg2rad(180))),
+    ("art1", 0.32,   0.00,   np.deg2rad(-180), np.deg2rad( 80.0), (np.deg2rad(-1.5),  np.deg2rad(1.5))),
+    ("art2", -0.0800,0.00,   np.deg2rad(  90), np.deg2rad( 55.0), (np.deg2rad(-0.5),  np.deg2rad(65))),
+    ("art3", 0.00,   0.30,   np.deg2rad(   0), np.deg2rad(-45.0), (np.deg2rad(-0.5),  np.deg2rad(40))),
+    ("art4", 0.00,   0.1,   np.deg2rad(-90),  np.deg2rad(  30.0),(np.deg2rad(-40.5),  np.deg2rad(40))),
     ("art5", 0.3200, 0.00,   np.deg2rad(-90),  np.deg2rad(  0.0), (np.deg2rad(-0.5),  np.deg2rad(180))),
 ]
 
@@ -58,11 +58,11 @@ class RTB_IK_Node(Node):
         self.get_logger().info(f"Robot DH cargado con {len(self.robot.links)} eslabones")
 
         # --- 4) Semilla para IK y postura home ---
-        self.qo = [10, 15, 0 ,26.57 ,99.49]
+        self.qo = [10, 15, 0 ,26.57 ,10]
         self.home_angles = [0.0, 0.0, 0.0, 0.0, 0.0]
-        self.mask_translation = [1, 1, 1, 0, 0,1]  # Ignorar rotación
+        self.mask_translation = [0.3,0.3, 0.2, 0,0]
         self.target_xyz = [0.0, 0.0, 0.0]  # Inicializar posición objetivo
-        
+        self.q0 = np.zeros(5)  
         
 
         # --- 5) Inicializar Matplotlib en modo interactivo ---
@@ -92,26 +92,25 @@ class RTB_IK_Node(Node):
         tz = trans.transform.translation.z
         self.get_logger().info(f"Tag {self.tag_id} en base: ({tx:.3f}, {ty:.3f}, {tz:.3f})")
 
-        # 2) Construir la pose objetivo T_target para el efector final
-        R_obj = SE3.RPY([0, 0.0, 0], order='xyz')
-        T_target = SE3(tx, ty, tz) * R_obj
+        
         self.target_xyz = [tx, ty, tz]  # Solo la parte de traslación
              # rotation = identity, orientation libre
 
         
     def calculateIk(self):
         R_obj = SE3.RPY([0, 0, np.pi/2], order='xyz')
-        self.target_xyz[2] = self.target_xyz[2] + 0.05  # Ajustar z para evitar colisiones
+        self.target_xyz[2] = self.target_xyz[2] # Ajustar z para evitar colisiones
+        self.get_logger().info(f"Tag {self.tag_id} en base: ({self.target_xyz[0]:.3f}, {self.target_xyz[1]:.3f}, {self.target_xyz[2]:.3f})")
         T_target     = SE3(*self.target_xyz) + R_obj      # rotation = identity, orientation libre
         # ------------------------------------------------------
         # 6) Intentar IK con Levenberg–Marquardt (solo translación)
         # ------------------------------------------------------
         q_lm, success_lm, iters_lm, searches_lm, residual_lm = self.robot.ik_LM(
             T_target,
-            q0=self.qo,
+            q0=self.q0,
             ilimit=2000,
-            slimit=150,
-            tol=1e-6,
+            slimit=20000,
+            tol=1e-4,
             mask=self.mask_translation,
             joint_limits=True
         )
@@ -122,15 +121,6 @@ class RTB_IK_Node(Node):
         )
         print("Ángulos ik_LM (deg):", np.round(np.rad2deg(q_lm), 2))
 
-
-        # ------------------------------------------------------
-        # 7) Si LM falla, probar Gauss–Newton
-        # ------------------------------------------------------
-        if not success_lm:
-            print("Ningún método de IK traslacional convergió → punto fuera del workspace.")
-            q_sol = self.home_angles  # Volver a la postura home
-            metodo = "HOME"
-            
         if success_lm:
             q_sol = q_lm
             metodo = "LM"
@@ -143,11 +133,14 @@ class RTB_IK_Node(Node):
         print(f"\nUsando la solución de {metodo} para animar…")
         if q_sol[0] > 25:
             q_sol[0] = 15  # Limitar el primer ángulo a 30 grados
+        q_solution = q_sol[1:]
+        q_solution =np.append(q_solution, 0.5)  # Asegurar que el primer ángulo es positivo
+        q_solution = np.abs(q_solution)  # Asegurar que todos los ángulos son positivos
         # 5) Publicar la trayectoria (opcional)
         traj = JointTrajectory()
         traj.joint_names = [l[0] for l in dh_Arm]
         pt = JointTrajectoryPoint()
-        pt.positions =[float( val) for val in q_sol]
+        pt.positions =[float( val) for val in q_solution]
         pt.time_from_start = Duration(seconds=1.0).to_msg()
         traj.points.append(pt)
         
@@ -157,8 +150,11 @@ class RTB_IK_Node(Node):
         #self.plot_rtb(q_sol)
 
         # 7) Extraer y loguear posición del efector final (opcional)
-        T_ee = self.robot.fkine(q_sol)
+        T_ee = self.robot.fkine(q_solution)
+        
         x_ee, y_ee, z_ee = T_ee.t.tolist()
+        self.get_logger().info(f"Publicando trayectoria con ángulos: {np.round(np.rad2deg(q_solution), 2)}")
+        
         self.get_logger().info(f"Pos. EFECTOR (RTB‐DH) → x={x_ee:.3f}, y={y_ee:.3f}, z={z_ee:.3f}")
 
 

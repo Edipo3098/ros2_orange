@@ -1,40 +1,32 @@
 #!/usr/bin/env python3
-import math
 import rclpy
 from rclpy.node import Node
 from rclpy.duration import Duration
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from tf2_ros import TransformListener, Buffer, LookupException, ConnectivityException, ExtrapolationException
+from std_msgs.msg import String,Bool
+# RTB + SpatialMath
+
 from ikpy.chain import Chain
 from ikpy.link import DHLink
 import ikpy.utils.geometry as geom
+
 import numpy as np
-from tf2_ros import TransformBroadcaster
-from geometry_msgs.msg import TransformStamped, Vector3, Quaternion
-from tf_transformations import quaternion_from_matrix
+import matplotlib.pyplot as plt
 
-# DH PARAMETERS (classic, ajustados según tu mensaje):
-# DH:      d (m),      theta (rad), r (a) (m), alpha (rad)
 dh_Arm = [
-    #   name,           d,      a (r),      alpha,                theta_offset,          bounds
-    ("articulacion1",  0.00     ,  0.00 , np.deg2rad(-180)  , np.deg2rad(90.0)  ,  (np.deg2rad(0), np.deg2rad(180))),
-    ("articulacion2",  -0.1400  ,  0.00 , np.deg2rad(90)    , np.deg2rad(90)    ,  (np.deg2rad(0), np.deg2rad(180))),
-    ("articulacion3",  0.0      ,  0.30 , np.deg2rad(0.0)   , np.deg2rad(-90)   ,  (np.deg2rad(0), np.deg2rad(180))),
-    ("articulacion4",  0.0      ,  0.14 , np.deg2rad(-90)   , np.deg2rad(0.0)   ,  (np.deg2rad(0), np.deg2rad(180))),
-    ("articulacion5",  0.3800   ,  0.0  , np.deg2rad(-90)   , np.deg2rad(0.0)   ,  (np.deg2rad(0), np.deg2rad(180))),
-]
-
-# Offsets DH (en radianes), uno por articulación según tu tabla dh_Arm
-theta_offsets = [
-    np.deg2rad( 90.0),   # articulacion1  (antes 90°)
-    np.deg2rad( 90.0),   # articulacion2  (antes 90°)
-    np.deg2rad(-90.0),   # articulacion3  (antes -90°)
-    np.deg2rad(  0.0),   # articulacion4  (antes   0°)
-    np.deg2rad(  0.0),   # articulacion5  (antes   0°)
+    # nombre, d (m),   a (m),  alpha (rad),            theta_offset (rad),       límites (rad)
+    ("art1", 0.32,   0.00,   np.deg2rad(-180), np.deg2rad( 80.0),  (np.deg2rad(-0.5),  np.deg2rad(35))),
+    ("art2", -0.080, 0.00,   np.deg2rad(  90), np.deg2rad( 50.0),  (np.deg2rad(-0.5),  np.deg2rad(20))),
+    ("art3",  0.00,  0.30,   np.deg2rad(   0), np.deg2rad(-80.0),  (np.deg2rad(-0.5),  np.deg2rad(15))),
+    ("art4",  0.00,  0.10,   np.deg2rad(-90),  np.deg2rad( 50.0),  (np.deg2rad(-0.5),  np.deg2rad(180))),
+    ("art5",  0.320, 0.00,   np.deg2rad(-90),  np.deg2rad(  0.0),  (np.deg2rad(-0.5),  np.deg2rad(180))),
 ]
 
 def build_arm_chain_from_dh():
     links = []
+    # Si quieres añadir un eslabón de origen fijo (OriginLink), lo activas aquí:
+    # links.append(OriginLink())
     for name, d, a, alpha, theta_offset, bounds in dh_Arm:
         links.append(
             DHLink(
@@ -42,207 +34,149 @@ def build_arm_chain_from_dh():
                 d=d,
                 a=a,
                 alpha=alpha,
-                theta=theta_offset,  # ¡El offset lo sumamos en la solución!
+                theta=theta_offset,  # offset en theta 
                 bounds=bounds
             )
         )
     return Chain(name='arm_chain', links=links)
 
-def wrap_angle(angle):
-    """Normaliza el ángulo a [-pi, pi]"""
-    return (angle + np.pi) % (2 * np.pi) - np.pi
-
-def saturate(val, lower, upper):
-    return max(min(val, upper), lower)
-
-class IKPyIKNode(Node):
+class RTB_IK_Node(Node):
     def __init__(self):
-        super().__init__('ikpy_ik_node')
+        super().__init__('rtb_ik_node')
 
-        self.tf_buffer = Buffer()
+        # --- 1) TF listener y publicador de trayectorias ---
+        self.tf_buffer   = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.trajectory_pub = self.create_publisher(JointTrajectory, '/arm_trajectory', 10)
+        self.subiscriber = self.create_subscription(Bool, '/calculate_Ik', self.trajectory_callback, 10)
 
-        self.declare_parameter('base_frame', 'base_link')
+        # --- 2) Parámetros ROS2 ---
+        self.declare_parameter('base_frame', 'map')
         self.declare_parameter('tag_id', 5)
-        self.declare_parameter('frequency', 10.0)
+        self.declare_parameter('frequency', 5.0)  # 5 Hz de actualización
         self.base_frame = self.get_parameter('base_frame').get_parameter_value().string_value
-        self.tag_id = self.get_parameter('tag_id').get_parameter_value().integer_value
-        self.frequency = self.get_parameter('frequency').get_parameter_value().double_value
+        self.tag_id     = self.get_parameter('tag_id').get_parameter_value().integer_value
+        self.frequency  = self.get_parameter('frequency').get_parameter_value().double_value
 
-        self.chain = build_arm_chain_from_dh()
-        self.get_logger().info(f"Cadena DH cargada: {[l.name for l in self.chain.links]}")
-        self.ik_active = False
+        # --- 3) Construir el DHRobot con RTB ---
+        self.robot = build_arm_chain_from_dh()
+        self.get_logger().info(f"Robot DH cargado con {len(self.robot.links)} eslabones")
+
+        # --- 4) Semilla para IK y postura home ---
+        self.qo = [10, 15, 0 ,26.57 ,10]
+        self.home_angles = [0.0, 0.0, 0.0, 0.0, 0.0]
+        self.mask_translation = [0.8, 0.5, 0.8, 0, 0,0.2]
+        self.target_xyz = [0.0, 0.0, 0.0]  # Inicializar posición objetivo
+        self.target_orientation = geom.rpy_matrix(-np.pi/2,  # roll: -90°
+                                    0.0,      # pitch: 0°
+                                    np.pi/2   # yaw: +90°
+                                )
+        self.ik_seed = [
+            np.deg2rad(0),  # articulación 1
+            np.deg2rad(0),  # articulación 2
+            np.deg2rad(0),  # articulación 3
+            np.deg2rad(0),  # articulación 4
+            np.deg2rad(0),  # articulación 5
+        ]
+
+        # --- 5) Inicializar Matplotlib en modo interactivo ---
+        #plt.ion()
+        # Dibujar inicialmente la postura home (en la figura #1)
+        #self.plot_rtb(self.home_angles)
+
+        # --- 6) Timer para llamar a timer_callback() periódicamente ---
         self.create_timer(1.0 / self.frequency, self.timer_callback)
 
-        # FK del home
-        ee_home = self.chain.forward_kinematics([0, 0, 0, 0, 0])
-        xh, yh, zh = ee_home[:3, 3]
-        self.get_logger().info(f"[FK Home] EE posición DH home: ({xh:.3f}, {yh:.3f}, {zh:.3f})")
-        # 1) Crea el broadcaster
-        self.tf_broadcaster = TransformBroadcaster(self)
-
-        # 2) Define los nombres de frames según tu DH
-        self.joint_frames = ['joint1', 'joint2', 'joint3', 'joint4', 'joint5']
-
-        # 3) Publica el home TF una sola vez si quieres
-        ee_home = self.chain.forward_kinematics([0, 0, 0, 0, 0])
-        self.publish_dh_frames([0, 0, 0, 0, 0])
-        self.ik_seed = [
-            np.deg2rad(0),   # articulacion1
-            np.deg2rad(20),   # articulacion2
-            np.deg2rad(90),   # articulacion3
-            np.deg2rad(90),   # articulacion4
-            np.deg2rad(90),   # articulacion5
-        ]
-        # Publicar la pose “home” de la cadena DH en TF (opcional, solo como referencia)
-        initial_angles = [0, 0, 0, 0, 0]
-        self.publish_dh_frames(initial_angles)
-
+    def trajectory_callback(self, msg):
+        if msg.data:
+            self.calculateIk()
     def timer_callback(self):
-        # Obtener TF al tag
+        # 1) Intentar obtener transform del AprilTag
         try:
             target_tag = f'tag36h11:{self.tag_id}'
             trans = self.tf_buffer.lookup_transform(
-                self.base_frame, target_tag, rclpy.time.Time(), timeout=Duration(seconds=0.2))
+                self.base_frame, target_tag, rclpy.time.Time(), timeout=Duration(seconds=0.2)
+            )
         except (LookupException, ConnectivityException, ExtrapolationException):
-            self.get_logger().warn(f"No se pudo obtener la pose de tag {self.tag_id}")
-            self.publish_dh_frames([0, 0, 0, 0, 0])
+            #self.get_logger().warn(f"No se pudo obtener la pose de tag {self.tag_id}")
             return
 
-        tx, ty, tz = trans.transform.translation.x, trans.transform.translation.y, trans.transform.translation.z
-        tx =tx
-        tz = tz
+        tx = trans.transform.translation.x
+        ty = trans.transform.translation.y
+        tz = trans.transform.translation.z
         self.get_logger().info(f"Tag {self.tag_id} en base: ({tx:.3f}, {ty:.3f}, {tz:.3f})")
 
-        # TF del EE real para comparar
-        try:
-            trans_ee = self.tf_buffer.lookup_transform(
-                self.base_frame, 'endEfector', rclpy.time.Time(), timeout=Duration(seconds=0.2))
-            txEE, tyEE, tzEE = trans_ee.transform.translation.x, trans_ee.transform.translation.y, trans_ee.transform.translation.z
+        
+        self.target_xyz = [tx, ty, tz]  # Solo la parte de traslación
+             # rotation = identity, orientation libre
 
-            self.get_logger().info(f"[TF Real] EE posición: ({txEE:.3f}, {tyEE:.3f}, {tzEE:.3f})")
-            ee_home = self.chain.forward_kinematics([0, 0, 0, 0, 0])
-            xh, yh, zh = ee_home[:3, 3]
-            self.get_logger().info(f"[FK Home] EE posición DH home: ({xh:.3f}, {yh:.3f}, {zh:.3f})")
-            
-            
-
-        except (LookupException, ConnectivityException, ExtrapolationException):
-            txEE = tyEE = tzEE = float('nan')
-            self.get_logger().warn("No se pudo obtener la pose del endEffector o joint5")
-
-        try:
-            # 1) Calcula la solución de IK con toda la cadena (5 articulaciones)
-            #    Nota: IKPy devuelve un vector de longitud 6 = 1 "dummy" + 5 joints.
-            target_orientation = geom.rpy_matrix(-np.pi/2, 0.0, np.pi/2)
-            pretarget_orientation = geom.rpy_matrix(0.0, 0.0, 0.0)
-            target_orientation = geom.rpy_matrix(
-                -np.pi/2,  # roll:  -90° (rotación sobre X)
-                0.0,      # pitch:   0°
-                np.pi/2   # yaw:   +90° (rotación sobre Z)
-            )
-            self.ik_seed = [
-            np.deg2rad(10),   # articulacion1
-            np.deg2rad(30),   # articulacion2
-            np.deg2rad(10),   # articulacion3
-            np.deg2rad(50),   # articulacion4
-            np.deg2rad(50),   # articulacion5
-            ]
-            sol_full = self.chain.inverse_kinematics(
-                target_position=[tx, ty, tz],
-                max_iter = 500,
-                regularization_parameter=0.1,
-                optimizer='scalar',
-                initial_position=self.ik_seed
-            )
-            for i in range(len(sol_full)):
-                self.get_logger().info(f"Solution IK Art{i+1} IK: θ={sol_full[i]:.4f} rad ({np.rad2deg(sol_full[i]):.1f}°)")
-            # 2) Extrae las 5 posiciones DH
-            joint_angles_dh = sol_full  # solu[0] es el dummy link base
-            joint_angles_dh = sol_full[0:5]   # θ_1 a θ_5
-            # 3) Convierte a ángulos físicos sumando offsets
-            joint_angles_robot = []
-            for idx, θ_dh in enumerate(joint_angles_dh):
-                deg = np.rad2deg(θ_dh)
-                joint_angles_robot.append(θ_dh)
-                self.get_logger().info(f"Art{idx+1}: θ_DH={θ_dh:.4f} rad ({deg:.1f}°)")
+        
+    def calculateIk(self):
+        self.get_logger().info(f"Tag {self.tag_id} en base: ({self.target_xyz[0]:.3f}, {self.target_xyz[1]:.3f}, {self.target_xyz[2]:.3f})")
+           # rotation = identity, orientation libre
+        # ------------------------------------------------------
+        # 6) Intentar IK con Levenberg–Marquardt (solo translación)
+        # ------------------------------------------------------
+       
+        sol_full = self.robot.inverse_kinematics(
+        target_position= self.target_xyz,
+        target_orientation=self.target_orientation,
+        max_iter=2500,
+        regularization_parameter=0.001,
+        optimizer='scalar',
+        initial_position=self.ik_seed
+    )
+        
+        sol_full[0] = np.abs(sol_full[0])  # Asegurar que el primer ángulo es positivo
+        sol_full[1] = np.abs(sol_full[1])  # Asegurar que el segundo ángulo es positivo
+        sol_full[2] = np.abs(sol_full[2])  # Asegurar que el tercer ángulo es positivo
+        sol_full[3] = np.abs(sol_full[3])  # Asegurar que el cuarto ángulo es positivo
+        sol_full[4] = np.abs(sol_full[4])  # Asegurar que el quinto ángulo es positivo
+        self.get_logger().info(f"Solución completa (radianes): {np.round(sol_full, 1)}")
+        self.get_logger().info(f"Solución completa (grados):  {np.round(np.rad2deg(sol_full), 1)}")
+        if sol_full[0] > 25:
+            sol_full[0] = 15 
+        if sol_full[2] < 0:
+            sol_full[2] = 0  
+        # 5) Publicar la trayectoria (opcional)
+        traj = JointTrajectory()
+        traj.joint_names = [l[0] for l in dh_Arm]
+        pt = JointTrajectoryPoint()
+        pt.positions =[float( val) for val in sol_full]
+        pt.time_from_start = Duration(seconds=1.0).to_msg()
+        traj.points.append(pt)
+        
+        self.trajectory_pub.publish(traj)
 
 
-            # 4) Comprueba el FK de esa solución DH
-            fk_ik = self.chain.forward_kinematics(sol_full)
-            x_fk, y_fk, z_fk = fk_ik[0,3], fk_ik[1,3], fk_ik[2,3]
-            self.get_logger().info(f"[IKP ] EE DH: ({x_fk:.3f}, {y_fk:.3f}, {z_fk:.3f})")
-
-            # 5) Publica la trayectoria con los 5 ángulos de tu robot
-            traj = JointTrajectory()
-            traj.joint_names = [l[0] for l in dh_Arm]
-            point = JointTrajectoryPoint()
-            point.positions = joint_angles_robot
-            point.time_from_start = Duration(seconds=1.0).to_msg()
-            traj.points.append(point)
-            self.trajectory_pub.publish(traj)
-            #self.get_logger().info(f"Trayectoria publicada: {[round(a,3) for a in joint_angles_robot]}")
-            joint_angles_dh = sol_full
-            self.publish_dh_frames(joint_angles_dh)
-
-        except Exception as e:
-            self.get_logger().error(f"Error al calcular IK/FK: {e}")
-            
-
-    def publish_dh_frames(self, angles):
+    def plot_rtb(self, q):
         """
-        Publica en /tf la cadena DH con los ángulos dados,
-        esta vez calculando la traslación y orientación
-        relativas eslabón→padre.
+        Dibuja la configuración 'q' en Matplotlib usando RTB.  
+        Para evitar que RTB cree “Figure 2” y que quede también una “Figure 1” en blanco, 
+        hacemos lo siguiente:
+        
+        1) Cerramos/limpiamos todas las figuras previas con plt.close('all').
+        2) Le decimos a RTB que use siempre la figura #1 llamando a fignum=1.
+        3) Llamamos a plt.pause() para forzar el refresh.
         """
-        for i in range(len(self.chain.links)):
-            # 1) pose global del eslabón i
-            subchain_i = Chain(name=f'sub_i{i}', links=self.chain.links[:i+1])
-            T_child = subchain_i.forward_kinematics(angles[:i+1])
+        # 1) Cerrar todas las figuras para que no queden ventanas antiguas
+        plt.close('all')
+        fig = plt.figure(1)
 
-            # 2) pose global del padre (o identidad si es base_link)
-            if i == 0:
-                T_parent = np.eye(4)
-                parent_frame = 'base_link'
-            else:
-                subchain_p = Chain(name=f'sub_p{i}', links=self.chain.links[:i])
-                T_parent = subchain_p.forward_kinematics(angles[:i])
-                parent_frame = self.joint_frames[i-1]
+        # 2) Dibujar el robot en la figura número 1
+        #    Con fignum=1 indica a RTB que pinte forzosamente en Figure 1.
+        self.robot.plot(q, backend='pyplot', block=False)
 
-            child_frame = self.joint_frames[i]
-
-            # 3) transform relativo: T_rel = inverse(T_parent) * T_child
-            T_rel = np.linalg.inv(T_parent) @ T_child
-
-            # 4) extraer traslación
-            x, y, z = T_rel[0,3], T_rel[1,3], T_rel[2,3]
-
-            # 5) extraer quaternion de la matriz 4x4
-            qx, qy, qz, qw = quaternion_from_matrix(T_rel)
-
-            # 6) publicar
-            tf = TransformStamped()
-            tf.header.stamp = self.get_clock().now().to_msg()
-            tf.header.frame_id    = parent_frame
-            tf.child_frame_id     = child_frame
-            tf.transform.translation.x = float(x)
-            tf.transform.translation.y = float(y)
-            tf.transform.translation.z = float(z)
-            tf.transform.rotation.x    = float(qx)
-            tf.transform.rotation.y    = float(qy)
-            tf.transform.rotation.z    = float(qz)
-            tf.transform.rotation.w    = float(qw)
-
-            self.tf_broadcaster.sendTransform(tf)
-
+        # 3) Forzar a Matplotlib a procesar eventos y actualizar la ventana
+        plt.pause(0.001)
 
 
 def main(args=None):
     rclpy.init(args=args)
-    node = IKPyIKNode()
+    node = RTB_IK_Node()
     rclpy.spin(node)
     rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()

@@ -84,7 +84,7 @@
     <parent link="base_link"/>
     <child  link="camera_link"/>
     <!-- ajusta xyz/rpy para colocarla donde quieras -->
-    <origin xyz="0.01 0 0.0" rpy="-1.75 0 -1.578"/>
+    <origin xyz="0.02 0 0.0" rpy="-1.75 0 -1.578"/>
   </joint>
   
   <link name="frontLeft_hip_motor">

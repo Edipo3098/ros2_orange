@@ -95,7 +95,7 @@ def generate_launch_description():
                 {'video_device': '/dev/video0'},
                 {'image_width': 1280},
                 {'image_height': 720},
-                {'framerate': 30.0},
+                {'framerate': 10.0},
                 {'camera_info_url': 'file:///home/edipo/.ros/camera_info/default_cam_3.yaml'},
                 {'frame_id': 'camera_link'}  ,
                 {'pixel_format': 'yuyv'}
@@ -110,6 +110,14 @@ def generate_launch_description():
                 ('image', '/image_raw'),
                 ('camera_info', '/camera_info'),
             ],
+            parameters=[
+                # 1) Interpolación más rápida (Nearest-Neighbor)
+                {'interpolation': 0},
+                # 2) Cola mínima para sincronizar menos buffers
+                {'queue_size': 2},
+                # 3) Habilitar intra-proc entre usb_cam → image_proc
+                {'use_intra_process_comms': True},
+            ],
             arguments=['--ros-args', '--log-level', 'error']
         ),
         
@@ -121,7 +129,6 @@ def generate_launch_description():
             parameters=[
                 {'family': '36h11'},
                 {'size': 0.1},
-                '/home/edipo/ros2_orange/src/apriltag_ros/cfg/tags_36h11.yaml',
                 {'publish_tf': True},
                 { 'publish_tag_detections_pose': True},
                 {'camera_frame_id': 'camera_link'},
