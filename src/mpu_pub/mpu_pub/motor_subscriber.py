@@ -49,6 +49,7 @@ class MinimalSubscriber(Node):
         self.isARM  = False
         self.isGait = False
         self.command_sended = False
+        self.isOrigin
         self.received_data = "False"
         self.get_logger().info('Publish true')
         self.serial_port = '/dev/ttyS5'
@@ -87,7 +88,7 @@ class MinimalSubscriber(Node):
             else:
                 msg.command = "origin"
                 self.get_logger().info('is stoping gait')
-                
+                self.isOrigin = True
                 self.isARM = False
             
 

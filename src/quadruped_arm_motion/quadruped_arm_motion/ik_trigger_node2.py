@@ -17,12 +17,11 @@ import matplotlib.pyplot as plt
 # Parámetros DH (5 DOF)
 dh_Arm = [
     ("art1", 0.32,   0.00,   np.deg2rad(-180), np.deg2rad( 80.0), (np.deg2rad(-1.5),  np.deg2rad(1.5))),
-    ("art2", -0.0800,0.00,   np.deg2rad(  90), np.deg2rad( 55.0), (np.deg2rad(-0.5),  np.deg2rad(65))),
-    ("art3", 0.00,   0.30,   np.deg2rad(   0), np.deg2rad(-45.0), (np.deg2rad(-0.5),  np.deg2rad(40))),
+    ("art2", -0.0800,0.00,   np.deg2rad(  90), np.deg2rad( 55.0), (np.deg2rad(-0.5),  np.deg2rad(30))),
+    ("art3", 0.00,   0.30,   np.deg2rad(   0), np.deg2rad(-55.0), (np.deg2rad(-0.5),  np.deg2rad(40))),
     ("art4", 0.00,   0.1,   np.deg2rad(-90),  np.deg2rad(  30.0),(np.deg2rad(-40.5),  np.deg2rad(40))),
-    ("art5", 0.3200, 0.00,   np.deg2rad(-90),  np.deg2rad(  0.0), (np.deg2rad(-0.5),  np.deg2rad(180))),
+    ("art5", 0.3200, 0.00,   np.deg2rad(-90),  np.deg2rad(  0.0), (np.deg2rad(-0.5),  np.deg2rad(60))),
 ]
-
 
 
 
@@ -105,6 +104,7 @@ class RTB_IK_Node(Node):
         # ------------------------------------------------------
         # 6) Intentar IK con Levenberg–Marquardt (solo translación)
         # ------------------------------------------------------
+        
         q_lm, success_lm, iters_lm, searches_lm, residual_lm = self.robot.ik_LM(
             T_target,
             q0=self.q0,
@@ -131,11 +131,14 @@ class RTB_IK_Node(Node):
         
 
         print(f"\nUsando la solución de {metodo} para animar…")
-        if q_sol[0] > 25:
-            q_sol[0] = 15  # Limitar el primer ángulo a 30 grados
+        if q_sol[1] > 0.45:
+            q_sol[1] = 0.33  # Limitar el primer ángulo a 30 grados
+            
+        q_sol[1] = q_sol[1]-0.05  # Ajustar el primer ángulo para evitar colisiones
         q_solution = q_sol[1:]
         q_solution =np.append(q_solution, 0.5)  # Asegurar que el primer ángulo es positivo
         q_solution = np.abs(q_solution)  # Asegurar que todos los ángulos son positivos
+        q_solution[4] = 0.110
         # 5) Publicar la trayectoria (opcional)
         traj = JointTrajectory()
         traj.joint_names = [l[0] for l in dh_Arm]

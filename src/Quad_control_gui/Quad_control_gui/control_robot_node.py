@@ -534,8 +534,12 @@ class MyWindow(QMainWindow):
         
         self.ui.startGait.clicked.connect(self.on_start_gait_click)
         self.ui.stopGait.clicked.connect(self.on_stop_gait_click)
+        
         self.ui.startGait_2.clicked.connect(self.on_start_ik_click)
-        self.ui.stopGait_2.clicked.connect(self.on_stop_ik_click)       
+        self.ui.stopGait_2.clicked.connect(self.on_stop_ik_click)  
+        
+        self.ui.startGait_3.clicked.connect(self.on_start_ik2_click)  
+        self.ui.startGait_4.clicked.connect(self.on_stop_origin_click)       
         
         
         self.armJoint = Joint_0
@@ -881,11 +885,11 @@ class MyWindow(QMainWindow):
         ee     = self.ros_node.endEfector        # [x, y, z, rot...]
         aprilTagPose = self.ros_node.aprilTagPose  # [x, y, z, roll, pitch, yaw]
         ik = self.ros_node.ikSol  
-        self.indicator_j0_value.setText(f"{ik[0]:.2f}")
-        self.indicator_j1_value.setText(f"{ik[1]:.2f}")
-        self.indicator_j2_value.setText(f"{ik[2]:.2f}")
-        self.indicator_j3_value.setText(f"{ik[3]:.2f}")
-        self.indicator_j4_value.setText(f"{ik[4]:.2f}")
+        self.indicator_j0_value.setText(f"{ik[0]:.2f},  "f"{np.rad2deg(ik[0]):.2f}")
+        self.indicator_j1_value.setText(f"{ik[1]:.2f},  "f"{np.rad2deg(ik[1]):.2f}")
+        self.indicator_j2_value.setText(f"{ik[2]:.2f},  "f"{np.rad2deg(ik[2]):.2f}")
+        self.indicator_j3_value.setText(f"{ik[3]:.2f},  "f"{np.rad2deg(ik[3]):.2f}")
+        self.indicator_j4_value.setText(f"{ik[4]:.2f},  "f"{np.rad2deg(ik[4]):.2f}")
         # Actualizar indicadores de posición de las articulaciones:
         self.indicator_apX_value.setText(f"{aprilTagPose[0]:.2f}")
         self.indicator_apY_value.setText(f"{aprilTagPose[1]:.2f}")
@@ -1038,8 +1042,31 @@ class MyWindow(QMainWindow):
         self.ros_node.msg_move.robot = "ARM"
         self.ros_node.msg_move_robot.command = "ARM"
         self.ros_node.msg_move.leg = "nn"
+        self.ros_node.msg_move_robot.m5= 1.0  # Reset end-effector joint to 0
         self.update_joint_positions()
         self.publishMessage()
+    def on_start_ik2_click(self):
+        print("Set 180º clicked")
+        
+        self.ros_node.arm_joints[Joint_0] = self.ros_node.ikSol[0]
+        self.ros_node.arm_joints[Joint_1] = self.ros_node.ikSol[1]
+        self.ros_node.arm_joints[Joint_2] = self.ros_node.ikSol[2]
+        self.ros_node.arm_joints[Joint_3] = self.ros_node.ikSol[3]
+        self.ros_node.arm_joints[Joint_4] = self.ros_node.ikSol[4]
+        
+        self.ros_node.msg_move.robot = "ARM"
+        self.ros_node.msg_move_robot.command = "ARM"
+        self.ros_node.msg_move.leg = "nn"
+        self.ros_node.msg_move_robot.m5=  0.0 # Reset end-effector joint to 0
+        self.update_joint_positions()
+        self.publishMessage()
+        
+    def on_stop_origin_click(self):
+        self.ros_node.msg_move.robot = 'origin'
+        self.ros_node.msg_move_robot.command = 'origin'
+  
+        self.publishMessage()
+        
     def on_stop_gait_click(self):
         
         self.ros_node.msg_move.robot = 'origin'
@@ -1214,6 +1241,7 @@ class MyWindow(QMainWindow):
 
     def publishMessage(self):
         self.ros_node.msg_move.angle =  float(self.ros_node.msg_move.angle )*180/np.pi
+       
         
         self.ros_node.msg_move_robot.m0 =    round(float(self.ros_node.arm_joints[Joint_0])*180/np.pi ,2)
         self.ros_node.msg_move_robot.m1 =    round(float(self.ros_node.arm_joints[Joint_1])*180/np.pi ,2)

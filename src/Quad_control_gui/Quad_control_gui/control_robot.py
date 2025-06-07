@@ -273,6 +273,12 @@ class Ui_RobotControl(object):
         self.EF_roll = QtWidgets.QWidget(self.controlArm)
         self.EF_roll.setGeometry(QtCore.QRect(610, 400, 241, 41))
         self.EF_roll.setObjectName("EF_roll")
+        self.startGait_3 = QtWidgets.QPushButton(self.controlArm)
+        self.startGait_3.setGeometry(QtCore.QRect(870, 360, 131, 101))
+        self.startGait_3.setObjectName("startGait_3")
+        self.startGait_4 = QtWidgets.QPushButton(self.controlArm)
+        self.startGait_4.setGeometry(QtCore.QRect(1020, 360, 131, 101))
+        self.startGait_4.setObjectName("startGait_4")
         RobotControl.addWidget(self.controlArm)
 
         self.retranslateUi(RobotControl)
@@ -319,5 +325,17 @@ class Ui_RobotControl(object):
         self.label_8.setText(_translate("RobotControl", "Joints angles"))
         self.label_9.setText(_translate("RobotControl", "Tag Position / Orientation"))
         self.label_10.setText(_translate("RobotControl", "End Efector Position/Orientation"))
-        self.startGait_2.setText(_translate("RobotControl", "Start"))
-        self.stopGait_2.setText(_translate("RobotControl", "stop"))
+        self.startGait_2.setText(_translate("RobotControl", "Pick Up"))
+        self.stopGait_2.setText(_translate("RobotControl", "Caluclate Ik"))
+        self.startGait_3.setText(_translate("RobotControl", "Pick Down"))
+        self.startGait_4.setText(_translate("RobotControl", "Origin"))
+
+
+if __name__ == "__main__":
+    import sys
+    app = QtWidgets.QApplication(sys.argv)
+    RobotControl = QtWidgets.QStackedWidget()
+    ui = Ui_RobotControl()
+    ui.setupUi(RobotControl)
+    RobotControl.show()
+    sys.exit(app.exec_())

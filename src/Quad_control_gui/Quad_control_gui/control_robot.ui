@@ -422,7 +422,7 @@
      <string/>
     </property>
     <property name="pixmap">
-     <pixmap>../../../../Documents/Master/TFM/upc.png</pixmap>
+     <pixmap>/home/edipo/Documents/Master/TFM/upc.png</pixmap>
     </property>
    </widget>
   </widget>
@@ -476,7 +476,7 @@
      <string/>
     </property>
     <property name="pixmap">
-     <pixmap>../../../../Documents/Master/TFM/upc.png</pixmap>
+     <pixmap>/home/edipo/Documents/Master/TFM/upc.png</pixmap>
     </property>
    </widget>
    <widget class="QWidget" name="acc_y" native="true">
@@ -625,7 +625,7 @@
      <string/>
     </property>
     <property name="pixmap">
-     <pixmap>../../../../Documents/Master/TFM/upc.png</pixmap>
+     <pixmap>/home/edipo/Documents/Master/TFM/upc.png</pixmap>
     </property>
    </widget>
    <widget class="QLabel" name="label_7">
@@ -768,7 +768,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Start</string>
+     <string>Pick Up</string>
     </property>
    </widget>
    <widget class="QPushButton" name="stopGait_2">
@@ -781,7 +781,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>stop</string>
+     <string>Caluclate Ik</string>
     </property>
    </widget>
    <widget class="QWidget" name="jointAngles_0" native="true">
@@ -952,6 +952,32 @@
       <width>241</width>
       <height>41</height>
      </rect>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="startGait_3">
+    <property name="geometry">
+     <rect>
+      <x>870</x>
+      <y>360</y>
+      <width>131</width>
+      <height>101</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Pick Down</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="startGait_4">
+    <property name="geometry">
+     <rect>
+      <x>1020</x>
+      <y>360</y>
+      <width>131</width>
+      <height>101</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Origin</string>
     </property>
    </widget>
   </widget>
