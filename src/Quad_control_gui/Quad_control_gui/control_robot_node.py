@@ -147,10 +147,10 @@ class MyNode(Node):
         self.arm_joints = np.zeros(5, dtype=float)
 
         # Y para cada pata, un arreglo de 3 ángulos (por ejemplo: cadera, rodilla, tobillo)
-        self.leg_joints_FL = np.zeros(3, dtype=float)
-        self.leg_joints_FR = np.zeros(3, dtype=float)
-        self.leg_joints_BL = np.zeros(3, dtype=float)
-        self.leg_joints_BR = np.zeros(3, dtype=float)
+        self.leg_joints_FL = np.array([0.0, 0.0, 15], dtype=float)  # Front Left leg joints
+        self.leg_joints_FR = np.array([0.0, 0.0, 15], dtype=float)
+        self.leg_joints_BL = np.array([0.0, 0.0, 15], dtype=float)
+        self.leg_joints_BR = np.array([0.0, 0.0, 15], dtype=float)
         self.joint_states_pub.publish(self.joint_state_msg)
     def ikCallback(self, msg):
         """
