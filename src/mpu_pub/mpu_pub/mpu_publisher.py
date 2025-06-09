@@ -99,6 +99,10 @@ class MinimalPublisher(Node):
         self.i2c_bus = 0
         self.bus = smbus.SMBus(i2c_bus)
         # Then use self.bus.read_byte_data, etc. in the respective functions
+        self.mpu_wake(mpu9250_address)
+        self.mpu_wake(mpu9250_address_2)
+        self.Check_communication(mpu9250_address)
+        self.Check_communication(mpu9250_address_2)
         self.configure_sensor(mpu9250_address)
         self.configure_sensor(mpu9250_address_2)
 
@@ -110,8 +114,7 @@ class MinimalPublisher(Node):
         self.check_full_scale(mpu9250_address)
        
 
-        self.Check_communication(mpu9250_address)
-        self.Check_communication(mpu9250_address_2)
+        
         timer_period = 1/2000   # seconds 50Hz
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.sendData = self.create_timer(timer_period, self.send_data)
