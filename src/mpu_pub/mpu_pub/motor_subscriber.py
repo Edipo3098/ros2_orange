@@ -49,7 +49,7 @@ class MinimalSubscriber(Node):
         self.isARM  = False
         self.isGait = False
         self.command_sended = False
-        self.isOrigin
+        self.isOrigin = False
         self.received_data = "False"
         self.get_logger().info('Publish true')
         self.serial_port = '/dev/ttyS5'
