@@ -96,7 +96,7 @@ class MinimalPublisher(Node):
         # Publisher for Imu (standard message)
         self.imu_publisher_ = self.create_publisher(Imu, 'imu_data', 10)
         self.imu_publisher_second = self.create_publisher(Imu, 'imu_data_2', 10)
-        self.i2c_bus = 1
+        self.i2c_bus = 0
         self.bus = smbus.SMBus(i2c_bus)
         # Then use self.bus.read_byte_data, etc. in the respective functions
         self.configure_sensor(mpu9250_address)
