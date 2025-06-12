@@ -333,7 +333,10 @@ class MyWindow(QMainWindow):
 
         self.ui = Ui_RobotControl()  # Instantiate the UI class generated from the .ui file
         # Create a central widget to hold your stacked widget
-        
+        self.gait_timer = QTimer(self)
+        self.gait_timer.timeout.connect(self.gait_sequence_step)
+        self.gait_leg_order = [BR, FR, BL, FL]
+        self.gait_joint_indices = [Joint_1, Joint_2]
         stacked_widget = QStackedWidget()  # This should be a QStackedWidget, not a generic QWidget
         self.ui.setupUi(stacked_widget)
         # Set the QStackedWidget as the central widget of the QMainWindow
@@ -1018,8 +1021,138 @@ class MyWindow(QMainWindow):
         
         self.ros_node.msg_move.robot = 'm4'
         self.ros_node.msg_move_robot.command = 'm4'
+        self.gait_timer.start(1000)  # every second
+
         
         self.publishMessage()
+    def gait_sequence_step(self):
+        if self.gait_repeat >= 3:
+            self.gait_timer.stop()
+            self.ros_node.get_logger().info("Gait sequence completed and stopped.")
+            return
+
+        # Determine the leg being lifted in this step
+        # Ensure FL, FR, BL, BR are defined and accessible (e.g., as global or class members)
+        # And self.gait_leg_order uses these definitions.
+        # Example: FL, FR, BL, BR = 0, 1, 2, 3
+        # self.gait_leg_order = [BR, FR, BL, FL] -> [3, 1, 2, 0]
+        # self.all_leg_ids = [FL, FR, BL, BR] -> [0, 1, 2, 3]
+
+        lifted_leg_id = self.gait_leg_order[self.gait_step % 4]
+        
+        # Calculate SCLSM based on current foot positions and CoM
+        # Assuming self.ros_node.footPose is ordered [FL, FR, BL, BR]
+        # and FL, FR, BL, BR are 0, 1, 2, 3 respectively.
+        try:
+            all_foot_positions = self.ros_node.footPose # List of 4 [x,y]
+            com_xy = (self.ros_node.cogPose[0], self.ros_node.cogPose[1])
+
+            # Identify supporting feet
+            # This assumes FL, FR, BL, BR are defined (e.g. 0,1,2,3)
+            # and self.all_leg_ids is a list like [FL, FR, BL, BR]
+            # You need to ensure these constants are correctly defined and available.
+            # For this example, I'll hardcode the assumption of 0-3 indices.
+            _FL, _FR, _BL, _BR = 0, 1, 2, 3 # Local assumption for clarity
+            _all_leg_indices = [_FL, _FR, _BL, _BR]
+            
+            supporting_feet_coords = []
+            for leg_idx in _all_leg_indices:
+                if leg_idx != lifted_leg_id: # lifted_leg_id must also be one of 0,1,2,3
+                    supporting_feet_coords.append(all_foot_positions[leg_idx])
+            
+            if len(supporting_feet_coords) == 3:
+                sclsm = self.calculate_sclsm(com_xy, supporting_feet_coords)
+                self.ros_node.get_logger().info(f"Gait Step {self.gait_step}: Lifted Leg ID {lifted_leg_id}, SCLSM: {sclsm:.4f}")
+            else:
+                 self.ros_node.get_logger().warn(f"Gait Step {self.gait_step}: Could not determine 3 support feet for SCLSM. Lifted: {lifted_leg_id}")
+
+        except AttributeError as e:
+            self.ros_node.get_logger().error(f"Error accessing footPose or cogPose for SCLSM: {e}")
+        except IndexError as e:
+            self.ros_node.get_logger().error(f"Error indexing footPose for SCLSM (check leg ID definitions and footPose structure): {e}")
+        except Exception as e:
+            self.ros_node.get_logger().error(f"Unexpected error during SCLSM calculation: {e}")
+
+
+        leg_to_move = self.gait_leg_order[self.gait_step % 4] # This is the 'lifted' leg conceptually
+        # Move joints 1 and 2 forward by +0.2 radians (adjust as needed)
+        for joint_index in self.gait_joint_indices: # e.g., [Joint_1, Joint_2]
+            # Ensure BR, FR, BL, FL constants are correctly used here
+            if leg_to_move == BR: # Assuming BR is a defined constant
+                self.ros_node.leg_joints_BR[joint_index] += 0.2
+            elif leg_to_move == FR: # Assuming FR is a defined constant
+                self.ros_node.leg_joints_FR[joint_index] += 0.2
+            elif leg_to_move == BL: # Assuming BL is a defined constant
+                self.ros_node.leg_joints_BL[joint_index] += 0.2
+            elif leg_to_move == FL: # Assuming FL is a defined constant
+                self.ros_node.leg_joints_FL[joint_index] += 0.2
+            # Add bounds checking for joint angles if necessary
+
+        self.update_joint_positions()
+        self.publishMessage()
+
+        self.gait_step += 1
+        if self.gait_step % 4 == 0:
+            self.gait_repeat += 1
+            self.ros_node.get_logger().info(f"Gait cycle {self.gait_repeat} completed.")
+# ...existing code...
+    def _calculate_distance_point_to_segment(self, p_c, p1, p2):
+        """Calculates the shortest distance from point p_c to line segment p1p2."""
+        p_c = np.array(p_c)
+        p1 = np.array(p1)
+        p2 = np.array(p2)
+
+        line_vec = p2 - p1
+        p1_to_pc_vec = p_c - p1
+
+        line_len_sq = np.dot(line_vec, line_vec)
+        if line_len_sq == 0:  # p1 and p2 are the same point
+            return np.linalg.norm(p_c - p1)
+
+        t = np.dot(p1_to_pc_vec, line_vec) / line_len_sq
+
+        if 0 <= t <= 1:
+            # Projection falls within the segment
+            # Distance from point p_c to line through p1 and p2
+            # Formula: |(y2-y1)xc - (x2-x1)yc + (x1*y2 - x2*y1)| / sqrt((y2-y1)^2 + (x2-x1)^2)
+            numerator = abs((p2[1] - p1[1]) * p_c[0] - (p2[0] - p1[0]) * p_c[1] + (p1[0] * p2[1] - p2[0] * p1[1]))
+            denominator = np.hypot(p2[1] - p1[1], p2[0] - p1[0])
+            if denominator == 0: # Should be caught by line_len_sq == 0, but as a safeguard
+                 return np.linalg.norm(p_c - p1)
+            return numerator / denominator
+        elif t < 0:
+            # Closest to p1
+            return np.linalg.norm(p_c - p1)
+        else:  # t > 1
+            # Closest to p2
+            return np.linalg.norm(p_c - p2)
+
+    def calculate_sclsm(self, com_projection_xy, current_support_feet_coords):
+        """
+        Calculates the Smallest-Center-of-Mass Stability Margin (SCLSM).
+        com_projection_xy: Tuple (x, y) of the CoM projection.
+        current_support_feet_coords: List of [x, y] coordinates for the 3 supporting feet.
+        """
+        if len(current_support_feet_coords) != 3:
+            self.ros_node.get_logger().warn(f"SCLSM calculation requires 3 support feet, got {len(current_support_feet_coords)}")
+            return 0.0  # Or some indicator of error/instability
+
+        # Form the edges of the support triangle
+        # P0-P1, P1-P2, P2-P0
+        edges = [
+            (current_support_feet_coords[0], current_support_feet_coords[1]),
+            (current_support_feet_coords[1], current_support_feet_coords[2]),
+            (current_support_feet_coords[2], current_support_feet_coords[0])
+        ]
+
+        min_dist_to_edge = float('inf')
+
+        for p1, p2 in edges:
+            dist_to_segment = self._calculate_distance_point_to_segment(com_projection_xy, p1, p2)
+            if dist_to_segment < min_dist_to_edge:
+                min_dist_to_edge = dist_to_segment
+        
+        return min_dist_to_edge
     def on_stop_ik_click(self):
         if self.ros_node.getIk:
             self.ros_node.msg_ik.data = False
