@@ -28,7 +28,7 @@ mpu9250_address = 0x68  # MPU9250 default I2C address
 mpu9250_address_2 = 0x69  # MPU9250 I2C address AD0 high
 PWR_MGMT_1 = 0x6B
 # Create an smbus object
-i2c_bus = 0  # Assuming you want to use /dev/i2c-1
+i2c_bus = 2  # Assuming you want to use /dev/i2c-1
 
 
 # MPU9250 register addresses
@@ -96,7 +96,7 @@ class MinimalPublisher(Node):
         # Publisher for Imu (standard message)
         self.imu_publisher_ = self.create_publisher(Imu, 'imu_data', 10)
         self.imu_publisher_second = self.create_publisher(Imu, 'imu_data_2', 10)
-        self.i2c_bus = 0
+        self.i2c_bus = 2
         self.bus = smbus.SMBus(i2c_bus)
         # Then use self.bus.read_byte_data, etc. in the respective functions
         self.mpu_wake(mpu9250_address)
