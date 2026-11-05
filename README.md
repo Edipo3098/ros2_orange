@@ -1,6 +1,8 @@
 # Quadruped Robot with Manipulator — ROS 2 Workspace
 
-Academic robotics workspace combining a quadruped platform, a robotic arm, a Python control interface, inertial sensing and serial communication with embedded hardware.
+Software workspace for my master's final project (TFM), documented in [UPCommons, Universitat Politècnica de Catalunya](https://upcommons.upc.edu/entities/publication/f53c69dd-fdc5-4073-99e1-0c4ce5c5da53).
+
+The project combines a quadruped platform, a robotic arm, a Python control interface, inertial sensing and serial communication with embedded hardware.
 
 ## Components
 
@@ -50,7 +52,7 @@ These commands are a build outline, not a verified clean-install recipe. Hardwar
 ## Current limitations
 
 - The README and execution instructions are being reconstructed from source; physical hardware and simulation have not been validated during this documentation update.
-- `simulation_launch.py` references `quadruped_arm_robot_Control_effort.urdf`, which is absent from the current tree. Select the intended model before using that launch file.
+- Robot URDF models are included in `src/quadruped_arm_motion/urdf/`: `quadruped_arm.urdf`, `quadruped_arm_robot_control_real_effort.urdf` and `quadruped_arm_robot_control_real_effortTest_develope.urdf`. The specific filename referenced by `simulation_launch.py` is different (`quadruped_arm_robot_Control_effort.urdf`); this launch-to-model reference still needs reconciliation.
 - `.gitmodules` contains stale `src/src/...` paths, while the `src/teleop` gitlink has no matching entry. Reconcile the dependency list before recursive submodule initialization.
 - Serial settings such as `/dev/ttyS5` are embedded in source. They must match the board and controller protocol.
 - Several scripts are experimental variants. Their names alone do not establish which implementation is the final one.
@@ -58,7 +60,9 @@ These commands are a build outline, not a verified clean-install recipe. Hardwar
 
 ## Demonstration and project context
 
-A video, hardware diagram, final TFM reference, exact personal contribution and measured results should be added with verified project information. No performance or autonomy claims are made here.
+This repository belongs to the quadruped-with-manipulator TFM project. The project reference and supporting material are available through the [official UPC publication record](https://upcommons.upc.edu/entities/publication/f53c69dd-fdc5-4073-99e1-0c4ce5c5da53).
+
+The publication link was supplied by the project author. Its contents could not be retrieved during this update because UPCommons returned HTTP 403; no title, numerical results or direct video URL have been inferred.
 
 Related hardware experiments: [Orange_repo](https://github.com/Edipo3098/Orange_repo).
 
