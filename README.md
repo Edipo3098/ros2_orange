@@ -62,8 +62,6 @@ These commands are a build outline, not a verified clean-install recipe. Hardwar
 
 This repository belongs to the quadruped-with-manipulator TFM project. The project reference and supporting material are available through the [official UPC publication record](https://upcommons.upc.edu/entities/publication/f53c69dd-fdc5-4073-99e1-0c4ce5c5da53).
 
-The publication link was supplied by the project author. Its contents could not be retrieved during this update because UPCommons returned HTTP 403; no title, numerical results or direct video URL have been inferred.
-
 Related hardware experiments: [Orange_repo](https://github.com/Edipo3098/Orange_repo).
 
 ## Development priorities
